@@ -348,10 +348,10 @@ function Dashboard() {
                   {stats.mostWatchedMovies.slice(0, 5).map((item, index) => (
                     <div
                       key={index}
-                      className="flex items-center gap-2 px-3 py-1.5 hover:bg-dark-700 transition-colors"
+                      className="flex items-start gap-2 px-3 py-1.5 hover:bg-dark-700 transition-colors"
                     >
                       {/* Rank */}
-                      <div className="flex-shrink-0 w-4 text-center text-gray-500 text-xs">
+                      <div className="flex-shrink-0 w-4 text-center text-gray-500 text-xs pt-0.5">
                         {index + 1}
                       </div>
                       {/* Thumbnail */}
@@ -370,8 +370,8 @@ function Dashboard() {
                         )}
                       </div>
                       {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-white text-xs truncate">{item.title}</div>
+                      <div className="flex-1">
+                        <div className="text-white text-xs leading-tight" style={{ wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal' }}>{item.title}</div>
                         <div className="text-xs text-gray-500">
                           {item.plays} {item.plays === 1 ? 'user' : 'users'}
                         </div>
@@ -385,19 +385,19 @@ function Dashboard() {
 
           {/* Popular TV Shows */}
           {stats.mostWatchedEpisodes?.length > 0 && (
-            <div className="card min-w-fit">
+            <div className="card" style={{ width: '300px', maxWidth: '100%' }}>
               <div className="card-header">
-                <h3 className="card-title text-center">Popular TV Shows</h3>
+                <h3 className="card-title text-center">Popular Shows</h3>
               </div>
               <div className="card-body p-0">
                 <div className="divide-y divide-dark-600">
                   {stats.mostWatchedEpisodes.slice(0, 5).map((item, index) => (
                     <div
                       key={index}
-                      className="flex items-center gap-2 px-3 py-1.5 hover:bg-dark-700 transition-colors"
+                      className="flex items-start gap-2 px-3 py-1.5 hover:bg-dark-700 transition-colors"
                     >
                       {/* Rank */}
-                      <div className="flex-shrink-0 w-4 text-center text-gray-500 text-xs">
+                      <div className="flex-shrink-0 w-4 text-center text-gray-500 text-xs pt-0.5">
                         {index + 1}
                       </div>
                       {/* Thumbnail */}
@@ -416,8 +416,8 @@ function Dashboard() {
                         )}
                       </div>
                       {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-white text-xs truncate">{item.title}</div>
+                      <div className="flex-1">
+                        <div className="text-white text-xs leading-tight" style={{ wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal' }}>{item.title}</div>
                         <div className="text-xs text-gray-500">
                           {item.plays} {item.plays === 1 ? 'user' : 'users'}
                         </div>
@@ -440,10 +440,10 @@ function Dashboard() {
                   {stats.mostWatchedAudiobooks.slice(0, 5).map((item, index) => (
                     <div
                       key={index}
-                      className="flex items-center gap-2 px-3 py-1.5 hover:bg-dark-700 transition-colors"
+                      className="flex items-start gap-2 px-3 py-1.5 hover:bg-dark-700 transition-colors"
                     >
                       {/* Rank */}
-                      <div className="flex-shrink-0 w-4 text-center text-gray-500 text-xs">
+                      <div className="flex-shrink-0 w-4 text-center text-gray-500 text-xs pt-0.5">
                         {index + 1}
                       </div>
                       {/* Thumbnail */}
@@ -462,8 +462,8 @@ function Dashboard() {
                         )}
                       </div>
                       {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-white text-xs truncate">{item.title}</div>
+                      <div className="flex-1">
+                        <div className="text-white text-xs leading-tight" style={{ wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal' }}>{item.title}</div>
                         <div className="text-xs text-gray-500">
                           {item.plays} {item.plays === 1 ? 'user' : 'users'}
                         </div>
