@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getHistory } from '../utils/api';
-import { formatTimestamp, formatMediaType } from '../utils/format';
+import { formatTimestamp, formatMediaType, formatDuration } from '../utils/format';
 import { History as HistoryIcon, PlayCircle } from 'lucide-react';
 
 function History() {
@@ -72,7 +72,8 @@ function History() {
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">User</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Type</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Progress</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Watched</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Time Spent</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Watched / Listened</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-dark-700">
@@ -131,6 +132,9 @@ function History() {
                           </div>
                           <span className="text-sm text-gray-400">{item.percent_complete}%</span>
                         </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-gray-400 text-sm">{formatDuration(item.session_duration)}</span>
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-gray-400 text-sm">{formatTimestamp(item.watched_at)}</span>

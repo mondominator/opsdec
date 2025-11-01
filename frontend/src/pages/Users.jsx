@@ -155,24 +155,10 @@ function Users() {
                   </th>
                   <th
                     className="px-6 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:text-white transition-colors"
-                    onClick={() => handleSort('watch_plays')}
-                  >
-                    Watch Plays
-                    <SortIcon column="watch_plays" />
-                  </th>
-                  <th
-                    className="px-6 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:text-white transition-colors"
                     onClick={() => handleSort('watch_duration')}
                   >
                     Watch Time
                     <SortIcon column="watch_duration" />
-                  </th>
-                  <th
-                    className="px-6 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:text-white transition-colors"
-                    onClick={() => handleSort('listen_plays')}
-                  >
-                    Listen Plays
-                    <SortIcon column="listen_plays" />
                   </th>
                   <th
                     className="px-6 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:text-white transition-colors"
@@ -235,13 +221,7 @@ function Users() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-gray-300">{user.watch_plays || 0}</span>
-                      </td>
-                      <td className="px-6 py-4">
                         <span className="text-gray-300">{formatDuration(user.watch_duration || 0)}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-gray-300">{user.listen_plays || 0}</span>
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-gray-300">{formatDuration(user.listen_duration || 0)}</span>

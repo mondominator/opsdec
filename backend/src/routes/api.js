@@ -26,12 +26,24 @@ router.get('/history', (req, res) => {
     const offset = parseInt(req.query.offset || '0', 10);
     const userId = req.query.user_id;
 
+    // Get only the most recent entry per session
     let query = `
       SELECT
         h.*,
-        (SELECT thumb FROM users WHERE username = h.username AND thumb IS NOT NULL LIMIT 1) as user_thumb
+        (SELECT thumb FROM users WHERE username = h.username AND thumb IS NOT NULL LIMIT 1) as user_thumb,
+        CASE
+          WHEN s.stopped_at IS NOT NULL AND s.started_at IS NOT NULL
+          THEN s.stopped_at - s.started_at
+          ELSE NULL
+        END as session_duration
       FROM history h
-      ${userId ? 'WHERE h.user_id = ?' : ''}
+      LEFT JOIN sessions s ON h.session_id = s.id
+      INNER JOIN (
+        SELECT session_id, MAX(watched_at) as max_watched_at
+        FROM history
+        ${userId ? 'WHERE user_id = ?' : ''}
+        GROUP BY session_id
+      ) latest ON h.session_id = latest.session_id AND h.watched_at = latest.max_watched_at
       ORDER BY h.watched_at DESC
       LIMIT ? OFFSET ?
     `;
@@ -39,9 +51,10 @@ router.get('/history', (req, res) => {
     const params = userId ? [userId, limit, offset] : [limit, offset];
     const history = db.prepare(query).all(...params);
 
+    // Count unique sessions instead of total entries
     const countQuery = userId
-      ? db.prepare('SELECT COUNT(*) as total FROM history WHERE user_id = ?').get(userId)
-      : db.prepare('SELECT COUNT(*) as total FROM history').get();
+      ? db.prepare('SELECT COUNT(DISTINCT session_id) as total FROM history WHERE user_id = ?').get(userId)
+      : db.prepare('SELECT COUNT(DISTINCT session_id) as total FROM history').get();
 
     res.json({
       success: true,
