@@ -1,11 +1,24 @@
 import { useEffect, useState } from 'react';
 import { getActivity } from '../utils/api';
 import { formatTimeAgo, formatDuration } from '../utils/format';
-import { Activity as ActivityIcon, PlayCircle } from 'lucide-react';
+import { Activity as ActivityIcon, PlayCircle, Film, Tv, Headphones } from 'lucide-react';
 
 function Activity() {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const getServerIcon = (serverType) => {
+    switch (serverType) {
+      case 'emby':
+        return <Film className="w-5 h-5 text-green-400" title="Emby" />;
+      case 'plex':
+        return <Tv className="w-5 h-5 text-yellow-400" title="Plex" />;
+      case 'audiobookshelf':
+        return <Headphones className="w-5 h-5 text-blue-400" title="Audiobookshelf" />;
+      default:
+        return null;
+    }
+  };
 
   useEffect(() => {
     loadActivity();
@@ -56,12 +69,12 @@ function Activity() {
               <div className="card-body">
                 <div className="flex space-x-6">
                   {/* Thumbnail */}
-                  <div className="flex-shrink-0 relative w-32 h-48">
+                  <div className="flex-shrink-0 relative w-48 h-72 bg-dark-700 rounded-lg">
                     {session.thumb ? (
                       <img
                         src={`/proxy/image?url=${encodeURIComponent(session.thumb)}`}
                         alt={session.title}
-                        className="w-full h-full object-cover rounded-lg"
+                        className="w-full h-full object-contain rounded-lg"
                         loading="lazy"
                       />
                     ) : null}
@@ -110,7 +123,7 @@ function Activity() {
                         </div>
                         <span className="font-medium">{session.username}</span>
                         <span>•</span>
-                        <span className="text-xs uppercase font-semibold text-primary-400">{session.server_type}</span>
+                        {getServerIcon(session.server_type)}
                         <span>•</span>
                         <span className="text-sm">{formatTimeAgo(session.started_at)}</span>
                       </div>

@@ -14,6 +14,9 @@ let cronJob = null;
 export function initServices() {
   const services = [];
 
+  // Auto-migrate environment variables to database on first run
+  migrateEnvToDatabase();
+
   // First, try to load from database
   try {
     const dbServers = db.prepare('SELECT * FROM servers WHERE enabled = 1').all();
@@ -45,43 +48,65 @@ export function initServices() {
     console.error('Error loading servers from database:', error.message);
   }
 
-  // Fallback to environment variables if no database servers configured
-  if (services.length === 0) {
-    console.log('📋 No servers in database, checking environment variables...');
-
-    // Initialize Emby
-    const embyUrl = process.env.EMBY_URL;
-    const embyApiKey = process.env.EMBY_API_KEY;
-    if (embyUrl && embyApiKey) {
-      embyService = new EmbyService(embyUrl, embyApiKey);
-      services.push({ name: 'Emby', service: embyService, type: 'emby' });
-      console.log('✅ Emby service initialized from environment');
-    }
-
-    // Initialize Plex
-    const plexUrl = process.env.PLEX_URL;
-    const plexToken = process.env.PLEX_TOKEN;
-    if (plexUrl && plexToken) {
-      plexService = new PlexService(plexUrl, plexToken);
-      services.push({ name: 'Plex', service: plexService, type: 'plex' });
-      console.log('✅ Plex service initialized from environment');
-    }
-
-    // Initialize Audiobookshelf
-    const audiobookshelfUrl = process.env.AUDIOBOOKSHELF_URL;
-    const audiobookshelfApiKey = process.env.AUDIOBOOKSHELF_API_KEY;
-    if (audiobookshelfUrl && audiobookshelfApiKey) {
-      audiobookshelfService = new AudiobookshelfService(audiobookshelfUrl, audiobookshelfApiKey);
-      services.push({ name: 'Audiobookshelf', service: audiobookshelfService, type: 'audiobookshelf' });
-      console.log('✅ Audiobookshelf service initialized from environment');
-    }
-  }
-
   if (services.length === 0) {
     console.warn('⚠️  No media servers configured! Add servers via the Settings page.');
   }
 
   return services;
+}
+
+// Migrate environment variables to database on first run
+function migrateEnvToDatabase() {
+  try {
+    const now = Math.floor(Date.now() / 1000);
+
+    // Check and migrate Emby
+    const embyUrl = process.env.EMBY_URL;
+    const embyApiKey = process.env.EMBY_API_KEY;
+    if (embyUrl && embyApiKey) {
+      const existing = db.prepare('SELECT * FROM servers WHERE type = ? AND url = ?').get('emby', embyUrl);
+      if (!existing) {
+        const id = `emby-${Date.now()}`;
+        db.prepare(`
+          INSERT INTO servers (id, type, name, url, api_key, enabled, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(id, 'emby', 'Emby', embyUrl, embyApiKey, 1, now, now);
+        console.log('📥 Migrated Emby from environment variables to database');
+      }
+    }
+
+    // Check and migrate Plex
+    const plexUrl = process.env.PLEX_URL;
+    const plexToken = process.env.PLEX_TOKEN;
+    if (plexUrl && plexToken) {
+      const existing = db.prepare('SELECT * FROM servers WHERE type = ? AND url = ?').get('plex', plexUrl);
+      if (!existing) {
+        const id = `plex-${Date.now()}`;
+        db.prepare(`
+          INSERT INTO servers (id, type, name, url, api_key, enabled, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(id, 'plex', 'Plex', plexUrl, plexToken, 1, now, now);
+        console.log('📥 Migrated Plex from environment variables to database');
+      }
+    }
+
+    // Check and migrate Audiobookshelf
+    const audiobookshelfUrl = process.env.AUDIOBOOKSHELF_URL;
+    const audiobookshelfApiKey = process.env.AUDIOBOOKSHELF_API_KEY;
+    if (audiobookshelfUrl && audiobookshelfApiKey) {
+      const existing = db.prepare('SELECT * FROM servers WHERE type = ? AND url = ?').get('audiobookshelf', audiobookshelfUrl);
+      if (!existing) {
+        const id = `audiobookshelf-${Date.now()}`;
+        db.prepare(`
+          INSERT INTO servers (id, type, name, url, api_key, enabled, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(id, 'audiobookshelf', 'Audiobookshelf', audiobookshelfUrl, audiobookshelfApiKey, 1, now, now);
+        console.log('📥 Migrated Audiobookshelf from environment variables to database');
+      }
+    }
+  } catch (error) {
+    console.error('Error migrating environment variables to database:', error.message);
+  }
 }
 
 function updateSession(activity, serverType) {

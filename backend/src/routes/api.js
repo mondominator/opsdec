@@ -199,11 +199,31 @@ router.get('/stats/dashboard', (req, res) => {
     `).get();
     const peakHour = peakHourResult ? `${parseInt(peakHourResult.hour)}:00` : 'N/A';
 
-    // Top users
-    const topUsers = db.prepare(`
-      SELECT username, total_plays, total_duration, thumb
-      FROM users
-      ORDER BY total_plays DESC
+    // Top watchers (video content: movies + episodes)
+    const topWatchers = db.prepare(`
+      SELECT
+        h.username,
+        SUM(h.duration) as total_duration,
+        u.thumb
+      FROM history h
+      LEFT JOIN users u ON h.user_id = u.id
+      WHERE h.media_type IN ('movie', 'episode')
+      GROUP BY h.user_id, h.username
+      ORDER BY total_duration DESC
+      LIMIT 10
+    `).all();
+
+    // Top listeners (audio content: audiobooks + tracks)
+    const topListeners = db.prepare(`
+      SELECT
+        h.username,
+        SUM(h.duration) as total_duration,
+        u.thumb
+      FROM history h
+      LEFT JOIN users u ON h.user_id = u.id
+      WHERE h.media_type IN ('audiobook', 'track')
+      GROUP BY h.user_id, h.username
+      ORDER BY total_duration DESC
       LIMIT 10
     `).all();
 
@@ -253,7 +273,8 @@ router.get('/stats/dashboard', (req, res) => {
         peakDay,
         peakHour,
         playsByDay,
-        topUsers,
+        topWatchers,
+        topListeners,
         mostWatchedMovies,
         mostWatchedEpisodes,
         mostWatchedAudiobooks,

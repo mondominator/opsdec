@@ -245,17 +245,56 @@ function Dashboard() {
       )}
 
       {/* Top Users and Popular - Grid layout */}
-      {(stats.topUsers.length > 0 || stats.mostWatchedMovies?.length > 0 || stats.mostWatchedEpisodes?.length > 0 || stats.mostWatchedAudiobooks?.length > 0) && (
+      {(stats.topWatchers?.length > 0 || stats.topListeners?.length > 0 || stats.mostWatchedMovies?.length > 0 || stats.mostWatchedEpisodes?.length > 0 || stats.mostWatchedAudiobooks?.length > 0) && (
         <div className="flex flex-wrap gap-3">
-          {/* Top Users */}
-          {stats.topUsers.length > 0 && (
+          {/* Top Watchers */}
+          {stats.topWatchers?.length > 0 && (
             <div className="card min-w-fit">
               <div className="card-header">
-                <h3 className="card-title">Top Users</h3>
+                <h3 className="card-title">Top Watchers</h3>
               </div>
               <div className="card-body p-0">
                 <div className="divide-y divide-dark-600">
-                  {stats.topUsers.slice(0, 5).map((user, index) => (
+                  {stats.topWatchers.slice(0, 5).map((user, index) => (
+                    <div
+                      key={user.username}
+                      className="flex items-center gap-2 px-3 py-1.5 hover:bg-dark-700 transition-colors"
+                    >
+                      <div className="flex-shrink-0 w-4 text-center text-gray-500 text-xs">
+                        {index + 1}
+                      </div>
+                      {user.thumb ? (
+                        <img
+                          src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`}
+                          alt={user.username}
+                          className="flex-shrink-0 w-6 h-6 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex-shrink-0 w-6 h-6 bg-primary-600 rounded-full flex items-center justify-center text-white text-xs font-medium">
+                          {user.username.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-white text-xs truncate">{user.username}</div>
+                        <div className="text-xs text-gray-500">
+                          {formatDuration(user.total_duration)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          {/* Top Listeners */}
+          {stats.topListeners?.length > 0 && (
+            <div className="card min-w-fit">
+              <div className="card-header">
+                <h3 className="card-title">Top Listeners</h3>
+              </div>
+              <div className="card-body p-0">
+                <div className="divide-y divide-dark-600">
+                  {stats.topListeners.slice(0, 5).map((user, index) => (
                     <div
                       key={user.username}
                       className="flex items-center gap-2 px-3 py-1.5 hover:bg-dark-700 transition-colors"
@@ -378,11 +417,11 @@ function Dashboard() {
             </div>
           )}
 
-          {/* Popular Audiobooks */}
+          {/* Popular Books */}
           {stats.mostWatchedAudiobooks?.length > 0 && (
             <div className="card min-w-fit">
               <div className="card-header">
-                <h3 className="card-title">Popular Audiobooks</h3>
+                <h3 className="card-title">Popular Books</h3>
               </div>
               <div className="card-body p-0">
                 <div className="divide-y divide-dark-600">

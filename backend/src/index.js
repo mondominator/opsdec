@@ -7,7 +7,7 @@ import axios from 'axios';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync } from 'fs';
-import { initDatabase } from './database/init.js';
+import { initDatabase, db } from './database/init.js';
 import { startActivityMonitor } from './services/monitor.js';
 import apiRouter from './routes/api.js';
 
@@ -35,9 +35,26 @@ app.get('/proxy/image', async (req, res) => {
       return res.status(400).send('Missing url parameter');
     }
 
+    // Check if this is an Audiobookshelf URL and add auth if needed
+    const headers = {};
+
+    // Check database for Audiobookshelf servers
+    try {
+      const audiobookshelfServers = db.prepare('SELECT * FROM servers WHERE type = ? AND enabled = 1').all('audiobookshelf');
+      for (const server of audiobookshelfServers) {
+        if (imageUrl.startsWith(server.url)) {
+          headers['Authorization'] = `Bearer ${server.api_key}`;
+          break;
+        }
+      }
+    } catch (dbError) {
+      console.error('Error checking database for server auth:', dbError.message);
+    }
+
     const response = await axios.get(imageUrl, {
       responseType: 'arraybuffer',
       timeout: 10000,
+      headers,
     });
 
     res.set('Content-Type', response.headers['content-type']);
@@ -59,7 +76,10 @@ if (IS_PRODUCTION) {
   const frontendPath = join(__dirname, '../../frontend/dist');
 
   if (existsSync(frontendPath)) {
-    app.use(express.static(frontendPath));
+    app.use(express.static(frontendPath, {
+      maxAge: 0, // Disable caching for now to force reload
+      etag: false
+    }));
 
     app.get('*', (req, res) => {
       res.sendFile(join(frontendPath, 'index.html'));

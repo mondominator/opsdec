@@ -149,7 +149,8 @@ class AudiobookshelfService {
 
       // Fallback: Get open/active playback sessions from /api/sessions?filterBy=open
       // The default /api/sessions only returns closed/completed sessions
-      const response = await this.client.get('/api/sessions?filterBy=open');
+      // Sort by updatedAt descending to get the most recently active sessions first
+      const response = await this.client.get('/api/sessions?filterBy=open&sort=updatedAt&desc=1');
       const sessions = response.data.sessions || response.data || [];
       return sessions;
     } catch (error) {
@@ -164,21 +165,21 @@ class AudiobookshelfService {
       const activeStreams = [];
 
       const now = Date.now();
-      const oneDayAgo = now - (24 * 60 * 60 * 1000); // 24 hours ago
+      const thirtySecondsAgo = now - (30 * 1000); // 30 seconds ago
 
-      // For Audiobookshelf, filter for sessions updated in the last 24 hours
-      // This helps exclude very old paused sessions
+      // For Audiobookshelf, filter for sessions updated in the last 30 seconds
+      // This ensures we only show truly active playback, not paused sessions
       const activeSessions = Array.isArray(sessions)
         ? sessions.filter(s => {
             return s &&
                    s.libraryItemId &&
                    s.currentTime !== undefined &&
                    s.updatedAt &&
-                   s.updatedAt > oneDayAgo;
+                   s.updatedAt > thirtySecondsAgo;
           })
         : [];
 
-      console.log(`Found ${activeSessions.length} active Audiobookshelf sessions out of ${sessions.length} total open sessions (updated within last 24 hours)`);
+      console.log(`Found ${activeSessions.length} active Audiobookshelf sessions out of ${sessions.length} total open sessions (updated within last 30 seconds)`);
 
       for (const session of activeSessions) {
         const activity = this.parsePlaybackSession(session);
@@ -217,7 +218,7 @@ class AudiobookshelfService {
         seasonNumber: null,
         episodeNumber: null,
         year: metadata.publishedYear || null,
-        thumb: session.coverPath ? `${this.baseUrl}${session.coverPath}` : null,
+        thumb: session.libraryItemId ? `${this.baseUrl}/api/items/${session.libraryItemId}/cover` : null,
         art: null,
         state: session.currentTime > 0 ? 'playing' : 'paused',
         progressPercent: session.duration
