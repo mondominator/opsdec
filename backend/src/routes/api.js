@@ -351,4 +351,138 @@ router.get('/audiobookshelf/libraries', async (req, res) => {
   }
 });
 
+// Server Configuration Endpoints
+// Get all servers
+router.get('/servers', (req, res) => {
+  try {
+    const servers = db.prepare('SELECT * FROM servers ORDER BY created_at ASC').all();
+    res.json({ success: true, data: servers });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Add a new server
+router.post('/servers', (req, res) => {
+  try {
+    const { type, name, url, api_key, enabled } = req.body;
+
+    if (!type || !name || !url || !api_key) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: type, name, url, api_key'
+      });
+    }
+
+    const id = `${type}-${Date.now()}`;
+    const now = Math.floor(Date.now() / 1000);
+
+    db.prepare(`
+      INSERT INTO servers (id, type, name, url, api_key, enabled, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(id, type, name, url, api_key, enabled !== false ? 1 : 0, now, now);
+
+    const server = db.prepare('SELECT * FROM servers WHERE id = ?').get(id);
+    res.json({ success: true, data: server });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update a server
+router.put('/servers/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { type, name, url, api_key, enabled } = req.body;
+
+    const existing = db.prepare('SELECT * FROM servers WHERE id = ?').get(id);
+    if (!existing) {
+      return res.status(404).json({ success: false, error: 'Server not found' });
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+
+    db.prepare(`
+      UPDATE servers
+      SET type = ?, name = ?, url = ?, api_key = ?, enabled = ?, updated_at = ?
+      WHERE id = ?
+    `).run(
+      type || existing.type,
+      name || existing.name,
+      url || existing.url,
+      api_key || existing.api_key,
+      enabled !== undefined ? (enabled ? 1 : 0) : existing.enabled,
+      now,
+      id
+    );
+
+    const server = db.prepare('SELECT * FROM servers WHERE id = ?').get(id);
+    res.json({ success: true, data: server });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Delete a server
+router.delete('/servers/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const existing = db.prepare('SELECT * FROM servers WHERE id = ?').get(id);
+    if (!existing) {
+      return res.status(404).json({ success: false, error: 'Server not found' });
+    }
+
+    db.prepare('DELETE FROM servers WHERE id = ?').run(id);
+    res.json({ success: true, message: 'Server deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Test server connection
+router.post('/servers/:id/test', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const server = db.prepare('SELECT * FROM servers WHERE id = ?').get(id);
+
+    if (!server) {
+      return res.status(404).json({ success: false, error: 'Server not found' });
+    }
+
+    // Dynamically import and test the appropriate service
+    let ServiceClass;
+    if (server.type === 'emby') {
+      const { default: EmbyService } = await import('../services/emby.js');
+      ServiceClass = EmbyService;
+    } else if (server.type === 'plex') {
+      const { default: PlexService } = await import('../services/plex.js');
+      ServiceClass = PlexService;
+    } else if (server.type === 'audiobookshelf') {
+      const { default: AudiobookshelfService } = await import('../services/audiobookshelf.js');
+      ServiceClass = AudiobookshelfService;
+    } else {
+      return res.status(400).json({ success: false, error: 'Invalid server type' });
+    }
+
+    const service = new ServiceClass(server.url, server.api_key);
+    const result = await service.testConnection();
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Restart monitoring service
+router.post('/monitoring/restart', async (req, res) => {
+  try {
+    const { restartMonitoring } = await import('../services/monitor.js');
+    await restartMonitoring();
+    res.json({ success: true, message: 'Monitoring service restarted' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;

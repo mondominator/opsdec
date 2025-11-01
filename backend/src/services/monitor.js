@@ -9,45 +9,76 @@ let embyService = null;
 let plexService = null;
 let audiobookshelfService = null;
 let lastActiveSessions = new Map();
+let cronJob = null;
 
 export function initServices() {
   const services = [];
 
-  // Initialize Emby
-  const embyUrl = process.env.EMBY_URL;
-  const embyApiKey = process.env.EMBY_API_KEY;
-  if (embyUrl && embyApiKey) {
-    embyService = new EmbyService(embyUrl, embyApiKey);
-    services.push({ name: 'Emby', service: embyService, type: 'emby' });
-    console.log('✅ Emby service initialized');
-  } else {
-    console.warn('⚠️  Emby not configured. Set EMBY_URL and EMBY_API_KEY in .env file.');
+  // First, try to load from database
+  try {
+    const dbServers = db.prepare('SELECT * FROM servers WHERE enabled = 1').all();
+
+    for (const server of dbServers) {
+      try {
+        let service;
+        if (server.type === 'emby') {
+          service = new EmbyService(server.url, server.api_key);
+          embyService = service;
+          services.push({ name: server.name, service, type: 'emby', id: server.id });
+          console.log(`✅ ${server.name} (Emby) initialized from database`);
+        } else if (server.type === 'plex') {
+          service = new PlexService(server.url, server.api_key);
+          plexService = service;
+          services.push({ name: server.name, service, type: 'plex', id: server.id });
+          console.log(`✅ ${server.name} (Plex) initialized from database`);
+        } else if (server.type === 'audiobookshelf') {
+          service = new AudiobookshelfService(server.url, server.api_key);
+          audiobookshelfService = service;
+          services.push({ name: server.name, service, type: 'audiobookshelf', id: server.id });
+          console.log(`✅ ${server.name} (Audiobookshelf) initialized from database`);
+        }
+      } catch (error) {
+        console.error(`❌ Failed to initialize ${server.name}:`, error.message);
+      }
+    }
+  } catch (error) {
+    console.error('Error loading servers from database:', error.message);
   }
 
-  // Initialize Plex
-  const plexUrl = process.env.PLEX_URL;
-  const plexToken = process.env.PLEX_TOKEN;
-  if (plexUrl && plexToken) {
-    plexService = new PlexService(plexUrl, plexToken);
-    services.push({ name: 'Plex', service: plexService, type: 'plex' });
-    console.log('✅ Plex service initialized');
-  } else {
-    console.warn('⚠️  Plex not configured. Set PLEX_URL and PLEX_TOKEN in .env file.');
-  }
+  // Fallback to environment variables if no database servers configured
+  if (services.length === 0) {
+    console.log('📋 No servers in database, checking environment variables...');
 
-  // Initialize Audiobookshelf
-  const audiobookshelfUrl = process.env.AUDIOBOOKSHELF_URL;
-  const audiobookshelfApiKey = process.env.AUDIOBOOKSHELF_API_KEY;
-  if (audiobookshelfUrl && audiobookshelfApiKey) {
-    audiobookshelfService = new AudiobookshelfService(audiobookshelfUrl, audiobookshelfApiKey);
-    services.push({ name: 'Audiobookshelf', service: audiobookshelfService, type: 'audiobookshelf' });
-    console.log('✅ Audiobookshelf service initialized');
-  } else {
-    console.warn('⚠️  Audiobookshelf not configured. Set AUDIOBOOKSHELF_URL and AUDIOBOOKSHELF_API_KEY in .env file.');
+    // Initialize Emby
+    const embyUrl = process.env.EMBY_URL;
+    const embyApiKey = process.env.EMBY_API_KEY;
+    if (embyUrl && embyApiKey) {
+      embyService = new EmbyService(embyUrl, embyApiKey);
+      services.push({ name: 'Emby', service: embyService, type: 'emby' });
+      console.log('✅ Emby service initialized from environment');
+    }
+
+    // Initialize Plex
+    const plexUrl = process.env.PLEX_URL;
+    const plexToken = process.env.PLEX_TOKEN;
+    if (plexUrl && plexToken) {
+      plexService = new PlexService(plexUrl, plexToken);
+      services.push({ name: 'Plex', service: plexService, type: 'plex' });
+      console.log('✅ Plex service initialized from environment');
+    }
+
+    // Initialize Audiobookshelf
+    const audiobookshelfUrl = process.env.AUDIOBOOKSHELF_URL;
+    const audiobookshelfApiKey = process.env.AUDIOBOOKSHELF_API_KEY;
+    if (audiobookshelfUrl && audiobookshelfApiKey) {
+      audiobookshelfService = new AudiobookshelfService(audiobookshelfUrl, audiobookshelfApiKey);
+      services.push({ name: 'Audiobookshelf', service: audiobookshelfService, type: 'audiobookshelf' });
+      console.log('✅ Audiobookshelf service initialized from environment');
+    }
   }
 
   if (services.length === 0) {
-    console.warn('⚠️  No media servers configured!');
+    console.warn('⚠️  No media servers configured! Add servers via the Settings page.');
   }
 
   return services;
@@ -394,6 +425,7 @@ export function startActivityMonitor() {
 
   if (services.length === 0) {
     console.log('⏸️  Activity monitoring disabled (no servers configured)');
+    console.log('   Add servers via the Settings page to start monitoring');
     return;
   }
 
@@ -404,10 +436,31 @@ export function startActivityMonitor() {
   // Initial check
   checkActivity(services);
 
-  // Schedule periodic checks
-  cron.schedule(`*/${pollInterval} * * * * *`, () => {
+  // Schedule periodic checks and store the cron job
+  cronJob = cron.schedule(`*/${pollInterval} * * * * *`, () => {
     checkActivity(services);
   });
+}
+
+export function restartMonitoring() {
+  console.log('🔄 Restarting monitoring service...');
+
+  // Stop existing cron job if running
+  if (cronJob) {
+    cronJob.stop();
+    console.log('   Stopped existing monitoring');
+  }
+
+  // Clear existing services
+  embyService = null;
+  plexService = null;
+  audiobookshelfService = null;
+  lastActiveSessions = new Map();
+
+  // Restart monitoring
+  startActivityMonitor();
+
+  console.log('✅ Monitoring service restarted');
 }
 
 export { embyService, plexService, audiobookshelfService };
