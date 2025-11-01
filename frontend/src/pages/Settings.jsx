@@ -75,6 +75,8 @@ export default function Settings() {
     setSaving(true);
 
     try {
+      const isNewServer = !editingServer;
+
       if (editingServer) {
         await api.put(`/servers/${editingServer}`, formData);
       } else {
@@ -82,6 +84,16 @@ export default function Settings() {
       }
       await loadServers();
       handleCancel();
+
+      // Restart monitoring after adding a new server
+      if (isNewServer) {
+        try {
+          await api.post('/monitoring/restart');
+          console.log('Monitoring service restarted successfully');
+        } catch (restartError) {
+          console.error('Failed to restart monitoring:', restartError);
+        }
+      }
     } catch (error) {
       console.error('Failed to save server:', error);
       alert(`Failed to save server: ${error.response?.data?.error || error.message}`);
