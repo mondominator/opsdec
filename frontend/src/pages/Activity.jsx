@@ -69,7 +69,7 @@ function Activity() {
               <div className="card-body">
                 <div className="flex space-x-6">
                   {/* Thumbnail */}
-                  <div className="flex-shrink-0 relative w-48 h-72 bg-dark-700 rounded-lg">
+                  <div className="flex-shrink-0 relative w-64 h-96 bg-dark-700 rounded-lg">
                     {session.thumb ? (
                       <img
                         src={`/proxy/image?url=${encodeURIComponent(session.thumb)}`}
