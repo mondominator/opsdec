@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    font-size: 18px;
+  }
+
   body {
     @apply bg-dark-900 text-gray-100;
   }
