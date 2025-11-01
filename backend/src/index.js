@@ -104,3 +104,36 @@ server.listen(PORT, () => {
   // Start activity monitoring
   startActivityMonitor();
 });
+
+// Graceful shutdown handler to ensure database is properly closed
+function gracefulShutdown(signal) {
+  console.log(`\n${signal} received, starting graceful shutdown...`);
+
+  // Import db here to ensure it's available
+  import('./database/init.js').then(({ db }) => {
+    // Checkpoint and close database to ensure all WAL data is persisted
+    try {
+      db.pragma('wal_checkpoint(TRUNCATE)');
+      db.close();
+      console.log('✅ Database closed successfully');
+    } catch (error) {
+      console.error('Error closing database:', error);
+    }
+
+    // Close the server
+    server.close(() => {
+      console.log('✅ Server closed successfully');
+      process.exit(0);
+    });
+
+    // Force exit after 10 seconds if graceful shutdown fails
+    setTimeout(() => {
+      console.error('⚠️  Forcing shutdown after timeout');
+      process.exit(1);
+    }, 10000);
+  });
+}
+
+// Handle shutdown signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

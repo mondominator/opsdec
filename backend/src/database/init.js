@@ -13,6 +13,10 @@ if (!existsSync(dir)) {
 export const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 
+// Configure WAL to checkpoint more frequently for data safety
+db.pragma('wal_autocheckpoint = 1000'); // Checkpoint every 1000 pages
+db.pragma('synchronous = NORMAL'); // Good balance of safety and performance
+
 export function initDatabase() {
   console.log('🗄️  Initializing database...');
 
