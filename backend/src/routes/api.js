@@ -8,7 +8,10 @@ const router = express.Router();
 router.get('/activity', (req, res) => {
   try {
     const sessions = db.prepare(`
-      SELECT * FROM sessions
+      SELECT
+        s.*,
+        (SELECT thumb FROM users WHERE username = s.username AND thumb IS NOT NULL LIMIT 1) as user_thumb
+      FROM sessions s
       WHERE state IN ('playing', 'paused', 'buffering')
       ORDER BY started_at DESC
     `).all();
@@ -452,6 +455,32 @@ router.get('/servers', (req, res) => {
   try {
     const servers = db.prepare('SELECT * FROM servers ORDER BY created_at ASC').all();
     res.json({ success: true, data: servers });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get server health status
+router.get('/servers/health', (req, res) => {
+  try {
+    const servers = db.prepare('SELECT id, type, name, enabled FROM servers').all();
+    const health = servers.map(server => {
+      // Check if server has had recent activity (within last 5 minutes)
+      const recentActivity = db.prepare(`
+        SELECT COUNT(*) as count FROM sessions
+        WHERE server_type = ? AND updated_at > ?
+      `).get(server.type, Math.floor(Date.now() / 1000) - 300);
+
+      return {
+        id: server.id,
+        type: server.type,
+        name: server.name,
+        enabled: server.enabled,
+        healthy: server.enabled === 1 && recentActivity.count > 0
+      };
+    });
+
+    res.json({ success: true, data: health });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

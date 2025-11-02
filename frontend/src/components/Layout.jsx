@@ -1,12 +1,13 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
-import { Home, History, Users, Radio, Settings, Menu, ChevronDown } from 'lucide-react';
-import { getDashboardStats } from '../utils/api';
+import { Home, History, Users, Radio, Settings, Menu, ChevronDown, Film, Tv, Headphones } from 'lucide-react';
+import { getDashboardStats, getServerHealth } from '../utils/api';
 import { formatDuration } from '../utils/format';
 
 function Layout({ children }) {
   const location = useLocation();
   const [stats, setStats] = useState(null);
+  const [serverHealth, setServerHealth] = useState([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -19,7 +20,11 @@ function Layout({ children }) {
 
   useEffect(() => {
     loadStats();
-    const interval = setInterval(loadStats, 10000); // Refresh every 10 seconds
+    loadServerHealth();
+    const interval = setInterval(() => {
+      loadStats();
+      loadServerHealth();
+    }, 10000); // Refresh every 10 seconds
     return () => clearInterval(interval);
   }, []);
 
@@ -43,6 +48,28 @@ function Layout({ children }) {
     }
   };
 
+  const loadServerHealth = async () => {
+    try {
+      const response = await getServerHealth();
+      setServerHealth(response.data.data);
+    } catch (error) {
+      console.error('Error loading server health:', error);
+    }
+  };
+
+  const getServerIcon = (serverType) => {
+    switch (serverType) {
+      case 'emby':
+        return <Film className="w-3 h-3" />;
+      case 'plex':
+        return <Tv className="w-3 h-3" />;
+      case 'audiobookshelf':
+        return <Headphones className="w-3 h-3" />;
+      default:
+        return null;
+    }
+  };
+
   const isActive = (path) => {
     return location.pathname === path;
   };
@@ -58,6 +85,28 @@ function Layout({ children }) {
               <h1 className="text-sm font-bold text-white">OpsDec</h1>
             </Link>
 
+            {/* Server Health Status */}
+            {serverHealth.length > 0 && (
+              <div className="flex items-center space-x-2">
+                {serverHealth.map((server) => (
+                  <div
+                    key={server.id}
+                    className="flex items-center space-x-1 px-2 py-1 rounded bg-dark-800"
+                    title={`${server.name}: ${server.healthy ? 'Healthy' : 'Inactive'}`}
+                  >
+                    <div className={`flex items-center ${
+                      server.type === 'emby' ? 'text-green-400' :
+                      server.type === 'plex' ? 'text-yellow-400' :
+                      server.type === 'audiobookshelf' ? 'text-blue-400' :
+                      'text-gray-400'
+                    }`}>
+                      {getServerIcon(server.type)}
+                    </div>
+                    <div className={`w-2 h-2 rounded-full ${server.healthy ? 'bg-green-500' : 'bg-gray-600'}`} />
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Navigation Dropdown */}
             <div className="relative" ref={dropdownRef}>

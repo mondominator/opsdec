@@ -132,25 +132,34 @@ function Dashboard() {
                 className="card hover:border-primary-500 transition-colors"
               >
                 <div className="flex p-4 gap-4">
-                  {/* Thumbnail */}
-                  <div className="flex-shrink-0 relative w-24 h-36 bg-dark-700 rounded-lg">
-                    {session.thumb ? (
-                      <img
-                        src={`/proxy/image?url=${encodeURIComponent(session.thumb)}`}
-                        alt={session.title}
-                        className="w-full h-full object-contain rounded-lg"
-                        loading="lazy"
-                      />
-                    ) : null}
-                    <div
-                      className="placeholder absolute inset-0 bg-dark-600 rounded-lg flex items-center justify-center"
-                      style={{ display: session.thumb ? 'none' : 'flex' }}
-                    >
-                      <PlayCircle className="w-12 h-12 text-gray-500" />
+                  {/* Thumbnail and Server Label */}
+                  <div className="flex-shrink-0">
+                    <div className="relative w-24 h-36 bg-dark-700 rounded-lg mb-1">
+                      {session.thumb ? (
+                        <img
+                          src={`/proxy/image?url=${encodeURIComponent(session.thumb)}`}
+                          alt={session.title}
+                          className="w-full h-full object-contain rounded-lg"
+                          loading="lazy"
+                        />
+                      ) : null}
+                      <div
+                        className="placeholder absolute inset-0 bg-dark-600 rounded-lg flex items-center justify-center"
+                        style={{ display: session.thumb ? 'none' : 'flex' }}
+                      >
+                        <PlayCircle className="w-12 h-12 text-gray-500" />
+                      </div>
                     </div>
-                    {/* Server icon */}
-                    <div className="absolute top-2 left-2 z-10">
-                      {getServerIcon(session.server_type)}
+                    {/* Server label */}
+                    <div className="text-center text-xs font-semibold capitalize">
+                      <span className={
+                        session.server_type === 'emby' ? 'text-green-400' :
+                        session.server_type === 'plex' ? 'text-yellow-400' :
+                        session.server_type === 'audiobookshelf' ? 'text-blue-400' :
+                        'text-gray-400'
+                      }>
+                        {session.server_type}
+                      </span>
                     </div>
                   </div>
 
@@ -182,7 +191,11 @@ function Dashboard() {
                             : 'bg-gray-500/20 text-gray-400'
                         }`}
                       >
-                        {session.state === 'playing' ? '▶ Playing' : session.state === 'paused' ? '⏸ Paused' : '⏹ Stopped'}
+                        {session.state === 'playing'
+                          ? (session.server_type === 'audiobookshelf' ? '▶ Listening' : '▶ Playing')
+                          : session.state === 'paused'
+                          ? '⏸ Paused'
+                          : '⏹ Stopped'}
                       </span>
                     </div>
 

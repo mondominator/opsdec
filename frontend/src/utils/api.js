@@ -12,5 +12,6 @@ export const getDashboardStats = () => api.get('/stats/dashboard');
 export const getRecentMedia = (limit = 20) => api.get('/media/recent', { params: { limit } });
 export const testEmbyConnection = () => api.get('/emby/test');
 export const getEmbyLibraries = () => api.get('/emby/libraries');
+export const getServerHealth = () => api.get('/servers/health');
 
 export default api;
