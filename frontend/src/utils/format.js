@@ -34,6 +34,7 @@ export const formatMediaType = (type) => {
     episode: 'Episode',
     track: 'Music',
     audiobook: 'Audiobook',
+    book: 'Book',
   };
-  return types[type] || type;
+  return types[type] || type.charAt(0).toUpperCase() + type.slice(1);
 };

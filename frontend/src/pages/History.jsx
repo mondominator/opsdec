@@ -175,7 +175,9 @@ function History() {
   // Get unique values for filters
   const uniqueUsers = [...new Set(allHistory.map(item => item.username))].sort();
   const uniqueServers = [...new Set(allHistory.map(item => item.server_type))].sort();
-  const uniqueTypes = [...new Set(allHistory.map(item => item.media_type))].sort();
+  const uniqueTypes = [...new Set(allHistory.map(item => item.media_type))]
+    .filter(type => type !== 'video')
+    .sort();
 
   if (loading) {
     return (
