@@ -8,6 +8,7 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState({});
   const [testResults, setTestResults] = useState({});
+  const [serverVersions, setServerVersions] = useState({});
   const [editingServer, setEditingServer] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -22,6 +23,30 @@ export default function Settings() {
   useEffect(() => {
     loadServers();
   }, []);
+
+  // Silently fetch version info when page loads
+  useEffect(() => {
+    const fetchVersions = async () => {
+      if (servers.length > 0) {
+        for (const server of servers) {
+          try {
+            const response = await api.post(`/servers/${server.id}/test`);
+
+            if (response.data.success && response.data.data && response.data.data.version) {
+              setServerVersions(prev => ({
+                ...prev,
+                [server.id]: response.data.data.version
+              }));
+            }
+          } catch (error) {
+            console.error(`Failed to fetch version for ${server.id}:`, error);
+          }
+        }
+      }
+    };
+
+    fetchVersions();
+  }, [servers.length]);
 
   const loadServers = async () => {
     try {
@@ -148,9 +173,19 @@ export default function Settings() {
           success: response.data.data.success,
           message: response.data.data.success
             ? response.data.data.message || `Connected to ${response.data.data.serverName || 'server'}`
-            : response.data.data.error || 'Connection failed'
+            : response.data.data.error || 'Connection failed',
+          version: response.data.data.version
         }
       }));
+
+      // Clear the test result after 5 seconds
+      setTimeout(() => {
+        setTestResults(prev => {
+          const newResults = { ...prev };
+          delete newResults[id];
+          return newResults;
+        });
+      }, 5000);
     } catch (error) {
       console.error(`Test error for ${id}:`, error);
       console.error(`Error response:`, error.response);
@@ -161,6 +196,15 @@ export default function Settings() {
           message: `Error: ${error.response?.data?.error || error.message}`
         }
       }));
+
+      // Clear the error result after 5 seconds
+      setTimeout(() => {
+        setTestResults(prev => {
+          const newResults = { ...prev };
+          delete newResults[id];
+          return newResults;
+        });
+      }, 5000);
     } finally {
       setTesting(prev => ({ ...prev, [id]: false }));
     }
@@ -339,99 +383,117 @@ export default function Settings() {
       )}
 
       {/* Server List */}
-      <div className="bg-dark-800 border border-dark-600 rounded-xl overflow-hidden shadow-xl">
-        <div className="bg-dark-750 px-6 py-4 border-b border-dark-600">
-          <h3 className="text-xl font-semibold text-white">Configured Servers</h3>
+      <div className="mb-4">
+        <h3 className="text-xl font-semibold text-white mb-4">Configured Servers</h3>
+      </div>
+
+      {servers.length === 0 ? (
+        <div className="card p-12 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-dark-700 rounded-full mb-4">
+            <Server className="w-8 h-8 text-gray-500" />
+          </div>
+          <p className="text-gray-400 text-lg mb-2">No servers configured yet</p>
+          <p className="text-gray-500">Add a server to start monitoring your media</p>
         </div>
-        <div>
-          {servers.length === 0 ? (
-            <div className="p-12 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-dark-700 rounded-full mb-4">
-                <Server className="w-8 h-8 text-gray-500" />
-              </div>
-              <p className="text-gray-400 text-lg mb-2">No servers configured yet</p>
-              <p className="text-gray-500">Add a server to start monitoring your media</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-dark-600">
-              {servers.map((server) => {
-                const typeInfo = getServerTypeLabel(server.type);
-                return (
-                  <div key={server.id} className={`p-6 transition-colors ${server.from_env ? 'bg-dark-750/50' : 'hover:bg-dark-750'}`}>
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-3 flex-wrap">
-                          {/* LED status indicator */}
-                          <div className="flex items-center gap-2">
-                            <div className={`w-2.5 h-2.5 rounded-full ${server.enabled === 1 ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-gray-500'}`} />
-                          </div>
-                          <h4 className="text-lg font-semibold text-white">{server.name}</h4>
-                          <span className={`px-3 py-1 text-sm font-medium rounded-full flex items-center gap-2 ${typeInfo.color}`}>
-                            {getServerIcon(server.type)}
-                            {typeInfo.name}
-                          </span>
-                          {server.from_env && (
-                            <span className="px-3 py-1 text-sm font-medium rounded-full bg-blue-500/20 text-blue-400 flex items-center gap-1">
-                              <AlertCircle className="w-3.5 h-3.5" />
-                              Environment Variable
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-gray-400 mb-3 font-mono text-sm">{server.url}</p>
-                        {server.from_env && (
-                          <p className="text-yellow-400/80 text-sm mb-3 flex items-start gap-2">
-                            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                            <span>This server is configured via environment variables and cannot be edited or deleted through the UI.</span>
-                          </p>
-                        )}
-                        {testResults[server.id] && (
-                          <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
-                            testResults[server.id].success 
-                              ? 'bg-green-500/10 text-green-400' 
-                              : 'bg-red-500/10 text-red-400'
-                          }`}>
-                            {testResults[server.id].success ? (
-                              <Check className="w-4 h-4" />
-                            ) : (
-                              <X className="w-4 h-4" />
-                            )}
-                            {testResults[server.id].message}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex gap-2 flex-shrink-0">
-                        <button
-                          onClick={() => handleTest(server.id)}
-                          disabled={testing[server.id]}
-                          className="px-4 py-2 bg-dark-700 hover:bg-dark-600 disabled:bg-dark-750 disabled:opacity-50 text-gray-300 rounded-lg font-medium transition-colors"
-                        >
-                          {testing[server.id] ? 'Testing...' : 'Test'}
-                        </button>
-                        {!server.from_env && (
-                          <>
-                            <button
-                              onClick={() => handleEdit(server)}
-                              className="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-gray-300 rounded-lg font-medium transition-colors"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleDelete(server.id)}
-                              className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg font-medium transition-colors"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          </>
-                        )}
-                      </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+          {servers.map((server) => {
+            const typeInfo = getServerTypeLabel(server.type);
+            return (
+              <div key={server.id} className={`card ${server.from_env ? 'opacity-90' : ''}`}>
+                <div className="p-6 flex flex-col h-full">
+                  {/* Header */}
+                  <div className="mb-4">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${server.enabled === 1 ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-gray-500'}`} />
+                      <h4 className="text-lg font-semibold text-white">{server.name}</h4>
+                    </div>
+                    <div className="ml-5">
+                      <span className={`px-3 py-1 text-sm font-medium rounded-full inline-flex items-center gap-2 ${typeInfo.color}`}>
+                        {getServerIcon(server.type)}
+                        {typeInfo.name}
+                      </span>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
+
+                  {/* Environment Variable Badge */}
+                  {server.from_env && (
+                    <div className="mb-3 px-3 py-2 text-sm font-medium rounded-lg bg-blue-500/20 text-blue-400 flex items-center gap-2">
+                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                      Environment Variable
+                    </div>
+                  )}
+
+                  {/* Server Details */}
+                  <div className="space-y-2 mb-4 pb-4 border-b border-dark-700">
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-gray-500 text-sm flex-shrink-0">URL:</span>
+                      <span className="text-gray-400 font-mono text-sm truncate text-right">{server.url}</span>
+                    </div>
+                    {serverVersions[server.id] && serverVersions[server.id] !== 'Unknown' && (
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-gray-500 text-sm flex-shrink-0">Version:</span>
+                        <span className="text-gray-400 font-medium text-sm">{serverVersions[server.id]}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Environment Warning */}
+                  {server.from_env && (
+                    <div className="text-yellow-400/80 text-sm mb-4 flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      <span>This server is configured via environment variables and cannot be edited or deleted through the UI.</span>
+                    </div>
+                  )}
+
+                  {/* Test Results */}
+                  {testResults[server.id] && (
+                    <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium mb-4 ${
+                      testResults[server.id].success
+                        ? 'bg-green-500/10 text-green-400'
+                        : 'bg-red-500/10 text-red-400'
+                    }`}>
+                      {testResults[server.id].success ? (
+                        <Check className="w-4 h-4" />
+                      ) : (
+                        <X className="w-4 h-4" />
+                      )}
+                      {testResults[server.id].message}
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 mt-auto">
+                    <button
+                      onClick={() => handleTest(server.id)}
+                      disabled={testing[server.id]}
+                      className="flex-1 px-4 py-2 bg-dark-700 hover:bg-dark-600 disabled:bg-dark-750 disabled:opacity-50 text-gray-300 rounded-lg font-medium transition-colors"
+                    >
+                      {testing[server.id] ? 'Testing...' : 'Test'}
+                    </button>
+                    {!server.from_env && (
+                      <>
+                        <button
+                          onClick={() => handleEdit(server)}
+                          className="flex-1 px-4 py-2 bg-dark-700 hover:bg-dark-600 text-gray-300 rounded-lg font-medium transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(server.id)}
+                          className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg font-medium transition-colors"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
-      </div>
+      )}
     </div>
   );
 }

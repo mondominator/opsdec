@@ -32,19 +32,40 @@ class AudiobookshelfService {
 
   async testConnection() {
     try {
-      // Try to get play sessions - this is what we use for monitoring, so if this works, the server is accessible
-      const response = await this.client.get('/api/users?openPlaySessions=1');
+      // Get users data to check connection
+      const usersResponse = await this.client.get('/api/users?openPlaySessions=1');
+
       let activeSessions = 0;
-      if (response.data.users) {
-        for (const user of response.data.users) {
+      let version = 'Unknown';
+
+      if (usersResponse.data.users) {
+        for (const user of usersResponse.data.users) {
           if (user.mostRecent?.mediaPlayer) {
             activeSessions++;
           }
         }
       }
+
+      // Try multiple endpoints to get version
+      try {
+        // Try /ping endpoint which should return server info
+        const pingResponse = await this.client.get('/ping', { timeout: 5000 });
+        version = pingResponse.data.version || 'Unknown';
+      } catch (pingError) {
+        // Fallback to /api/authorize
+        try {
+          const authorizeResponse = await this.client.get('/api/authorize', { timeout: 5000 });
+          version = authorizeResponse.data.serverSettings?.version ||
+                    authorizeResponse.data.server?.version || 'Unknown';
+        } catch (authorizeError) {
+          console.log('Could not fetch Audiobookshelf version:', authorizeError.message);
+        }
+      }
+
       return {
         success: true,
         serverName: 'Audiobookshelf',
+        version: version,
         message: `Connected successfully. Found ${activeSessions} active session(s).`,
       };
     } catch (error) {
