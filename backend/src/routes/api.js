@@ -717,4 +717,52 @@ router.post('/monitoring/restart', async (req, res) => {
   }
 });
 
+// Application Settings Endpoints
+// Get all settings
+router.get('/settings', (req, res) => {
+  try {
+    const settings = db.prepare('SELECT * FROM settings').all();
+    const settingsObj = {};
+    settings.forEach(setting => {
+      settingsObj[setting.key] = setting.value;
+    });
+
+    // Return defaults if settings don't exist
+    res.json({
+      success: true,
+      data: {
+        timezone: settingsObj.timezone || 'UTC',
+        ...settingsObj
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update a setting
+router.put('/settings/:key', (req, res) => {
+  try {
+    const { key } = req.params;
+    const { value } = req.body;
+
+    if (!value) {
+      return res.status(400).json({ success: false, error: 'Value is required' });
+    }
+
+    // Insert or replace setting
+    db.prepare(`
+      INSERT INTO settings (key, value, updated_at)
+      VALUES (?, ?, strftime('%s', 'now'))
+      ON CONFLICT(key) DO UPDATE SET
+        value = excluded.value,
+        updated_at = strftime('%s', 'now')
+    `).run(key, value);
+
+    res.json({ success: true, message: 'Setting updated' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;

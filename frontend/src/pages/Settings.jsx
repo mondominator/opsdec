@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, Save, Trash2, RefreshCw, Check, X, Server, AlertCircle, Film, Tv, Headphones } from 'lucide-react';
-import api from '../utils/api';
+import { Plus, Save, Trash2, RefreshCw, Check, X, Server, AlertCircle, Film, Tv, Headphones, Globe } from 'lucide-react';
+import api, { getSettings, updateSetting } from '../utils/api';
 
 export default function Settings() {
   const [servers, setServers] = useState([]);
@@ -11,6 +11,8 @@ export default function Settings() {
   const [serverVersions, setServerVersions] = useState({});
   const [editingServer, setEditingServer] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [settings, setSettings] = useState({ timezone: 'UTC' });
+  const [savingSettings, setSavingSettings] = useState(false);
 
   const [formData, setFormData] = useState({
     type: 'emby',
@@ -22,7 +24,17 @@ export default function Settings() {
 
   useEffect(() => {
     loadServers();
+    loadSettings();
   }, []);
+
+  const loadSettings = async () => {
+    try {
+      const response = await getSettings();
+      setSettings(response.data.data);
+    } catch (error) {
+      console.error('Failed to load settings:', error);
+    }
+  };
 
   // Silently fetch version info when page loads
   useEffect(() => {
@@ -220,6 +232,19 @@ export default function Settings() {
     }
   };
 
+  const handleTimezoneChange = async (timezone) => {
+    setSavingSettings(true);
+    try {
+      await updateSetting('timezone', timezone);
+      setSettings({ ...settings, timezone });
+    } catch (error) {
+      console.error('Failed to update timezone:', error);
+      alert(`Failed to update timezone: ${error.response?.data?.error || error.message}`);
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
   const getServerTypeLabel = (type) => {
     const labels = {
       emby: { name: 'Emby', color: 'bg-green-500/20 text-green-400' },
@@ -381,6 +406,93 @@ export default function Settings() {
           </form>
         </div>
       )}
+
+      {/* Application Settings Section */}
+      <div className="mb-8">
+        <h3 className="text-xl font-semibold text-white mb-4">Application Settings</h3>
+        <div className="bg-dark-800 border border-dark-600 rounded-xl overflow-hidden shadow-xl">
+          <div className="p-6">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 mt-1">
+                <div className="w-10 h-10 bg-primary-500/10 rounded-lg flex items-center justify-center">
+                  <Globe className="w-5 h-5 text-primary-400" />
+                </div>
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Display Timezone
+                </label>
+                <select
+                  value={settings.timezone}
+                  onChange={(e) => handleTimezoneChange(e.target.value)}
+                  disabled={savingSettings}
+                  className="w-full max-w-md px-4 py-3 bg-dark-700 border border-dark-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50"
+                >
+                  <option value="UTC">UTC (Coordinated Universal Time)</option>
+                  <optgroup label="Americas">
+                    <option value="America/New_York">Eastern Time (ET)</option>
+                    <option value="America/Chicago">Central Time (CT)</option>
+                    <option value="America/Denver">Mountain Time (MT)</option>
+                    <option value="America/Phoenix">Mountain Time - Arizona (MT)</option>
+                    <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                    <option value="America/Anchorage">Alaska Time (AKT)</option>
+                    <option value="America/Adak">Hawaii-Aleutian Time (HST)</option>
+                    <option value="America/Toronto">Toronto (ET)</option>
+                    <option value="America/Vancouver">Vancouver (PT)</option>
+                    <option value="America/Mexico_City">Mexico City (CST)</option>
+                    <option value="America/Sao_Paulo">São Paulo (BRT)</option>
+                    <option value="America/Argentina/Buenos_Aires">Buenos Aires (ART)</option>
+                  </optgroup>
+                  <optgroup label="Europe">
+                    <option value="Europe/London">London (GMT/BST)</option>
+                    <option value="Europe/Paris">Paris (CET/CEST)</option>
+                    <option value="Europe/Berlin">Berlin (CET/CEST)</option>
+                    <option value="Europe/Rome">Rome (CET/CEST)</option>
+                    <option value="Europe/Madrid">Madrid (CET/CEST)</option>
+                    <option value="Europe/Amsterdam">Amsterdam (CET/CEST)</option>
+                    <option value="Europe/Brussels">Brussels (CET/CEST)</option>
+                    <option value="Europe/Vienna">Vienna (CET/CEST)</option>
+                    <option value="Europe/Stockholm">Stockholm (CET/CEST)</option>
+                    <option value="Europe/Warsaw">Warsaw (CET/CEST)</option>
+                    <option value="Europe/Athens">Athens (EET/EEST)</option>
+                    <option value="Europe/Moscow">Moscow (MSK)</option>
+                  </optgroup>
+                  <optgroup label="Asia">
+                    <option value="Asia/Dubai">Dubai (GST)</option>
+                    <option value="Asia/Kolkata">India (IST)</option>
+                    <option value="Asia/Bangkok">Bangkok (ICT)</option>
+                    <option value="Asia/Singapore">Singapore (SGT)</option>
+                    <option value="Asia/Hong_Kong">Hong Kong (HKT)</option>
+                    <option value="Asia/Shanghai">Shanghai (CST)</option>
+                    <option value="Asia/Tokyo">Tokyo (JST)</option>
+                    <option value="Asia/Seoul">Seoul (KST)</option>
+                  </optgroup>
+                  <optgroup label="Australia & Pacific">
+                    <option value="Australia/Perth">Perth (AWST)</option>
+                    <option value="Australia/Adelaide">Adelaide (ACST/ACDT)</option>
+                    <option value="Australia/Darwin">Darwin (ACST)</option>
+                    <option value="Australia/Brisbane">Brisbane (AEST)</option>
+                    <option value="Australia/Sydney">Sydney (AEST/AEDT)</option>
+                    <option value="Australia/Melbourne">Melbourne (AEST/AEDT)</option>
+                    <option value="Pacific/Auckland">Auckland (NZST/NZDT)</option>
+                    <option value="Pacific/Fiji">Fiji (FJT)</option>
+                  </optgroup>
+                  <optgroup label="Africa">
+                    <option value="Africa/Cairo">Cairo (EET)</option>
+                    <option value="Africa/Johannesburg">Johannesburg (SAST)</option>
+                    <option value="Africa/Lagos">Lagos (WAT)</option>
+                    <option value="Africa/Nairobi">Nairobi (EAT)</option>
+                  </optgroup>
+                </select>
+                <p className="text-xs text-gray-500 mt-2">
+                  This timezone will be used for displaying dates and times throughout the application.
+                  {savingSettings && <span className="ml-2 text-primary-400">Saving...</span>}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Server List */}
       <div className="mb-4">

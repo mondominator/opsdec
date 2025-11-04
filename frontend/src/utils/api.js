@@ -14,5 +14,7 @@ export const getRecentMedia = (limit = 20) => api.get('/media/recent', { params:
 export const testEmbyConnection = () => api.get('/emby/test');
 export const getEmbyLibraries = () => api.get('/emby/libraries');
 export const getServerHealth = () => api.get('/servers/health');
+export const getSettings = () => api.get('/settings');
+export const updateSetting = (key, value) => api.put(`/settings/${key}`, { value });
 
 export default api;
