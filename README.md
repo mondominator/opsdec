@@ -13,7 +13,7 @@ A modern, self-hosted media server monitoring and statistics platform inspired b
 - 👥 **User Management** - Monitor individual user activity and watch history
 - 📜 **Watch History** - Complete history of all playback sessions
 - 🎨 **Tautulli-inspired UI** - Dark, modern interface with smooth animations
-- 🔌 **Multi-Server Support** - Supports Plex and Emby (Audiobookshelf coming soon)
+- 🔌 **Multi-Server Support** - Supports Plex, Emby, and Audiobookshelf
 - 🐳 **Docker Ready** - Easy deployment with Docker and Docker Compose
 - 🚀 **Fast & Lightweight** - Built with React and Express.js
 - 💾 **SQLite Database** - Simple, file-based database with no external dependencies
@@ -39,7 +39,7 @@ A modern, self-hosted media server monitoring and statistics platform inspired b
 
 - **For Docker:** Docker and Docker Compose
 - **For Manual Install:** Node.js 18.0.0 or higher
-- **Media Server:** Plex Media Server and/or Emby Media Server with API access
+- **Media Server:** Plex Media Server, Emby Media Server, and/or Audiobookshelf with API access
 
 ## Installation
 
@@ -60,6 +60,10 @@ PLEX_TOKEN=your_plex_token
 # Emby Configuration (optional)
 EMBY_URL=http://your-emby-server:8096
 EMBY_API_KEY=your_emby_api_key
+
+# Audiobookshelf Configuration (optional)
+AUDIOBOOKSHELF_URL=http://your-audiobookshelf-server:13378
+AUDIOBOOKSHELF_TOKEN=your_audiobookshelf_token
 
 # Polling interval (seconds)
 POLL_INTERVAL=30
@@ -86,6 +90,8 @@ docker run -d \
   -e PLEX_TOKEN=your_plex_token \
   -e EMBY_URL=http://your-emby-server:8096 \
   -e EMBY_API_KEY=your_emby_api_key \
+  -e AUDIOBOOKSHELF_URL=http://your-audiobookshelf-server:13378 \
+  -e AUDIOBOOKSHELF_TOKEN=your_audiobookshelf_token \
   opsdec
 ```
 
@@ -132,6 +138,10 @@ PLEX_TOKEN=your_plex_token_here
 EMBY_URL=http://localhost:8096
 EMBY_API_KEY=your_emby_api_key_here
 
+# Audiobookshelf Configuration (optional - leave blank if not using)
+AUDIOBOOKSHELF_URL=http://localhost:13378
+AUDIOBOOKSHELF_TOKEN=your_audiobookshelf_token_here
+
 # Polling interval in seconds
 POLL_INTERVAL=30
 ```
@@ -163,6 +173,14 @@ Look for `<authentication-token>` in the response.
 4. Enter "OpsDec" as the app name
 5. Copy the generated API key
 
+#### Getting your Audiobookshelf Token:
+
+1. Log into your Audiobookshelf server
+2. Click on your profile icon (top right)
+3. Go to **Settings** → **Account**
+4. Click **Generate New API Token**
+5. Copy the generated token
+
 ### 4. Start the application
 
 For development (runs both backend and frontend):
@@ -179,9 +197,10 @@ This will start:
 
 OpsDec can monitor multiple media servers simultaneously. You can configure:
 
-- **Plex only** - Set `PLEX_URL` and `PLEX_TOKEN`, leave Emby variables blank
-- **Emby only** - Set `EMBY_URL` and `EMBY_API_KEY`, leave Plex variables blank
-- **Both Plex and Emby** - Configure all variables
+- **Plex only** - Set `PLEX_URL` and `PLEX_TOKEN`, leave others blank
+- **Emby only** - Set `EMBY_URL` and `EMBY_API_KEY`, leave others blank
+- **Audiobookshelf only** - Set `AUDIOBOOKSHELF_URL` and `AUDIOBOOKSHELF_TOKEN`, leave others blank
+- **Any combination** - Configure whichever servers you want to monitor
 
 Activity from all configured servers will be aggregated in a single dashboard.
 
@@ -189,12 +208,7 @@ Activity from all configured servers will be aggregated in a single dashboard.
 
 ### Docker Production (Recommended)
 
-The Docker image is production-ready. Simply set `NODE_ENV=production` in your environment:
-
-```yaml
-environment:
-  - NODE_ENV=production
-```
+The Docker image is production-ready and has `NODE_ENV=production` set by default. No additional configuration needed!
 
 ### Manual Production Build
 
@@ -224,6 +238,7 @@ opsdec/
 │   │   ├── services/
 │   │   │   ├── emby.js          # Emby API integration
 │   │   │   ├── plex.js          # Plex API integration
+│   │   │   ├── audiobookshelf.js # Audiobookshelf API integration
 │   │   │   └── monitor.js       # Activity monitoring service
 │   │   └── index.js             # Express server and WebSocket
 │   ├── .env.example
@@ -271,10 +286,13 @@ opsdec/
 
 ### Watch History
 - Complete history of all playback sessions
-- Filter by user
-- Pagination support
+- Advanced search functionality (title, show, username)
+- Multi-filter system (user, server, media type)
+- Flexible pagination (25, 50, 100, 250 items per page)
+- Sortable columns (all 7 columns)
 - Media thumbnails and metadata
-- Completion percentage
+- Completion percentage tracking
+- Server identification with logos
 
 ### User Statistics
 - Individual user profiles
@@ -299,30 +317,25 @@ opsdec/
 ### Statistics
 - `GET /api/stats/dashboard` - Get dashboard statistics
 
-### Emby
+### Media Servers
 - `GET /api/emby/test` - Test Emby connection
 - `GET /api/emby/libraries` - Get Emby libraries
-- `GET /api/media/recent` - Get recently added media
+- `GET /api/media/recent` - Get recently added media from all servers
 
 ### WebSocket
 - `ws://localhost:3001/ws` - Real-time activity updates
 
 ## Future Plans
 
-### Audiobookshelf Support
-Audiobookshelf integration is planned for a future release. The architecture is designed to support multiple server types, making it easy to add new integrations.
-
 ### Additional Features
+- [ ] Jellyfin support
 - [ ] Notifications (Discord, Email, etc.)
 - [ ] Custom dashboard widgets
-- [ ] Advanced filtering and search
 - [ ] Export statistics to CSV/JSON
 - [ ] Mobile-responsive design improvements
 - [ ] Dark/Light theme toggle
 - [ ] User authentication
-- [ ] Multi-server support
-- [ ] Audiobookshelf integration
-- [ ] Jellyfin support
+- [ ] Date range filtering for history
 
 ## Contributing
 

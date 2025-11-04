@@ -5,7 +5,10 @@ Get up and running with OpsDec in just a few minutes!
 ## Prerequisites
 
 - Node.js 18+ installed
-- An Emby Media Server with API access
+- At least one media server with API access:
+  - Plex Media Server, or
+  - Emby Media Server, or
+  - Audiobookshelf
 
 ## Quick Setup
 
@@ -15,7 +18,7 @@ Get up and running with OpsDec in just a few minutes!
 # Run the setup script
 ./setup.sh
 
-# Edit your Emby credentials
+# Edit your server credentials
 nano backend/.env
 
 # Start the application
@@ -39,7 +42,18 @@ mkdir -p backend/data
 npm run dev
 ```
 
-## Getting Your Emby API Key
+## Getting Your API Keys/Tokens
+
+### Plex Token
+
+1. Sign in to Plex Web App
+2. Open any media item
+3. Click the three dots (•••) → "Get Info"
+4. Click "View XML"
+5. In the URL, find `X-Plex-Token=xxxxx` - that's your token
+6. Paste it into `backend/.env` as `PLEX_TOKEN`
+
+### Emby API Key
 
 1. Open your Emby web interface
 2. Navigate to: **Dashboard** → **Advanced** → **Security** → **API Keys**
@@ -48,16 +62,31 @@ npm run dev
 5. Copy the generated key
 6. Paste it into `backend/.env` as `EMBY_API_KEY`
 
+### Audiobookshelf Token
+
+1. Log into your Audiobookshelf server
+2. Click on your profile icon (top right)
+3. Go to **Settings** → **Account**
+4. Click **Generate New API Token**
+5. Copy the generated token
+6. Paste it into `backend/.env` as `AUDIOBOOKSHELF_TOKEN`
+
 ## Configuration
 
-Edit `backend/.env`:
+Edit `backend/.env` and configure at least one media server:
 
 ```env
-# Your Emby server URL (include http:// or https://)
-EMBY_URL=http://192.168.1.100:8096
+# Plex Configuration (optional - leave blank if not using)
+PLEX_URL=http://192.168.1.100:32400
+PLEX_TOKEN=your_plex_token_here
 
-# Your Emby API key from the steps above
-EMBY_API_KEY=abc123def456...
+# Emby Configuration (optional - leave blank if not using)
+EMBY_URL=http://192.168.1.101:8096
+EMBY_API_KEY=your_emby_api_key_here
+
+# Audiobookshelf Configuration (optional - leave blank if not using)
+AUDIOBOOKSHELF_URL=http://192.168.1.102:13378
+AUDIOBOOKSHELF_TOKEN=your_audiobookshelf_token_here
 
 # How often to check for activity (in seconds)
 POLL_INTERVAL=30
@@ -91,31 +120,25 @@ Then configure your web server (Nginx, Apache, etc.) to serve the frontend and p
 
 1. Open http://localhost:3000 in your browser
 2. You should see the OpsDec dashboard
-3. Start playing something on your Emby server
-4. Within 30 seconds (or your POLL_INTERVAL), you should see it appear in the "Current Activity" section
+3. Start playing something on any of your configured media servers
+4. Within 30 seconds (or your POLL_INTERVAL), you should see it appear in the "Currently Streaming" section
 
 ## Troubleshooting
 
 ### "No Active Streams" showing on dashboard
 
 **Possible causes:**
-- Emby server is not configured correctly in `.env`
-- No one is currently watching anything
+- No media servers are configured correctly in `.env`
+- No one is currently watching/listening to anything
 - The POLL_INTERVAL hasn't elapsed yet (wait 30 seconds)
 
 **Solution:**
 ```bash
-# Test your Emby connection
+# Test your Emby connection (if configured)
 curl http://localhost:3001/api/emby/test
-```
 
-You should see:
-```json
-{
-  "success": true,
-  "serverName": "Your Server Name",
-  "version": "4.x.x"
-}
+# Check backend logs
+npm run dev:backend
 ```
 
 ### Backend won't start

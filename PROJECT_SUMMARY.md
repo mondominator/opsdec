@@ -12,14 +12,15 @@ OpsDec is a modern, self-hosted media server monitoring platform inspired by Tau
 - RESTful API with Express.js
 - WebSocket server for real-time updates
 - SQLite database with comprehensive schema
-- Multi-server support (Plex + Emby)
+- Multi-server support (Plex + Emby + Audiobookshelf)
 - Automatic activity polling and monitoring
 - Session tracking and history aggregation
 
 **Services:**
 - `emby.js` - Full Emby API integration
 - `plex.js` - Full Plex API integration
-- `monitor.js` - Unified monitoring service that supports both platforms
+- `audiobookshelf.js` - Full Audiobookshelf API integration
+- `monitor.js` - Unified monitoring service that supports all platforms
 
 **Database Schema:**
 - `sessions` - Active playback sessions
@@ -159,6 +160,10 @@ PLEX_TOKEN=your_plex_token
 EMBY_URL=http://emby-server:8096
 EMBY_API_KEY=your_emby_api_key
 
+# Audiobookshelf (optional)
+AUDIOBOOKSHELF_URL=http://audiobookshelf-server:13378
+AUDIOBOOKSHELF_TOKEN=your_audiobookshelf_token
+
 # Monitoring
 POLL_INTERVAL=30
 ```
@@ -185,30 +190,32 @@ npm run dev
 
 ## Features Implemented
 
-✅ **Multi-server support** - Monitor Plex and Emby simultaneously
+✅ **Multi-server support** - Monitor Plex, Emby, and Audiobookshelf simultaneously
 ✅ **Real-time monitoring** - Live activity updates via WebSocket
 ✅ **Session tracking** - Detailed playback session information
-✅ **Watch history** - Complete historical data with filtering
-✅ **User statistics** - Per-user analytics and insights
-✅ **Dashboard** - Overview with charts and metrics
+✅ **Watch history** - Complete historical data with advanced filtering and search
+✅ **User statistics** - Per-user analytics and insights with sortable columns
+✅ **Dashboard** - Overview with charts, metrics, and server branding
 ✅ **Docker support** - Production-ready containerization
 ✅ **Dark theme UI** - Tautulli-inspired interface
 ✅ **RESTful API** - Well-structured backend API
 ✅ **Database persistence** - SQLite with proper schema
+✅ **Advanced search** - Full-text search across media and users
+✅ **Flexible pagination** - Multiple page size options
+✅ **Server logos** - Visual identification of media servers
 
 ## Future Enhancements
 
 🔮 **Planned Features:**
-- [ ] Audiobookshelf integration
 - [ ] Jellyfin support
 - [ ] Email/Discord notifications
-- [ ] Advanced filtering and search
 - [ ] Export to CSV/JSON
 - [ ] User authentication
 - [ ] Custom dashboard widgets
 - [ ] Mobile app
 - [ ] Theme customization
 - [ ] Multi-language support
+- [ ] Date range filtering
 
 ## File Structure
 
@@ -223,6 +230,7 @@ opsdec/
 │   │   ├── services/
 │   │   │   ├── emby.js
 │   │   │   ├── plex.js
+│   │   │   ├── audiobookshelf.js
 │   │   │   └── monitor.js
 │   │   └── index.js
 │   ├── .env.example

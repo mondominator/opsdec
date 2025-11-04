@@ -19,15 +19,18 @@ services:
     volumes:
       - ./data:/app/backend/data
     environment:
-      - NODE_ENV=production
+      # NODE_ENV is already set to production by default in Dockerfile
       - PORT=3001
       - DB_PATH=/app/backend/data/opsdec.db
-      # Plex Configuration
+      # Plex Configuration (optional)
       - PLEX_URL=http://192.168.1.100:32400
       - PLEX_TOKEN=your_plex_token_here
-      # Emby Configuration
+      # Emby Configuration (optional)
       - EMBY_URL=http://192.168.1.101:8096
       - EMBY_API_KEY=your_emby_api_key_here
+      # Audiobookshelf Configuration (optional)
+      - AUDIOBOOKSHELF_URL=http://192.168.1.102:13378
+      - AUDIOBOOKSHELF_TOKEN=your_audiobookshelf_token_here
       # Polling
       - POLL_INTERVAL=30
 ```
@@ -66,11 +69,12 @@ docker run -d \
   --restart unless-stopped \
   -p 3001:3001 \
   -v $(pwd)/data:/app/backend/data \
-  -e NODE_ENV=production \
   -e PLEX_URL=http://your-plex:32400 \
   -e PLEX_TOKEN=your_plex_token \
   -e EMBY_URL=http://your-emby:8096 \
   -e EMBY_API_KEY=your_emby_key \
+  -e AUDIOBOOKSHELF_URL=http://your-audiobookshelf:13378 \
+  -e AUDIOBOOKSHELF_TOKEN=your_abs_token \
   opsdec:latest
 ```
 
@@ -79,8 +83,9 @@ docker run -d \
 ### Required
 
 - `PORT` - Port to run the server on (default: 3001)
-- `NODE_ENV` - Set to "production" for production deployments
 - `DB_PATH` - Path to SQLite database file
+
+**Note:** `NODE_ENV` is automatically set to `production` in the Docker image.
 
 ### Optional - Plex
 
@@ -91,6 +96,11 @@ docker run -d \
 
 - `EMBY_URL` - URL to your Emby server (e.g., http://192.168.1.101:8096)
 - `EMBY_API_KEY` - Your Emby API key
+
+### Optional - Audiobookshelf
+
+- `AUDIOBOOKSHELF_URL` - URL to your Audiobookshelf server (e.g., http://192.168.1.102:13378)
+- `AUDIOBOOKSHELF_TOKEN` - Your Audiobookshelf API token
 
 ### Optional - Configuration
 
@@ -189,7 +199,6 @@ services:
     volumes:
       - ./data:/app/backend/data
     environment:
-      - NODE_ENV=production
       - PLEX_URL=http://192.168.1.100:32400
       - PLEX_TOKEN=your_plex_token
       - POLL_INTERVAL=30
@@ -210,13 +219,12 @@ services:
     volumes:
       - ./data:/app/backend/data
     environment:
-      - NODE_ENV=production
       - EMBY_URL=http://192.168.1.101:8096
       - EMBY_API_KEY=your_emby_api_key
       - POLL_INTERVAL=30
 ```
 
-### Both Plex and Emby
+### All Three Servers (Plex, Emby, and Audiobookshelf)
 
 ```yaml
 version: '3.8'
@@ -231,13 +239,15 @@ services:
     volumes:
       - ./data:/app/backend/data
     environment:
-      - NODE_ENV=production
       # Plex
       - PLEX_URL=http://192.168.1.100:32400
       - PLEX_TOKEN=your_plex_token
       # Emby
       - EMBY_URL=http://192.168.1.101:8096
       - EMBY_API_KEY=your_emby_api_key
+      # Audiobookshelf
+      - AUDIOBOOKSHELF_URL=http://192.168.1.102:13378
+      - AUDIOBOOKSHELF_TOKEN=your_audiobookshelf_token
       # Config
       - POLL_INTERVAL=30
 ```
@@ -284,7 +294,6 @@ services:
     volumes:
       - ./data:/app/backend/data
     environment:
-      - NODE_ENV=production
       - PLEX_URL=http://plex:32400
       - PLEX_TOKEN=your_token
     labels:
