@@ -563,6 +563,65 @@ router.get('/servers/health', (req, res) => {
   }
 });
 
+// Test server connection - MUST come before parameterized routes like /servers/:id
+router.post('/servers/:id/test', async (req, res) => {
+  try {
+    const { id } = req.params;
+    let server = db.prepare('SELECT * FROM servers WHERE id = ?').get(id);
+
+    // Check if this is an environment variable server
+    if (!server && id.startsWith('env-')) {
+      const envType = id.replace('env-', '');
+
+      if (envType === 'plex' && process.env.PLEX_URL && process.env.PLEX_TOKEN) {
+        server = {
+          type: 'plex',
+          url: process.env.PLEX_URL,
+          api_key: process.env.PLEX_TOKEN
+        };
+      } else if (envType === 'emby' && process.env.EMBY_URL && process.env.EMBY_API_KEY) {
+        server = {
+          type: 'emby',
+          url: process.env.EMBY_URL,
+          api_key: process.env.EMBY_API_KEY
+        };
+      } else if (envType === 'audiobookshelf' && process.env.AUDIOBOOKSHELF_URL && process.env.AUDIOBOOKSHELF_TOKEN) {
+        server = {
+          type: 'audiobookshelf',
+          url: process.env.AUDIOBOOKSHELF_URL,
+          api_key: process.env.AUDIOBOOKSHELF_TOKEN
+        };
+      }
+    }
+
+    if (!server) {
+      return res.status(404).json({ success: false, error: 'Server not found' });
+    }
+
+    // Dynamically import and test the appropriate service
+    let ServiceClass;
+    if (server.type === 'emby') {
+      const { default: EmbyService } = await import('../services/emby.js');
+      ServiceClass = EmbyService;
+    } else if (server.type === 'plex') {
+      const { default: PlexService } = await import('../services/plex.js');
+      ServiceClass = PlexService;
+    } else if (server.type === 'audiobookshelf') {
+      const { default: AudiobookshelfService } = await import('../services/audiobookshelf.js');
+      ServiceClass = AudiobookshelfService;
+    } else {
+      return res.status(400).json({ success: false, error: 'Invalid server type' });
+    }
+
+    const service = new ServiceClass(server.url, server.api_key);
+    const result = await service.testConnection();
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Add a new server
 router.post('/servers', (req, res) => {
   try {
@@ -636,40 +695,6 @@ router.delete('/servers/:id', (req, res) => {
 
     db.prepare('DELETE FROM servers WHERE id = ?').run(id);
     res.json({ success: true, message: 'Server deleted' });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Test server connection
-router.post('/servers/:id/test', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const server = db.prepare('SELECT * FROM servers WHERE id = ?').get(id);
-
-    if (!server) {
-      return res.status(404).json({ success: false, error: 'Server not found' });
-    }
-
-    // Dynamically import and test the appropriate service
-    let ServiceClass;
-    if (server.type === 'emby') {
-      const { default: EmbyService } = await import('../services/emby.js');
-      ServiceClass = EmbyService;
-    } else if (server.type === 'plex') {
-      const { default: PlexService } = await import('../services/plex.js');
-      ServiceClass = PlexService;
-    } else if (server.type === 'audiobookshelf') {
-      const { default: AudiobookshelfService } = await import('../services/audiobookshelf.js');
-      ServiceClass = AudiobookshelfService;
-    } else {
-      return res.status(400).json({ success: false, error: 'Invalid server type' });
-    }
-
-    const service = new ServiceClass(server.url, server.api_key);
-    const result = await service.testConnection();
-
-    res.json({ success: true, data: result });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

@@ -402,7 +402,7 @@ export default function Settings() {
                       <div className="flex gap-2 flex-shrink-0">
                         <button
                           onClick={() => handleTest(server.id)}
-                          disabled={testing[server.id] || server.from_env}
+                          disabled={testing[server.id]}
                           className="px-4 py-2 bg-dark-700 hover:bg-dark-600 disabled:bg-dark-750 disabled:opacity-50 text-gray-300 rounded-lg font-medium transition-colors"
                         >
                           {testing[server.id] ? 'Testing...' : 'Test'}
