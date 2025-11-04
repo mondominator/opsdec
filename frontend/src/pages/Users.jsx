@@ -89,11 +89,11 @@ function Users() {
   const getServerIcon = (serverType) => {
     switch (serverType) {
       case 'emby':
-        return <Film className="w-4 h-4 text-green-400" title="Emby" />;
+        return <img src="/logos/emby.svg" alt="Emby" className="w-4 h-4" title="Emby" />;
       case 'plex':
-        return <Tv className="w-4 h-4 text-yellow-400" title="Plex" />;
+        return <img src="/logos/plex.svg" alt="Plex" className="w-4 h-4" title="Plex" />;
       case 'audiobookshelf':
-        return <Headphones className="w-4 h-4 text-blue-400" title="Audiobookshelf" />;
+        return <img src="/logos/audiobookshelf.svg" alt="Audiobookshelf" className="w-4 h-4" title="Audiobookshelf" />;
       default:
         return null;
     }

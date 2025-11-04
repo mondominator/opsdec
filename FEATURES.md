@@ -12,8 +12,11 @@
 - **Dashboard Overview**
   - Total plays and active sessions counter
   - 30-day play history chart
-  - Top users by watch time
-  - Most watched content
+  - Statistics card with monthly metrics
+  - Top watchers and listeners with avatars
+  - Popular movies, TV shows, and audiobooks
+  - User dropdowns showing who watched/listened to each item
+  - Server branding with official logos
   
 - **User Statistics**
   - Individual user profiles
@@ -21,11 +24,17 @@
   - Play counts by media type
   - Recent activity timeline
   - Most watched content per user
+  - Sortable user table (username, watch time, listen time, last seen)
+  - Server breakdown with logos
+  - Expandable rows showing per-server statistics
 
 - **Watch History**
   - Complete playback history
-  - Filterable by user
-  - Pagination support
+  - Advanced search functionality (title, show, username)
+  - Multi-filter system (user, server, media type)
+  - Flexible pagination (25, 50, 100, 250 items per page)
+  - Sortable columns (all 7 columns with visual indicators)
+  - Server identification with logos
   - Completion percentage tracking
 
 ### 🔌 Server Integration
@@ -48,11 +57,21 @@
 - ✅ Progress tracking
 - ✅ Metadata retrieval
 
+#### Audiobookshelf Support
+- ✅ Active session monitoring
+- ✅ User tracking
+- ✅ Library access
+- ✅ Recently added media
+- ✅ Session state (playing/paused/buffering)
+- ✅ Progress tracking
+- ✅ Metadata retrieval
+
 #### Multi-Server
-- ✅ Monitor Plex and Emby simultaneously
+- ✅ Monitor Plex, Emby, and Audiobookshelf simultaneously
 - ✅ Unified dashboard for all servers
 - ✅ Aggregated statistics
 - ✅ Per-server activity breakdown
+- ✅ Server-specific branding (logos and icons)
 
 ### 🎨 User Interface
 - **Tautulli-Inspired Design** - Familiar, polished dark theme
@@ -85,11 +104,12 @@
 ## Upcoming Features
 
 ### 🎯 Phase 2 (Next Release)
-- [ ] **Audiobookshelf Integration** - Monitor audiobook listening
-- [ ] **Advanced Filtering** - Filter history by date, media type, etc.
-- [ ] **Search Functionality** - Search media and users
+- [x] **Audiobookshelf Integration** - Monitor audiobook listening ✅ COMPLETED
+- [x] **Advanced Filtering** - Filter history by date, media type, etc. ✅ COMPLETED
+- [x] **Search Functionality** - Search media and users ✅ COMPLETED
 - [ ] **Export Data** - CSV/JSON export for statistics
 - [ ] **Mobile Responsive** - Improved mobile experience
+- [ ] **Date Range Filtering** - Filter history by custom date ranges
 
 ### 🎯 Phase 3
 - [ ] **Notifications** - Discord, Email, Webhook support
@@ -120,7 +140,7 @@
 |---------|----------|--------------|
 | Plex Support | ✅ | ✅ |
 | Emby Support | ❌ | ✅ |
-| Audiobookshelf | ❌ | 🔮 Planned |
+| Audiobookshelf | ❌ | ✅ |
 | Real-time Monitoring | ✅ | ✅ |
 | Watch History | ✅ | ✅ |
 | User Statistics | ✅ | ✅ |
