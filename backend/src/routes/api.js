@@ -323,14 +323,14 @@ router.get('/stats/dashboard', (req, res) => {
       LIMIT 10
     `).all();
 
-    // Top listeners (audio content: audiobooks + tracks + books)
+    // Top listeners (audio content: audiobooks + tracks + books + music)
     const topListeners = db.prepare(`
       SELECT
         h.username,
         SUM(COALESCE(h.stream_duration, CAST(h.duration * h.percent_complete / 100 AS INTEGER))) as total_duration,
         (SELECT thumb FROM users WHERE username = h.username AND thumb IS NOT NULL LIMIT 1) as thumb
       FROM history h
-      WHERE h.media_type IN ('audiobook', 'track', 'book')
+      WHERE h.media_type IN ('audiobook', 'track', 'book', 'music')
       GROUP BY h.username
       ORDER BY total_duration DESC
       LIMIT 10

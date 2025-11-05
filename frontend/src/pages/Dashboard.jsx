@@ -157,7 +157,7 @@ function Dashboard() {
                         }`}
                       >
                         {session.state === 'playing'
-                          ? (session.server_type === 'audiobookshelf' ? 'Listening' : 'Playing')
+                          ? (['audiobook', 'track', 'book', 'music'].includes(session.media_type) ? 'Listening' : 'Playing')
                           : session.state === 'paused'
                           ? 'Paused'
                           : 'Stopped'}
