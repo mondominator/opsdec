@@ -11,6 +11,28 @@ let audiobookshelfService = null;
 let lastActiveSessions = new Map();
 let cronJob = null;
 
+// Helper function to determine if a session should be added to history
+function shouldAddToHistory(title, duration, progressPercent) {
+  // Filter out theme songs/intros
+  if (title && title.toLowerCase() === 'theme') {
+    console.log(`   Skipped history: Theme/Intro excluded`);
+    return false;
+  }
+
+  // Require at least 30 seconds of playback OR 10% progress
+  const minDuration = 30; // seconds
+  const minPercent = 10; // percent
+
+  const actualWatchTime = duration && progressPercent ? (duration * progressPercent / 100) : 0;
+
+  if (progressPercent < minPercent && actualWatchTime < minDuration) {
+    console.log(`   Skipped history: Not watched enough (${progressPercent}%, ${Math.floor(actualWatchTime)}s)`);
+    return false;
+  }
+
+  return true;
+}
+
 export function initServices() {
   const services = [];
 
@@ -125,11 +147,8 @@ function updateSession(activity, serverType) {
       const stopNow = now;
       const oldSessionId = existing.id;
 
-      // Add old session to history if watched enough
-      const watchedEnough = existing.progress_percent > 10 ||
-                           (existing.duration && existing.progress_percent * existing.duration / 100 > 300);
-
-      if (watchedEnough) {
+      // Add old session to history if it meets criteria
+      if (shouldAddToHistory(existing.title, existing.duration, existing.progress_percent)) {
         try {
           db.prepare(`
             INSERT INTO history (
@@ -343,13 +362,10 @@ function stopInactiveSessions(activeSessionKeys) {
         WHERE session_key = ?
       `).run(now, now, session.session_key);
 
-      // Add to history if watched enough (>10% or >5 minutes)
-      const watchedEnough = session.progress_percent > 10 ||
-                           (session.duration && session.progress_percent * session.duration / 100 > 300);
-
       console.log(`⏹️  Session stopped: ${session.username} - ${session.title} (${session.progress_percent}% / ${session.duration}s)`);
 
-      if (watchedEnough) {
+      // Add to history if it meets criteria
+      if (shouldAddToHistory(session.title, session.duration, session.progress_percent)) {
         try {
           const sessionData = db.prepare('SELECT * FROM sessions WHERE session_key = ?').get(session.session_key);
 
@@ -397,8 +413,6 @@ function stopInactiveSessions(activeSessionKeys) {
         } catch (error) {
           console.error(`Error adding to history:`, error.message);
         }
-      } else {
-        console.log(`   Skipped history: Not watched enough (${session.progress_percent}%)`);
       }
     }
   }
