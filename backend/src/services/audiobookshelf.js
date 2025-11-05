@@ -165,16 +165,34 @@ class AudiobookshelfService {
 
   async getPlaybackSessions() {
     try {
-      // Try to get currently playing sessions from the /api/me/listening-sessions endpoint
-      // This should give us active/current playback sessions
+      // Instead of getting "open" sessions (which includes paused sessions),
+      // we should look for users with active playback sessions
+      // Try the /api/users endpoint with openPlaySessions parameter
       try {
-        const currentResponse = await this.client.get('/api/me/listening-sessions');
-        if (currentResponse.data && currentResponse.data.length > 0) {
-          console.log(`Found ${currentResponse.data.length} currently listening sessions`);
-          return currentResponse.data;
+        const usersResponse = await this.client.get('/api/users?openPlaySessions=1');
+        const activeSessions = [];
+
+        if (usersResponse.data.users) {
+          for (const user of usersResponse.data.users) {
+            // Check if user has an active session (mostRecent with mediaPlayer)
+            if (user.mostRecent?.mediaPlayer) {
+              // This user has an active playback session
+              // Get their session details from /api/sessions
+              const sessionResponse = await this.client.get(`/api/sessions?userId=${user.id}&filterBy=open&sort=updatedAt&desc=1&limit=1`);
+              const userSessions = sessionResponse.data.sessions || sessionResponse.data || [];
+              if (userSessions.length > 0) {
+                activeSessions.push(...userSessions);
+              }
+            }
+          }
         }
-      } catch (currentError) {
-        console.log('No /api/me/listening-sessions endpoint, falling back to open sessions');
+
+        if (activeSessions.length > 0) {
+          console.log(`Found ${activeSessions.length} users with active playback`);
+          return activeSessions;
+        }
+      } catch (userError) {
+        console.log('Failed to check users for active sessions, falling back to open sessions');
       }
 
       // Fallback: Get open/active playback sessions from /api/sessions?filterBy=open
@@ -195,21 +213,26 @@ class AudiobookshelfService {
       const activeStreams = [];
 
       const now = Date.now();
-      const thirtySecondsAgo = now - (30 * 1000); // 30 seconds ago
+      const fiveMinutesAgo = now - (5 * 60 * 1000); // 5 minutes ago
 
-      // For Audiobookshelf, filter for sessions updated in the last 30 seconds
-      // This ensures we only show truly active playback, not paused sessions
+      // For Audiobookshelf, filter for sessions updated recently
+      // Since we're now checking users with active playback first,
+      // we can use a tighter window
       const activeSessions = Array.isArray(sessions)
         ? sessions.filter(s => {
-            return s &&
-                   s.libraryItemId &&
-                   s.currentTime !== undefined &&
-                   s.updatedAt &&
-                   s.updatedAt > thirtySecondsAgo;
+            if (!s || !s.libraryItemId || s.currentTime === undefined) {
+              return false;
+            }
+            // If updatedAt is not present, include the session (assume it's active)
+            // Otherwise, check if it was updated within the last 5 minutes
+            if (!s.updatedAt) {
+              return true;
+            }
+            return s.updatedAt > fiveMinutesAgo;
           })
         : [];
 
-      console.log(`Found ${activeSessions.length} active Audiobookshelf sessions out of ${sessions.length} total open sessions (updated within last 30 seconds)`);
+      console.log(`Found ${activeSessions.length} active Audiobookshelf sessions out of ${sessions.length} total sessions (updated within last 5 minutes)`);
 
       for (const session of activeSessions) {
         const activity = await this.parsePlaybackSession(session);
