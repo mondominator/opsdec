@@ -314,7 +314,7 @@ router.get('/stats/dashboard', (req, res) => {
     const topWatchers = db.prepare(`
       SELECT
         h.username,
-        SUM(h.duration) as total_duration,
+        SUM(COALESCE(h.stream_duration, CAST(h.duration * h.percent_complete / 100 AS INTEGER))) as total_duration,
         (SELECT thumb FROM users WHERE username = h.username AND thumb IS NOT NULL LIMIT 1) as thumb
       FROM history h
       WHERE h.media_type IN ('movie', 'episode')
@@ -327,7 +327,7 @@ router.get('/stats/dashboard', (req, res) => {
     const topListeners = db.prepare(`
       SELECT
         h.username,
-        SUM(h.duration) as total_duration,
+        SUM(COALESCE(h.stream_duration, CAST(h.duration * h.percent_complete / 100 AS INTEGER))) as total_duration,
         (SELECT thumb FROM users WHERE username = h.username AND thumb IS NOT NULL LIMIT 1) as thumb
       FROM history h
       WHERE h.media_type IN ('audiobook', 'track', 'book')
