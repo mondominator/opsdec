@@ -1273,28 +1273,72 @@ router.put('/settings/:key', (req, res) => {
 // Purge user data from database (keeps settings and server config)
 router.post('/database/purge', async (req, res) => {
   try {
-    const fs = await import('fs');
     const path = await import('path');
+    const fs = await import('fs');
+    const Database = (await import('better-sqlite3')).default;
     const dbPath = process.env.DATABASE_PATH || './data/opsdec.db';
     const backupPath = path.join(path.dirname(dbPath), `opsdec_backup_${Date.now()}.db`);
 
-    console.log(`Creating database backup at ${backupPath}`);
-
-    // Create backup first
-    await fs.promises.copyFile(dbPath, backupPath);
-
-    console.log('Backup created successfully, purging user data...');
-
-    // Delete user data while preserving settings and servers
+    // Count rows before backup to verify data exists
     const tablesToPurge = ['history', 'sessions', 'users', 'user_mappings', 'library_stats', 'ip_cache'];
+    const rowCounts = {};
+    let totalRows = 0;
 
     for (const table of tablesToPurge) {
       const count = db.prepare(`SELECT COUNT(*) as count FROM ${table}`).get().count;
-      db.prepare(`DELETE FROM ${table}`).run();
-      console.log(`Deleted ${count} rows from ${table}`);
+      rowCounts[table] = count;
+      totalRows += count;
     }
 
-    // Vacuum the database to reclaim space
+    console.log(`Database contains ${totalRows} total rows to be purged:`, rowCounts);
+
+    console.log(`Creating database backup at ${backupPath}`);
+
+    // Use better-sqlite3's safe backup method
+    await db.backup(backupPath);
+
+    // Verify backup was created and has reasonable size
+    const backupStats = await fs.promises.stat(backupPath);
+    const originalStats = await fs.promises.stat(dbPath);
+
+    if (backupStats.size === 0) {
+      throw new Error('Backup file is empty');
+    }
+
+    // Backup should be at least 50% of original size (accounting for possible VACUUM)
+    if (backupStats.size < originalStats.size * 0.5) {
+      console.warn(`Warning: Backup size (${backupStats.size}) is significantly smaller than original (${originalStats.size})`);
+    }
+
+    // Verify backup by opening it and checking row counts
+    console.log('Verifying backup integrity...');
+    const backupDb = new Database(backupPath, { readonly: true });
+
+    try {
+      for (const table of tablesToPurge) {
+        const backupCount = backupDb.prepare(`SELECT COUNT(*) as count FROM ${table}`).get().count;
+        if (backupCount !== rowCounts[table]) {
+          throw new Error(`Backup verification failed: ${table} has ${backupCount} rows, expected ${rowCounts[table]}`);
+        }
+      }
+      console.log('Backup verification successful');
+    } finally {
+      backupDb.close();
+    }
+
+    console.log('Backup created and verified successfully, purging user data...');
+
+    // Delete user data while preserving settings and servers in a transaction
+    const purge = db.transaction(() => {
+      for (const table of tablesToPurge) {
+        db.prepare(`DELETE FROM ${table}`).run();
+        console.log(`Deleted ${rowCounts[table]} rows from ${table}`);
+      }
+    });
+
+    purge();
+
+    // Run VACUUM separately after the transaction
     db.prepare('VACUUM').run();
 
     console.log('Database purge completed successfully');
@@ -1302,7 +1346,9 @@ router.post('/database/purge', async (req, res) => {
     res.json({
       success: true,
       message: 'User data purged successfully',
-      backupPath: backupPath
+      backupPath: backupPath,
+      rowsPurged: totalRows,
+      backupVerified: true
     });
   } catch (error) {
     console.error('Database purge error:', error);
@@ -1320,8 +1366,8 @@ router.post('/database/backup', async (req, res) => {
 
     console.log(`Creating database backup at ${backupPath}`);
 
-    // Create backup
-    await fs.promises.copyFile(dbPath, backupPath);
+    // Use better-sqlite3's safe backup method
+    await db.backup(backupPath);
 
     // Get backup file stats
     const stats = await fs.promises.stat(backupPath);
@@ -1395,11 +1441,14 @@ router.post('/database/restore', async (req, res) => {
     const fs = await import('fs');
     const path = await import('path');
     const dbPath = process.env.DATABASE_PATH || './data/opsdec.db';
-    const dataDir = path.dirname(dbPath);
-    const backupPath = path.join(dataDir, filename);
+    const dataDir = path.resolve(path.dirname(dbPath));
+    const backupPath = path.resolve(path.join(path.dirname(dbPath), filename));
 
     // Validate that the backup file exists and is in the data directory
-    if (!backupPath.startsWith(dataDir) || !filename.startsWith('opsdec_backup_')) {
+    const validPrefixes = ['opsdec_backup_', 'opsdec_pre_restore_'];
+    const hasValidPrefix = validPrefixes.some(prefix => filename.startsWith(prefix));
+
+    if (!backupPath.startsWith(dataDir) || !hasValidPrefix) {
       return res.status(400).json({ success: false, error: 'Invalid backup filename' });
     }
 
@@ -1409,11 +1458,55 @@ router.post('/database/restore', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Backup file not found' });
     }
 
+    // Validate backup file before restoring
+    const Database = (await import('better-sqlite3')).default;
+    console.log('Validating backup file...');
+
+    let backupDb;
+    try {
+      backupDb = new Database(backupPath, { readonly: true });
+
+      // Check that backup has required tables
+      const tables = backupDb.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
+      const tableNames = tables.map(t => t.name);
+      const requiredTables = ['servers', 'settings', 'users', 'history'];
+
+      for (const table of requiredTables) {
+        if (!tableNames.includes(table)) {
+          backupDb.close();
+          return res.status(400).json({
+            success: false,
+            error: `Invalid backup: missing required table '${table}'`
+          });
+        }
+      }
+
+      // Check server configuration exists
+      const serverCount = backupDb.prepare('SELECT COUNT(*) as count FROM servers').get().count;
+      if (serverCount === 0) {
+        backupDb.close();
+        return res.status(400).json({
+          success: false,
+          error: 'Backup appears to be empty (no server configuration found). This may be a backup created during purge. Please select a different backup.'
+        });
+      }
+
+      console.log(`Backup validation successful (${serverCount} servers configured)`);
+      backupDb.close();
+    } catch (error) {
+      if (backupDb) backupDb.close();
+      return res.status(400).json({
+        success: false,
+        error: `Invalid backup file: ${error.message}`
+      });
+    }
+
     // Create a safety backup of current database before restoring
     const safetyBackupPath = path.join(dataDir, `opsdec_pre_restore_${Date.now()}.db`);
-    await fs.promises.copyFile(dbPath, safetyBackupPath);
 
-    console.log(`Created safety backup at ${safetyBackupPath}`);
+    console.log(`Creating safety backup at ${safetyBackupPath}`);
+    await db.backup(safetyBackupPath);
+
     console.log(`Restoring database from ${backupPath}`);
 
     // Close the current database connection
@@ -1423,7 +1516,6 @@ router.post('/database/restore', async (req, res) => {
     await fs.promises.copyFile(backupPath, dbPath);
 
     // Reinitialize the database connection
-    const Database = (await import('better-sqlite3')).default;
     global.db = new Database(dbPath);
 
     console.log('Database restored successfully');
@@ -1447,11 +1539,14 @@ router.get('/database/backups/:filename/download', async (req, res) => {
     const fs = await import('fs');
     const path = await import('path');
     const dbPath = process.env.DATABASE_PATH || './data/opsdec.db';
-    const dataDir = path.dirname(dbPath);
-    const backupPath = path.join(dataDir, filename);
+    const dataDir = path.resolve(path.dirname(dbPath));
+    const backupPath = path.resolve(path.join(path.dirname(dbPath), filename));
 
     // Validate that the backup file is in the data directory and has correct naming
-    if (!backupPath.startsWith(dataDir) || !filename.startsWith('opsdec_backup_')) {
+    const validPrefixes = ['opsdec_backup_', 'opsdec_pre_restore_'];
+    const hasValidPrefix = validPrefixes.some(prefix => filename.startsWith(prefix));
+
+    if (!backupPath.startsWith(dataDir) || !hasValidPrefix) {
       return res.status(400).json({ success: false, error: 'Invalid backup filename' });
     }
 
@@ -1485,11 +1580,14 @@ router.delete('/database/backups/:filename', async (req, res) => {
     const fs = await import('fs');
     const path = await import('path');
     const dbPath = process.env.DATABASE_PATH || './data/opsdec.db';
-    const dataDir = path.dirname(dbPath);
-    const backupPath = path.join(dataDir, filename);
+    const dataDir = path.resolve(path.dirname(dbPath));
+    const backupPath = path.resolve(path.join(path.dirname(dbPath), filename));
 
     // Validate that the backup file is in the data directory and has correct naming
-    if (!backupPath.startsWith(dataDir) || !filename.startsWith('opsdec_backup_')) {
+    const validPrefixes = ['opsdec_backup_', 'opsdec_pre_restore_'];
+    const hasValidPrefix = validPrefixes.some(prefix => filename.startsWith(prefix));
+
+    if (!backupPath.startsWith(dataDir) || !hasValidPrefix) {
       return res.status(400).json({ success: false, error: 'Invalid backup filename' });
     }
 
