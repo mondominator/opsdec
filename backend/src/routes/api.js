@@ -386,15 +386,23 @@ router.get('/stats/dashboard', (req, res) => {
     const mostWatchedEpisodesWithUsers = addUsers(mostWatchedEpisodes);
     const mostWatchedAudiobooksWithUsers = addUsers(mostWatchedAudiobooks);
 
-    // Top streaming locations
+    // Top streaming locations with users
     const topLocations = db.prepare(`
-      SELECT city, region, country, COUNT(*) as streams
+      SELECT
+        city,
+        region,
+        country,
+        COUNT(*) as streams,
+        GROUP_CONCAT(DISTINCT username) as usernames
       FROM history
       WHERE city IS NOT NULL AND city != 'Unknown'
       GROUP BY city, region, country
       ORDER BY streams DESC
       LIMIT 10
-    `).all();
+    `).all().map(loc => ({
+      ...loc,
+      users: loc.usernames ? loc.usernames.split(',') : []
+    }));
 
     res.json({
       success: true,

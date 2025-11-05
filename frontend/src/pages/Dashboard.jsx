@@ -597,27 +597,58 @@ function Dashboard() {
               </div>
               <div className="card-body p-0">
                 <div className="divide-y divide-dark-600">
-                  {stats.topLocations.slice(0, 10).map((location, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-2 px-3 py-1.5 hover:bg-dark-700 transition-colors"
-                    >
-                      <div className="flex-shrink-0 w-4 text-center text-gray-500 text-xs">
-                        {index + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-white text-xs truncate">
-                          {location.city === 'Local Network'
-                            ? 'Local Network'
-                            : `${location.city}${location.region ? `, ${location.region}` : ''}`
-                          }
+                  {stats.topLocations.slice(0, 10).map((location, index) => {
+                    const locationKey = `location-${location.city}-${location.region}`;
+                    const isExpanded = expandedItems[locationKey];
+
+                    return (
+                      <div key={index}>
+                        <div
+                          className="flex items-center gap-2 px-3 py-1.5 hover:bg-dark-700 transition-colors cursor-pointer"
+                          onClick={() => setExpandedItems(prev => ({
+                            ...prev,
+                            [locationKey]: !prev[locationKey]
+                          }))}
+                        >
+                          <div className="flex-shrink-0 w-4 text-center text-gray-500 text-xs">
+                            {index + 1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-white text-xs truncate">
+                              {location.city === 'Local Network'
+                                ? 'Local Network'
+                                : `${location.city}${location.region ? `, ${location.region}` : ''}`
+                              }
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {location.streams} {location.streams === 1 ? 'stream' : 'streams'}
+                            </div>
+                          </div>
+                          <ChevronDown
+                            className={`flex-shrink-0 w-4 h-4 text-gray-500 transition-transform ${
+                              isExpanded ? 'rotate-180' : ''
+                            }`}
+                          />
                         </div>
-                        <div className="text-xs text-gray-500">
-                          {location.streams} {location.streams === 1 ? 'stream' : 'streams'}
-                        </div>
+
+                        {isExpanded && location.users?.length > 0 && (
+                          <div className="bg-dark-800 px-3 py-2">
+                            <div className="text-xs text-gray-400 mb-1.5">Users:</div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {location.users.map((user, userIndex) => (
+                                <span
+                                  key={userIndex}
+                                  className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-primary-900/30 text-primary-300"
+                                >
+                                  {user}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
