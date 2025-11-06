@@ -38,7 +38,7 @@ function getHistorySettings() {
 }
 
 // Helper function to determine if a session should be added to history
-function shouldAddToHistory(title, duration, progressPercent, userId, streamDuration = 0) {
+function shouldAddToHistory(title, duration, progressPercent, userId, streamDuration = 0, mediaType = null) {
   const settings = getHistorySettings();
 
   // Check if user has history enabled
@@ -71,7 +71,9 @@ function shouldAddToHistory(title, duration, progressPercent, userId, streamDura
   }
 
   // Check minimum progress thresholds
-  if (progressPercent < settings.minPercent) {
+  // Skip this check for audiobooks and tracks since they are consumed over many sessions
+  const isAudioContent = mediaType && ['audiobook', 'track', 'book'].includes(mediaType);
+  if (!isAudioContent && progressPercent < settings.minPercent) {
     console.log(`   Skipped history: Not watched enough (${progressPercent}% < ${settings.minPercent}%)`);
     return false;
   }
@@ -217,7 +219,7 @@ async function updateSession(activity, serverType) {
       const streamDuration = stopNow - existing.started_at;
 
       // Add old session to history if it meets criteria
-      if (shouldAddToHistory(existing.title, existing.duration, existing.progress_percent, existing.user_id, streamDuration)) {
+      if (shouldAddToHistory(existing.title, existing.duration, existing.progress_percent, existing.user_id, streamDuration, existing.media_type)) {
         try {
           db.prepare(`
             INSERT INTO history (
@@ -462,7 +464,7 @@ function stopInactiveSessions(activeSessionKeys) {
       const streamDuration = now - sessionData.started_at;
 
       // Add to history if it meets criteria
-      if (shouldAddToHistory(session.title, session.duration, session.progress_percent, session.user_id, streamDuration)) {
+      if (shouldAddToHistory(session.title, session.duration, session.progress_percent, session.user_id, streamDuration, sessionData.media_type)) {
         try {
           // Check if this media_id has already been added to history for this session
           const existingHistory = db.prepare(`

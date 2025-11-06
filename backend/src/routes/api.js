@@ -549,38 +549,64 @@ router.get('/stats/dashboard', (req, res) => {
         };
       });
 
-    // Most watched media - split by type (based on unique users)
-    const mostWatchedMovies = db.prepare(`
-      SELECT title, parent_title, media_type, thumb, media_id, COUNT(DISTINCT user_id) as plays
+    // Most watched media - split by type (based on unique mapped users)
+    // We need to apply user mapping before counting, so we get all history entries
+    // and then count distinct primary usernames in JavaScript
+
+    const moviesRaw = db.prepare(`
+      SELECT title, parent_title, media_type, thumb, media_id, username, server_type
       FROM history
       WHERE media_type = 'movie'
-      GROUP BY media_id
-      ORDER BY plays DESC
-      LIMIT 10
     `).all();
 
-    const mostWatchedEpisodes = db.prepare(`
-      SELECT
-        grandparent_title as title,
-        media_type,
-        thumb,
-        grandparent_title as media_id,
-        COUNT(DISTINCT user_id) as plays
+    const episodesRaw = db.prepare(`
+      SELECT grandparent_title as title, media_type, thumb, grandparent_title as media_id, username, server_type
       FROM history
       WHERE media_type = 'episode' AND grandparent_title IS NOT NULL
-      GROUP BY grandparent_title
-      ORDER BY plays DESC
-      LIMIT 10
     `).all();
 
-    const mostWatchedAudiobooks = db.prepare(`
-      SELECT title, parent_title, media_type, thumb, media_id, COUNT(DISTINCT user_id) as plays
+    const audiobooksRaw = db.prepare(`
+      SELECT title, parent_title, media_type, thumb, media_id, username, server_type
       FROM history
       WHERE media_type IN ('audiobook', 'track', 'book')
-      GROUP BY media_id
-      ORDER BY plays DESC
-      LIMIT 10
     `).all();
+
+    // Helper function to count plays by unique mapped users
+    const countMappedUserPlays = (items) => {
+      const mediaMap = {};
+
+      items.forEach(item => {
+        const mediaId = item.media_id;
+        if (!mediaMap[mediaId]) {
+          mediaMap[mediaId] = {
+            title: item.title,
+            parent_title: item.parent_title,
+            media_type: item.media_type,
+            thumb: item.thumb,
+            media_id: item.media_id,
+            users: new Set()
+          };
+        }
+
+        // Apply user mapping to get primary username
+        const primaryUsername = applyUserMapping(item.username, item.server_type);
+        mediaMap[mediaId].users.add(primaryUsername);
+      });
+
+      // Convert to array and add plays count
+      return Object.values(mediaMap).map(item => ({
+        title: item.title,
+        parent_title: item.parent_title,
+        media_type: item.media_type,
+        thumb: item.thumb,
+        media_id: item.media_id,
+        plays: item.users.size
+      })).sort((a, b) => b.plays - a.plays).slice(0, 10);
+    };
+
+    const mostWatchedMovies = countMappedUserPlays(moviesRaw);
+    const mostWatchedEpisodes = countMappedUserPlays(episodesRaw);
+    const mostWatchedAudiobooks = countMappedUserPlays(audiobooksRaw);
 
     // Add users list to each item
     const addUsers = (items) => {
