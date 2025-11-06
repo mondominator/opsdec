@@ -1629,18 +1629,22 @@ router.post('/database/restore', async (req, res) => {
     const safetyBackupPath = path.join(dataDir, `opsdec_pre_restore_${Date.now()}.db`);
 
     console.log(`Creating safety backup at ${safetyBackupPath}`);
-    await db.backup(safetyBackupPath);
+    await global.db.backup(safetyBackupPath);
 
     console.log(`Restoring database from ${backupPath}`);
 
     // Close the current database connection
-    db.close();
+    global.db.close();
 
     // Copy backup over current database
     await fs.promises.copyFile(backupPath, dbPath);
 
     // Reinitialize the database connection
-    global.db = new Database(dbPath);
+    const BetterSqlite3 = (await import('better-sqlite3')).default;
+    global.db = new BetterSqlite3(dbPath);
+
+    // Ensure WAL mode is enabled on the restored database
+    global.db.pragma('journal_mode = WAL');
 
     console.log('Database restored successfully');
 
