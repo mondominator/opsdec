@@ -40,10 +40,14 @@ class AudiobookshelfService {
     this.socketConnected = false;
 
     // Track session progress to detect active playback
-    // Map: sessionId -> { currentTime, lastChecked, lastProgressAt }
+    // Map: sessionId -> { currentTime, lastChecked, lastProgressAt, lastEventAt }
     this.sessionProgressTracker = new Map();
-    // Consider a session inactive if no progress for 2 minutes
-    this.sessionInactivityThreshold = 2 * 60 * 1000;
+    // Consider a session inactive if no progress or events for 5 minutes
+    // (clients may sync progress infrequently, Socket.io events provide real-time updates)
+    this.sessionInactivityThreshold = 5 * 60 * 1000;
+
+    // Track active sessions by sessionId (updated via Socket.io events)
+    this.activeSessionIds = new Set();
   }
 
   async testConnection() {
@@ -243,40 +247,61 @@ class AudiobookshelfService {
         const lastTracked = this.sessionProgressTracker.get(sessionId);
 
         // First time seeing this session - track it but DON'T show as active yet
-        // Wait for next poll to see if progress is made
+        // Unless it was marked active by a Socket.io event
         if (!lastTracked) {
+          const isActiveByEvent = this.activeSessionIds.has(sessionId);
           this.sessionProgressTracker.set(sessionId, {
             currentTime: currentTime,
             lastChecked: now,
-            lastProgressAt: null  // No progress yet, just discovered
+            lastProgressAt: null,  // No progress yet, just discovered
+            lastEventAt: isActiveByEvent ? now : null
           });
           console.log(`📊 Tracking new Audiobookshelf session: ${sessionId} (${session.displayTitle || 'Unknown'}) at ${Math.floor(currentTime)}s`);
-          continue;  // Don't show as active on first discovery
+
+          if (isActiveByEvent) {
+            console.log(`🔔 Session ${sessionId} active via Socket.io event`);
+            activeSessions.push(session);
+          }
+          continue;
         }
 
         // Check if progress has been made (currentTime has increased)
         const progressMade = currentTime > lastTracked.currentTime;
-        const timeSinceProgress = now - (progressMade ? now : lastTracked.lastProgressAt);
+
+        // Check Socket.io event activity
+        const hasRecentEvent = lastTracked.lastEventAt && (now - lastTracked.lastEventAt) < this.sessionInactivityThreshold;
+
+        // Calculate time since last activity (progress OR Socket.io event)
+        const lastActivityTime = Math.max(
+          progressMade ? now : (lastTracked.lastProgressAt || 0),
+          lastTracked.lastEventAt || 0
+        );
+        const timeSinceActivity = lastActivityTime > 0 ? (now - lastActivityTime) : this.sessionInactivityThreshold + 1;
 
         // Update the tracker
         this.sessionProgressTracker.set(sessionId, {
           currentTime: currentTime,
           lastChecked: now,
-          lastProgressAt: progressMade ? now : lastTracked.lastProgressAt
+          lastProgressAt: progressMade ? now : lastTracked.lastProgressAt,
+          lastEventAt: lastTracked.lastEventAt  // Preserve Socket.io event timestamp
         });
 
         if (progressMade) {
           const progressDelta = currentTime - lastTracked.currentTime;
           console.log(`▶️  Active playback detected: ${session.displayTitle || 'Unknown'} (+${Math.floor(progressDelta)}s progress)`);
           activeSessions.push(session);
-        } else if (timeSinceProgress < this.sessionInactivityThreshold) {
-          // No progress this check, but progress was seen recently - keep showing as active
-          const secondsSinceProgress = Math.floor(timeSinceProgress / 1000);
-          console.log(`⏯️  No progress update, but active (last progress ${secondsSinceProgress}s ago): ${session.displayTitle || 'Unknown'}`);
+        } else if (hasRecentEvent) {
+          const secondsSinceEvent = Math.floor((now - lastTracked.lastEventAt) / 1000);
+          console.log(`🔔 Active via Socket.io event (${secondsSinceEvent}s ago): ${session.displayTitle || 'Unknown'}`);
+          activeSessions.push(session);
+        } else if (timeSinceActivity < this.sessionInactivityThreshold) {
+          // No recent progress or events, but activity seen within threshold - keep showing as active
+          const secondsSinceActivity = Math.floor(timeSinceActivity / 1000);
+          console.log(`⏯️  No recent update, but active (last activity ${secondsSinceActivity}s ago): ${session.displayTitle || 'Unknown'}`);
           activeSessions.push(session);
         } else {
-          // No progress for longer than threshold - mark as inactive
-          console.log(`⏸️  No progress for ${Math.floor(timeSinceProgress / 1000)}s: ${session.displayTitle || 'Unknown'} (paused or stopped)`);
+          // No activity for longer than threshold - mark as inactive
+          console.log(`⏸️  No activity for ${Math.floor(timeSinceActivity / 1000)}s: ${session.displayTitle || 'Unknown'} (paused or stopped)`);
         }
       }
 
@@ -286,10 +311,11 @@ class AudiobookshelfService {
         if (!currentSessionIds.has(trackedId)) {
           console.log(`🧹 Removing stale session from tracker: ${trackedId}`);
           this.sessionProgressTracker.delete(trackedId);
+          this.activeSessionIds.delete(trackedId);
         }
       }
 
-      console.log(`Found ${activeSessions.length} active Audiobookshelf sessions out of ${sessions.length} total open sessions (detected by progress tracking)`);
+      console.log(`Found ${activeSessions.length} active Audiobookshelf sessions out of ${sessions.length} total open sessions (Socket.io + progress tracking)`);
 
       for (const session of activeSessions) {
         const activity = await this.parsePlaybackSession(session);
@@ -467,6 +493,9 @@ class AudiobookshelfService {
         eventType = 'session_progress';
       }
 
+      // Update active session tracking based on Socket.io events
+      this.updateSessionActivityFromEvent(eventType, data);
+
       // Notify all registered event handlers
       for (const handler of this.socketEventHandlers) {
         try {
@@ -481,6 +510,52 @@ class AudiobookshelfService {
       }
     } catch (error) {
       console.error('Error handling Audiobookshelf Socket.io event:', error.message);
+    }
+  }
+
+  updateSessionActivityFromEvent(eventType, data) {
+    try {
+      const now = Date.now();
+
+      // Extract session ID from event data
+      let sessionId = data?.id || data?.sessionId || data?.playSessionId;
+
+      // For user_item_progress_updated, we may need to get the session ID differently
+      if (!sessionId && data?.session) {
+        sessionId = data.session.id || data.session.sessionId;
+      }
+
+      if (!sessionId) {
+        // Can't track without a session ID
+        return;
+      }
+
+      if (eventType === 'session_started' || eventType === 'session_progress') {
+        // Mark this session as active
+        this.activeSessionIds.add(sessionId);
+
+        // Update last event time in tracker
+        const tracked = this.sessionProgressTracker.get(sessionId);
+        if (tracked) {
+          tracked.lastEventAt = now;
+        } else {
+          // Create new tracking entry
+          this.sessionProgressTracker.set(sessionId, {
+            currentTime: data?.currentTime || 0,
+            lastChecked: now,
+            lastProgressAt: null,
+            lastEventAt: now
+          });
+        }
+
+        console.log(`🔔 Socket.io event marks session ${sessionId} as active (${eventType})`);
+      } else if (eventType === 'session_stopped') {
+        // Remove from active sessions
+        this.activeSessionIds.delete(sessionId);
+        console.log(`🔕 Socket.io event marks session ${sessionId} as stopped`);
+      }
+    } catch (error) {
+      console.error('Error updating session activity from event:', error.message);
     }
   }
 
