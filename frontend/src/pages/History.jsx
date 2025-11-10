@@ -13,6 +13,8 @@ const getServerIcon = (serverType) => {
       return <img src="/logos/plex.svg" alt="Plex" className="w-5 h-5" title="Plex" />;
     case 'audiobookshelf':
       return <img src="/logos/audiobookshelf.svg" alt="Audiobookshelf" className="w-5 h-5" title="Audiobookshelf" />;
+    case 'sapho':
+      return <img src="/logos/sapho.svg" alt="Sapho" className="w-6 h-6" title="Sapho" />;
     default:
       return null;
   }
@@ -32,6 +34,7 @@ function History() {
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [sortField, setSortField] = useState('watched_at');
   const [sortDirection, setSortDirection] = useState('desc');
+  const [mediaColumnWidth, setMediaColumnWidth] = useState(448); // Default to max-w-md (28rem = 448px)
 
   useEffect(() => {
     loadHistory();
@@ -359,12 +362,43 @@ function History() {
                 <thead className="bg-dark-700">
                   <tr>
                     <th
-                      className="px-6 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors"
+                      className="px-6 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors relative"
                       onClick={() => handleSort('title')}
+                      style={{ maxWidth: `${mediaColumnWidth}px` }}
                     >
                       <div className="flex items-center gap-2">
                         <span>Media</span>
                         {getSortIcon('title')}
+                      </div>
+                      <div
+                        className="absolute right-0 top-0 bottom-0 w-8 cursor-col-resize hover:bg-primary-500/20 transition-colors flex items-center justify-end pr-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          const startX = e.clientX;
+                          const startWidth = mediaColumnWidth;
+
+                          const handleMouseMove = (moveEvent) => {
+                            const newWidth = Math.max(200, Math.min(800, startWidth + (moveEvent.clientX - startX)));
+                            setMediaColumnWidth(newWidth);
+                          };
+
+                          const handleMouseUp = () => {
+                            document.removeEventListener('mousemove', handleMouseMove);
+                            document.removeEventListener('mouseup', handleMouseUp);
+                            document.body.style.cursor = '';
+                            document.body.style.userSelect = '';
+                          };
+
+                          document.body.style.cursor = 'col-resize';
+                          document.body.style.userSelect = 'none';
+                          document.addEventListener('mousemove', handleMouseMove);
+                          document.addEventListener('mouseup', handleMouseUp);
+                        }}
+                      >
+                        <div className="w-1 h-6 bg-gray-600 rounded" />
                       </div>
                     </th>
                     <th
@@ -438,12 +472,15 @@ function History() {
                 <tbody className="divide-y divide-dark-700">
                   {paginatedHistory.map((item) => (
                     <tr key={item.id} className="hover:bg-dark-700/50 transition-colors">
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-4 relative" style={{ maxWidth: `${mediaColumnWidth}px` }}>
                         <div className="flex items-center space-x-4">
                           <div className="flex-shrink-0">
                             {item.thumb ? (
                               <img
-                                src={item.thumb}
+                                src={item.server_type === 'sapho' || item.server_type === 'audiobookshelf'
+                                  ? `/proxy/image?url=${encodeURIComponent(item.thumb)}`
+                                  : item.thumb
+                                }
                                 alt={item.title}
                                 className="w-12 h-16 object-cover rounded"
                               />
@@ -453,7 +490,7 @@ function History() {
                               </div>
                             )}
                           </div>
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <div className="text-white font-medium truncate">{item.title}</div>
                             {item.parent_title && (
                               <div className="text-sm text-gray-400 truncate">{item.parent_title}</div>

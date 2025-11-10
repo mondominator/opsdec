@@ -26,14 +26,15 @@ export default function Settings() {
 
   // User mappings state
   const [userMappings, setUserMappings] = useState([]);
-  const [usersByServer, setUsersByServer] = useState({ plex: [], emby: [], audiobookshelf: [] });
+  const [usersByServer, setUsersByServer] = useState({ plex: [], emby: [], audiobookshelf: [], sapho: [] });
   const [showMappingForm, setShowMappingForm] = useState(false);
   const [mappingFormData, setMappingFormData] = useState({
     primary_username: '',
     mappings: {
       plex: '',
       emby: '',
-      audiobookshelf: ''
+      audiobookshelf: '',
+      sapho: ''
     },
     preferred_avatar_server: 'plex' // Which server's avatar to use
   });
@@ -76,7 +77,7 @@ export default function Settings() {
   const loadUsersByServer = async () => {
     try {
       const response = await getUsersByServer();
-      setUsersByServer(response.data.data || { plex: [], emby: [], audiobookshelf: [] });
+      setUsersByServer(response.data.data || { plex: [], emby: [], audiobookshelf: [], sapho: [] });
     } catch (error) {
       console.error('Failed to load users by server:', error);
     }
@@ -416,7 +417,8 @@ export default function Settings() {
       mappings: {
         plex: '',
         emby: '',
-        audiobookshelf: ''
+        audiobookshelf: '',
+        sapho: ''
       },
       preferred_avatar_server: 'plex'
     });
@@ -429,7 +431,8 @@ export default function Settings() {
       mappings: {
         plex: mapping.mappings.plex || '',
         emby: mapping.mappings.emby || '',
-        audiobookshelf: mapping.mappings.audiobookshelf || ''
+        audiobookshelf: mapping.mappings.audiobookshelf || '',
+        sapho: mapping.mappings.sapho || ''
       },
       preferred_avatar_server: mapping.preferred_avatar_server || 'plex'
     });
@@ -442,7 +445,8 @@ export default function Settings() {
       mappings: {
         plex: '',
         emby: '',
-        audiobookshelf: ''
+        audiobookshelf: '',
+        sapho: ''
       },
       preferred_avatar_server: 'plex'
     });
@@ -480,7 +484,8 @@ export default function Settings() {
     const labels = {
       emby: { name: 'Emby', color: 'bg-green-500/20 text-green-400' },
       plex: { name: 'Plex', color: 'bg-yellow-500/20 text-yellow-400' },
-      audiobookshelf: { name: 'Audiobookshelf', color: 'bg-blue-500/20 text-blue-400' }
+      audiobookshelf: { name: 'Audiobookshelf', color: 'bg-amber-500/20 text-amber-600' },
+      sapho: { name: 'Sapho', color: 'bg-teal-500/20 text-teal-400' }
     };
     return labels[type] || { name: type, color: 'bg-gray-500/20 text-gray-400' };
   };
@@ -493,6 +498,8 @@ export default function Settings() {
         return <img src="/logos/plex.svg" alt="Plex" className="w-5 h-5" />;
       case 'audiobookshelf':
         return <img src="/logos/audiobookshelf.svg" alt="Audiobookshelf" className="w-5 h-5" />;
+      case 'sapho':
+        return <img src="/logos/sapho.svg" alt="Sapho" className="w-6 h-6" />;
       default:
         return <Server className="w-5 h-5" />;
     }
@@ -555,6 +562,7 @@ export default function Settings() {
                   <option value="emby">Emby</option>
                   <option value="plex">Plex</option>
                   <option value="audiobookshelf">Audiobookshelf</option>
+                  <option value="sapho">Sapho</option>
                 </select>
               </div>
 
@@ -789,7 +797,7 @@ export default function Settings() {
                 <p className="text-xs text-gray-500 mt-1">This is the username that will be displayed in all statistics</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 {/* Plex */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
@@ -852,6 +860,27 @@ export default function Settings() {
                     ))}
                   </select>
                 </div>
+
+                {/* Sapho */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
+                    {getServerIcon('sapho')}
+                    Sapho Username
+                  </label>
+                  <select
+                    value={mappingFormData.mappings.sapho}
+                    onChange={(e) => setMappingFormData({
+                      ...mappingFormData,
+                      mappings: { ...mappingFormData.mappings, sapho: e.target.value }
+                    })}
+                    className="w-full px-4 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  >
+                    <option value="">None</option>
+                    {usersByServer.sapho?.map(user => (
+                      <option key={user.username} value={user.username}>{user.username}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* Avatar Selection */}
@@ -860,7 +889,7 @@ export default function Settings() {
                   Preferred Avatar
                 </label>
                 <p className="text-xs text-gray-500 mb-3">Choose which server's avatar to display for this user</p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                   {/* Plex Avatar Option */}
                   <label className="flex items-center gap-3 p-3 bg-dark-700 border border-dark-600 rounded-lg cursor-pointer hover:border-primary-500 transition-colors">
                     <input
@@ -926,6 +955,28 @@ export default function Settings() {
                       </span>
                     </div>
                   </label>
+
+                  {/* Sapho Avatar Option */}
+                  <label className="flex items-center gap-3 p-3 bg-dark-700 border border-dark-600 rounded-lg cursor-pointer hover:border-primary-500 transition-colors">
+                    <input
+                      type="radio"
+                      name="preferred_avatar"
+                      value="sapho"
+                      checked={mappingFormData.preferred_avatar_server === 'sapho'}
+                      onChange={(e) => setMappingFormData({
+                        ...mappingFormData,
+                        preferred_avatar_server: e.target.value
+                      })}
+                      className="w-4 h-4 text-primary-600 focus:ring-primary-500 focus:ring-2"
+                      disabled={!mappingFormData.mappings.sapho}
+                    />
+                    <div className="flex items-center gap-2">
+                      {getServerIcon('sapho')}
+                      <span className={`text-sm ${mappingFormData.mappings.sapho ? 'text-gray-200' : 'text-gray-500'}`}>
+                        Sapho
+                      </span>
+                    </div>
+                  </label>
                 </div>
               </div>
 
@@ -976,7 +1027,7 @@ export default function Settings() {
 
               // If no avatar from preferred server, try others
               if (!avatarUrl) {
-                for (const serverType of ['plex', 'emby', 'audiobookshelf']) {
+                for (const serverType of ['plex', 'emby', 'audiobookshelf', 'sapho']) {
                   if (serverType !== preferredServer && mapping.mappings[serverType]) {
                     const user = usersByServer[serverType]?.find(u => u.username === mapping.mappings[serverType]);
                     if (user?.thumb) {
@@ -1031,7 +1082,14 @@ export default function Settings() {
                               <span className="text-gray-300">{mapping.mappings.audiobookshelf}</span>
                             </div>
                           )}
-                          {!mapping.mappings.plex && !mapping.mappings.emby && !mapping.mappings.audiobookshelf && (
+                          {/* Sapho */}
+                          {mapping.mappings.sapho && (
+                            <div className="flex items-center gap-2 px-2 py-1 bg-dark-700 rounded text-xs">
+                              {getServerIcon('sapho')}
+                              <span className="text-gray-300">{mapping.mappings.sapho}</span>
+                            </div>
+                          )}
+                          {!mapping.mappings.plex && !mapping.mappings.emby && !mapping.mappings.audiobookshelf && !mapping.mappings.sapho && (
                             <span className="text-gray-500 text-sm">No server mappings</span>
                           )}
                         </div>

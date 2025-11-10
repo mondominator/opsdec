@@ -35,13 +35,13 @@ app.get('/proxy/image', async (req, res) => {
       return res.status(400).send('Missing url parameter');
     }
 
-    // Check if this is an Audiobookshelf URL and add auth if needed
+    // Check if this URL needs authentication and add auth header if needed
     const headers = {};
 
-    // Check database for Audiobookshelf servers
+    // Check database for servers that require authentication (Audiobookshelf, Sapho)
     try {
-      const audiobookshelfServers = db.prepare('SELECT * FROM servers WHERE type = ? AND enabled = 1').all('audiobookshelf');
-      for (const server of audiobookshelfServers) {
+      const servers = db.prepare('SELECT * FROM servers WHERE enabled = 1').all();
+      for (const server of servers) {
         if (imageUrl.startsWith(server.url)) {
           headers['Authorization'] = `Bearer ${server.api_key}`;
           break;

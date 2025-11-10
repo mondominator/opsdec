@@ -1,6 +1,6 @@
 import express from 'express';
 import db from '../database/init.js';
-import { embyService, audiobookshelfService } from '../services/monitor.js';
+import { embyService, audiobookshelfService, saphoService } from '../services/monitor.js';
 import multer from 'multer';
 
 const router = express.Router();
@@ -746,8 +746,8 @@ router.get('/stats/dashboard', (req, res) => {
           SELECT DISTINCT h.username, h.server_type,
           (SELECT thumb FROM users WHERE username = h.username AND server_type = h.server_type AND thumb IS NOT NULL LIMIT 1) as thumb
           FROM history h
-          WHERE media_id = ? OR grandparent_title = ?
-        `).all(item.media_id, item.title);
+          WHERE media_id = ? OR grandparent_title = ? OR title = ?
+        `).all(item.media_id, item.title, item.title);
 
         // Apply user mappings and deduplicate by primary username
         const usersByPrimary = {};
@@ -948,6 +948,23 @@ router.get('/audiobookshelf/libraries', async (req, res) => {
   }
 });
 
+// Get Sapho libraries
+router.get('/sapho/libraries', async (req, res) => {
+  try {
+    if (!saphoService) {
+      return res.status(503).json({
+        success: false,
+        error: 'Sapho service not configured',
+      });
+    }
+
+    const libraries = await saphoService.getLibraries();
+    res.json({ success: true, data: libraries });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Server Configuration Endpoints
 // Get all servers (including environment variable servers)
 router.get('/servers', (req, res) => {
@@ -1072,6 +1089,12 @@ router.post('/servers/:id/test', async (req, res) => {
           url: process.env.AUDIOBOOKSHELF_URL,
           api_key: process.env.AUDIOBOOKSHELF_TOKEN
         };
+      } else if (envType === 'sapho' && process.env.SAPHO_URL && process.env.SAPHO_API_KEY) {
+        server = {
+          type: 'sapho',
+          url: process.env.SAPHO_URL,
+          api_key: process.env.SAPHO_API_KEY
+        };
       }
     }
 
@@ -1090,6 +1113,9 @@ router.post('/servers/:id/test', async (req, res) => {
     } else if (server.type === 'audiobookshelf') {
       const { default: AudiobookshelfService } = await import('../services/audiobookshelf.js');
       ServiceClass = AudiobookshelfService;
+    } else if (server.type === 'sapho') {
+      const { default: SaphoService } = await import('../services/sapho.js');
+      ServiceClass = SaphoService;
     } else {
       return res.status(400).json({ success: false, error: 'Invalid server type' });
     }
