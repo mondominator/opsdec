@@ -1269,11 +1269,11 @@ export default function Settings() {
                     <span>Size: {formatFileSize(backup.size)}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                   <button
                     onClick={() => handleRestoreBackup(backup.filename)}
                     disabled={restoringBackup === backup.filename}
-                    className="flex-1 sm:flex-none px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-700 disabled:opacity-50 text-white rounded text-xs sm:text-sm font-medium transition-colors flex items-center justify-center gap-1"
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-700 disabled:opacity-50 text-white rounded text-xs sm:text-sm font-medium transition-colors flex items-center justify-center gap-1"
                   >
                     <Upload className="w-3.5 h-3.5" />
                     {restoringBackup === backup.filename ? 'Restoring...' : 'Restore'}
@@ -1281,7 +1281,7 @@ export default function Settings() {
                   <a
                     href={`/api/database/backups/${backup.filename}/download`}
                     download={backup.filename}
-                    className="flex-1 sm:flex-none px-3 py-1.5 bg-primary-600 hover:bg-primary-500 text-white rounded text-xs sm:text-sm font-medium transition-colors flex items-center justify-center gap-1"
+                    className="px-3 py-1.5 bg-primary-600 hover:bg-primary-500 text-white rounded text-xs sm:text-sm font-medium transition-colors flex items-center justify-center gap-1"
                   >
                     <Download className="w-3.5 h-3.5" />
                     Download
@@ -1289,10 +1289,10 @@ export default function Settings() {
                   <button
                     onClick={() => handleDeleteBackup(backup.filename)}
                     disabled={restoringBackup === backup.filename}
-                    className="sm:flex-none px-3 py-1.5 bg-dark-600 hover:bg-dark-500 disabled:opacity-50 text-gray-300 rounded text-xs sm:text-sm font-medium transition-colors flex items-center justify-center gap-1"
+                    className="px-3 py-1.5 bg-dark-600 hover:bg-dark-500 disabled:opacity-50 text-gray-300 rounded text-xs sm:text-sm font-medium transition-colors flex items-center justify-center gap-1"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    <span className="sm:hidden">Delete</span>
+                    Delete
                   </button>
                 </div>
               </div>
