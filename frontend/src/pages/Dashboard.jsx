@@ -193,7 +193,7 @@ function Dashboard() {
                     </div>
 
                     {/* Location info */}
-                    {session.server_type !== 'sappho' && (session.city || session.ip_address) && (
+                    {(session.city || session.ip_address) && (
                       <div className="text-xs text-gray-500 mb-3">
                         {session.city === 'Local Network' ? (
                           <span>Local Network</span>
