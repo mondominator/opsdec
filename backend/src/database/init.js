@@ -14,7 +14,9 @@ export const db = new Database(dbPath);
 // Use DELETE journal mode instead of WAL for better Docker volume compatibility
 // WAL mode can cause corruption issues with Docker volumes, especially on macOS
 db.pragma('journal_mode = DELETE');
-db.pragma('synchronous = NORMAL'); // Good balance of safety and performance
+db.pragma('synchronous = FULL'); // Maximum safety for Docker volumes on macOS
+db.pragma('cache_size = -64000'); // 64MB cache
+db.pragma('temp_store = MEMORY'); // Store temp tables in memory
 
 export function initDatabase() {
   console.log('🗄️  Initializing database...');
