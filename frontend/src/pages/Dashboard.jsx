@@ -119,7 +119,7 @@ function Dashboard() {
                       </div>
                     </div>
                     {/* Server label */}
-                    <div className="flex items-center justify-center gap-1 text-xs font-semibold capitalize">
+                    <div className={`flex items-center justify-center text-xs font-semibold ${session.server_type === 'sappho' ? '-space-x-0.5' : 'gap-1 capitalize'}`}>
                       {getServerIcon(session.server_type, session.server_type === 'sappho' ? 'w-5 h-5' : 'w-3.5 h-3.5')}
                       <span className={
                         session.server_type === 'emby' ? 'text-green-400' :
@@ -128,7 +128,7 @@ function Dashboard() {
                         session.server_type === 'sappho' ? 'text-blue-400' :
                         'text-gray-400'
                       }>
-                        {session.server_type}
+                        {session.server_type === 'sappho' ? 'appho' : session.server_type}
                       </span>
                     </div>
                   </div>
@@ -193,7 +193,7 @@ function Dashboard() {
                     </div>
 
                     {/* Location info */}
-                    {(session.city || session.ip_address) && (
+                    {session.server_type !== 'sappho' && (session.city || session.ip_address) && (
                       <div className="text-xs text-gray-500 mb-3">
                         {session.city === 'Local Network' ? (
                           <span>Local Network</span>

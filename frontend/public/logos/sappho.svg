@@ -5,8 +5,12 @@
       <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
     </linearGradient>
   </defs>
-  <path d="M 50 15 C 30 15, 20 25, 20 35 C 20 45, 30 50, 40 50 C 30 50, 20 55, 20 65 C 20 75, 30 85, 50 85 C 65 85, 75 78, 78 70 L 65 70 C 63 74, 58 77, 50 77 C 38 77, 32 72, 32 65 C 32 58, 38 55, 48 55 L 55 55 L 55 45 L 48 45 C 38 45, 32 42, 32 35 C 32 28, 38 23, 50 23 C 58 23, 63 26, 65 30 L 78 30 C 75 22, 65 15, 50 15 Z"
+  <text x="50" y="75"
+        font-family="Arial, sans-serif"
+        font-size="80"
+        font-weight="bold"
+        text-anchor="middle"
         fill="url(#blueGradient)"
         stroke="#2563eb"
-        stroke-width="2"/>
+        stroke-width="2">S</text>
 </svg>

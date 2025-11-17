@@ -215,9 +215,16 @@ async function updateSession(activity, serverType) {
       activity.country = geoData.country;
     } catch (error) {
       console.error('Error looking up geolocation:', error.message);
-      activity.city = null;
-      activity.region = null;
-      activity.country = null;
+      // If geolocation fails and it's a LAN connection, set "Local Network"
+      if (activity.location === 'lan') {
+        activity.city = 'Local Network';
+        activity.region = null;
+        activity.country = null;
+      } else {
+        activity.city = null;
+        activity.region = null;
+        activity.country = null;
+      }
     }
   } else {
     activity.city = null;

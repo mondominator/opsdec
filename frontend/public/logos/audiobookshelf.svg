@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <!-- Headphones arc -->
-  <path fill="none" stroke="#3B82F6" stroke-width="32" d="M64 256c0-106 86-192 192-192s192 86 192 192v128"/>
+  <path fill="none" stroke="#d97706" stroke-width="32" d="M64 256c0-106 86-192 192-192s192 86 192 192v128"/>
 
   <!-- Left ear cup -->
-  <rect fill="#3B82F6" x="32" y="320" width="64" height="96" rx="16"/>
+  <rect fill="#d97706" x="32" y="320" width="64" height="96" rx="16"/>
 
   <!-- Right ear cup -->
-  <rect fill="#3B82F6" x="416" y="320" width="64" height="96" rx="16"/>
+  <rect fill="#d97706" x="416" y="320" width="64" height="96" rx="16"/>
 
   <!-- Bookshelf -->
-  <path fill="#3B82F6" d="M200 160h24v192h-24V160zm48 0h32v192h-32V160zm56 0h24v192h-24V160zM184 360h144v16H184v-16z"/>
+  <path fill="#d97706" d="M200 160h24v192h-24V160zm48 0h32v192h-32V160zm56 0h24v192h-24V160zM184 360h144v16H184v-16z"/>
 </svg>
