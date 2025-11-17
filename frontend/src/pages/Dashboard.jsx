@@ -93,7 +93,7 @@ function Dashboard() {
               Currently Streaming ({activity.length})
             </h3>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-4 md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-4 md:space-y-0">
             {activity.map((session) => (
               <div
                 key={session.id}
