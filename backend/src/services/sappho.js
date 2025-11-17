@@ -113,10 +113,16 @@ class SapphoService {
       const ipAddress = session.ipAddress || null;
       let location = null;
 
+      // Debug logging
+      console.log(`[OpsDec] Parsing Sappho session - Received IP: ${ipAddress}, Session ID: ${session.sessionId}`);
+
       if (ipAddress) {
         // Check if it's a private IP (LAN)
         const isPrivate = this.isPrivateIP(ipAddress);
         location = isPrivate ? 'lan' : 'wan';
+        console.log(`[OpsDec] IP ${ipAddress} classified as: ${location}`);
+      } else {
+        console.log(`[OpsDec] WARNING: No IP address in Sappho session data`);
       }
 
       return {
