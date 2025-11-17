@@ -292,42 +292,56 @@ async function updateSession(activity, serverType) {
       // Add old session to history if it meets criteria
       if (shouldAddToHistory(existing.title, existing.duration, existing.progress_percent, existing.user_id, streamDuration, existing.media_type)) {
         try {
-          db.prepare(`
-            INSERT INTO history (
-              session_id, server_type, user_id, username,
-              media_type, media_id, title, parent_title, grandparent_title,
-              watched_at, duration, percent_complete, thumb, stream_duration,
-              ip_address, city, region, country
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `).run(
-            oldSessionId,
-            existing.server_type,
-            existing.user_id,
-            existing.username,
-            existing.media_type,
-            existing.media_id,
-            existing.title,
-            existing.parent_title,
-            existing.grandparent_title,
-            stopNow,
-            existing.duration,
-            existing.progress_percent,
-            existing.thumb,
-            streamDuration,
-            existing.ip_address,
-            existing.city,
-            existing.region,
-            existing.country
-          );
+          // Check for duplicate history entries
+          // Look for entries with same user, media, and similar timestamp/duration
+          const existingHistory = db.prepare(`
+            SELECT id FROM history
+            WHERE user_id = ?
+              AND media_id = ?
+              AND ABS(watched_at - ?) < 60
+              AND ABS(stream_duration - ?) < 5
+          `).get(existing.user_id, existing.media_id, stopNow, streamDuration);
 
-          db.prepare(`
-            UPDATE users
-            SET total_plays = total_plays + 1,
-                total_duration = total_duration + ?
-            WHERE id = ?
-          `).run(streamDuration, existing.user_id);
+          if (!existingHistory) {
+            db.prepare(`
+              INSERT INTO history (
+                session_id, server_type, user_id, username,
+                media_type, media_id, title, parent_title, grandparent_title,
+                watched_at, duration, percent_complete, thumb, stream_duration,
+                ip_address, city, region, country
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(
+              oldSessionId,
+              existing.server_type,
+              existing.user_id,
+              existing.username,
+              existing.media_type,
+              existing.media_id,
+              existing.title,
+              existing.parent_title,
+              existing.grandparent_title,
+              stopNow,
+              existing.duration,
+              existing.progress_percent,
+              existing.thumb,
+              streamDuration,
+              existing.ip_address,
+              existing.city,
+              existing.region,
+              existing.country
+            );
 
-          console.log(`📝 Added to history: ${existing.title} (${existing.progress_percent}%)`);
+            db.prepare(`
+              UPDATE users
+              SET total_plays = total_plays + 1,
+                  total_duration = total_duration + ?
+              WHERE id = ?
+            `).run(streamDuration, existing.user_id);
+
+            console.log(`📝 Added to history: ${existing.title} (${existing.progress_percent}%)`);
+          } else {
+            console.log(`   Skipped history: Duplicate detected for ${existing.title}`);
+          }
         } catch (error) {
           console.error(`Error adding to history:`, error.message);
         }
@@ -791,11 +805,15 @@ function stopInactiveSessions(activeSessionKeys) {
       // Add to history if it meets criteria
       if (shouldAddToHistory(session.title, session.duration, session.progress_percent, session.user_id, streamDuration, sessionData.media_type)) {
         try {
-          // Check if this media_id has already been added to history for this session
+          // Check for duplicate history entries
+          // Look for entries with same user, media, and similar timestamp/duration
           const existingHistory = db.prepare(`
             SELECT id FROM history
-            WHERE session_id = ? AND media_id = ?
-          `).get(sessionData.id, sessionData.media_id);
+            WHERE user_id = ?
+              AND media_id = ?
+              AND ABS(watched_at - ?) < 60
+              AND ABS(stream_duration - ?) < 5
+          `).get(sessionData.user_id, sessionData.media_id, now, streamDuration);
 
           if (!existingHistory) {
 
@@ -837,7 +855,7 @@ function stopInactiveSessions(activeSessionKeys) {
 
             console.log(`📝 Added to history: ${session.title} (${session.progress_percent}%)`);
           } else {
-            console.log(`   Skipped history: Already added for this media (${session.title})`);
+            console.log(`   Skipped history: Duplicate detected for ${session.title}`);
           }
         } catch (error) {
           console.error(`Error adding to history:`, error.message);
