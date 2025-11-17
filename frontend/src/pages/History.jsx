@@ -14,7 +14,7 @@ const getServerIcon = (serverType) => {
     case 'audiobookshelf':
       return <img src="/logos/audiobookshelf.svg" alt="Audiobookshelf" className="w-5 h-5" title="Audiobookshelf" />;
     case 'sappho':
-      return <img src="/logos/sappho.svg" alt="Sappho" className="w-6 h-6" title="Sappho" />;
+      return <img src="/logos/sappho.svg" alt="Sappho" className="w-5 h-5" title="Sappho" />;
     default:
       return null;
   }
@@ -356,7 +356,92 @@ function History() {
         </div>
       ) : (
         <>
-          <div className="card">
+          {/* Mobile View - Card Layout */}
+          <div className="md:hidden space-y-3">
+            {paginatedHistory.map((item) => (
+              <div key={item.id} className="card p-4">
+                <div className="flex gap-3 mb-3">
+                  {/* Thumbnail */}
+                  <div className="flex-shrink-0">
+                    {item.thumb ? (
+                      <img
+                        src={item.server_type === 'sappho' || item.server_type === 'audiobookshelf'
+                          ? `/proxy/image?url=${encodeURIComponent(item.thumb)}`
+                          : item.thumb
+                        }
+                        alt={item.title}
+                        className="w-12 h-16 object-cover rounded"
+                      />
+                    ) : (
+                      <div className="w-12 h-16 bg-dark-600 rounded flex items-center justify-center">
+                        <PlayCircle className="w-6 h-6 text-gray-500" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Title and User */}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white font-medium text-sm mb-1 line-clamp-2">{item.title}</div>
+                    {item.parent_title && (
+                      <div className="text-xs text-gray-400 mb-2 truncate">{item.parent_title}</div>
+                    )}
+                    <div className="flex items-center gap-2 mb-2">
+                      {item.user_thumb ? (
+                        <img
+                          src={`/proxy/image?url=${encodeURIComponent(item.user_thumb)}`}
+                          alt={item.username}
+                          className="w-5 h-5 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-5 h-5 bg-primary-600 rounded-full flex items-center justify-center text-white text-xs">
+                          {item.username.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <span className="text-xs text-gray-300 truncate">{item.username}</span>
+                    </div>
+                  </div>
+
+                  {/* Delete button */}
+                  <button
+                    onClick={() => handleDelete(item.id)}
+                    className="flex-shrink-0 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-500/10 rounded transition-colors h-fit"
+                    title="Delete entry"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="mb-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="flex-1 bg-dark-600 rounded-full h-1.5">
+                      <div
+                        className="bg-primary-500 h-1.5 rounded-full"
+                        style={{ width: `${item.percent_complete}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-400">{item.percent_complete}%</span>
+                  </div>
+                </div>
+
+                {/* Metadata Row */}
+                <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
+                  <div className="flex items-center gap-1">
+                    {getServerIcon(item.server_type)}
+                  </div>
+                  <span className="capitalize">{formatMediaType(item.media_type)}</span>
+                  <span>•</span>
+                  <span>{item.stream_duration ? formatDuration(item.stream_duration) : '-'}</span>
+                  <span>•</span>
+                  <span>{formatLocation(item)}</span>
+                  <div className="w-full text-gray-500 mt-1">{formatTimestamp(item.watched_at)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop View - Table */}
+          <div className="hidden md:block card">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-dark-700">

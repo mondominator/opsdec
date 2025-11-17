@@ -84,6 +84,8 @@ function Users() {
         return <img src="/logos/plex.svg" alt="Plex" className="w-4 h-4" title="Plex" />;
       case 'audiobookshelf':
         return <img src="/logos/audiobookshelf.svg" alt="Audiobookshelf" className="w-4 h-4" title="Audiobookshelf" />;
+      case 'sappho':
+        return <img src="/logos/sappho.svg" alt="Sappho" className="w-4 h-4" title="Sappho" />;
       default:
         return null;
     }
@@ -139,108 +141,173 @@ function Users() {
           </div>
         </div>
       ) : (
-        <div className="card">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-dark-700">
-                <tr>
-                  <th
-                    className="px-6 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors"
-                    onClick={() => handleSort('username')}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>User</span>
-                      {getSortIcon('username')}
+        <>
+          {/* Mobile View - Card Layout */}
+          <div className="md:hidden space-y-3">
+            {filteredUsers.map((user) => (
+              <div
+                key={user.id}
+                onClick={() => navigate(`/users/${user.id}`)}
+                className="card p-4 hover:border-primary-500 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  {user.thumb ? (
+                    <img
+                      src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`}
+                      alt={user.username}
+                      className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center text-white font-medium flex-shrink-0">
+                      {user.username.charAt(0).toUpperCase()}
                     </div>
-                  </th>
-                  <th
-                    className="px-6 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors"
-                    onClick={() => handleSort('watch_duration')}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>Watch Time</span>
-                      {getSortIcon('watch_duration')}
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-white font-medium truncate">{user.username}</span>
+                      {user.is_admin && (
+                        <span className="text-xs bg-primary-500/20 text-primary-400 px-2 py-0.5 rounded flex-shrink-0">
+                          Admin
+                        </span>
+                      )}
                     </div>
-                  </th>
-                  <th
-                    className="px-6 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors"
-                    onClick={() => handleSort('listen_duration')}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>Listen Time</span>
-                      {getSortIcon('listen_duration')}
-                    </div>
-                  </th>
-                  <th
-                    className="px-6 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors"
-                    onClick={() => handleSort('last_seen')}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>Last Seen</span>
-                      {getSortIcon('last_seen')}
-                    </div>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-dark-700">
-                {filteredUsers.map((user) => (
-                  <tr
-                    key={user.id}
-                    onClick={() => navigate(`/users/${user.id}`)}
-                    className="hover:bg-dark-700/50 transition-colors cursor-pointer"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center space-x-3">
-                        {user.thumb ? (
-                          <img
-                            src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`}
-                            alt={user.username}
-                            className="w-10 h-10 rounded-full object-cover"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 bg-primary-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
-                            {user.username.charAt(0).toUpperCase()}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {user.is_mapped && user.server_types && user.server_types.length > 0 ? (
+                        user.server_types.map((serverType, index) => (
+                          <div key={index}>
+                            {getServerIcon(serverType)}
                           </div>
-                        )}
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-white font-medium hover:text-primary-400 transition-colors">
-                              {user.username}
-                            </span>
-                            {user.is_mapped && user.server_types && user.server_types.length > 0 ? (
-                              user.server_types.map((serverType, index) => (
-                                <div key={index}>
-                                  {getServerIcon(serverType)}
-                                </div>
-                              ))
-                            ) : !user.is_mapped && user.server_type ? (
-                              getServerIcon(user.server_type)
-                            ) : null}
-                            {user.is_admin ? (
-                              <span className="text-xs bg-primary-500/20 text-primary-400 px-2 py-0.5 rounded">
-                                Admin
+                        ))
+                      ) : !user.is_mapped && user.server_type ? (
+                        getServerIcon(user.server_type)
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+                {/* Watch/Listen Time in Row */}
+                <div className="flex items-center gap-4 text-sm">
+                  <div>
+                    <div className="text-gray-500 text-xs">Watch</div>
+                    <div className="text-white">{formatDuration(user.watch_duration || 0)}</div>
+                  </div>
+                  <div>
+                    <div className="text-gray-500 text-xs">Listen</div>
+                    <div className="text-white">{formatDuration(user.listen_duration || 0)}</div>
+                  </div>
+                  <div className="ml-auto text-right">
+                    <div className="text-gray-500 text-xs">Last Seen</div>
+                    <div className="text-gray-300 text-xs">{formatTimeAgo(user.last_seen)}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop View - Table */}
+          <div className="hidden md:block card">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-dark-700">
+                  <tr>
+                    <th
+                      className="px-6 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors"
+                      onClick={() => handleSort('username')}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>User</span>
+                        {getSortIcon('username')}
+                      </div>
+                    </th>
+                    <th
+                      className="px-6 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors"
+                      onClick={() => handleSort('watch_duration')}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>Watch Time</span>
+                        {getSortIcon('watch_duration')}
+                      </div>
+                    </th>
+                    <th
+                      className="px-6 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors"
+                      onClick={() => handleSort('listen_duration')}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>Listen Time</span>
+                        {getSortIcon('listen_duration')}
+                      </div>
+                    </th>
+                    <th
+                      className="px-6 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors"
+                      onClick={() => handleSort('last_seen')}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>Last Seen</span>
+                        {getSortIcon('last_seen')}
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-dark-700">
+                  {filteredUsers.map((user) => (
+                    <tr
+                      key={user.id}
+                      onClick={() => navigate(`/users/${user.id}`)}
+                      className="hover:bg-dark-700/50 transition-colors cursor-pointer"
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center space-x-3">
+                          {user.thumb ? (
+                            <img
+                              src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`}
+                              alt={user.username}
+                              className="w-10 h-10 rounded-full object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 bg-primary-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
+                              {user.username.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-white font-medium hover:text-primary-400 transition-colors">
+                                {user.username}
                               </span>
-                            ) : null}
+                              {user.is_mapped && user.server_types && user.server_types.length > 0 ? (
+                                user.server_types.map((serverType, index) => (
+                                  <div key={index}>
+                                    {getServerIcon(serverType)}
+                                  </div>
+                                ))
+                              ) : !user.is_mapped && user.server_type ? (
+                                getServerIcon(user.server_type)
+                              ) : null}
+                              {user.is_admin ? (
+                                <span className="text-xs bg-primary-500/20 text-primary-400 px-2 py-0.5 rounded">
+                                  Admin
+                                </span>
+                              ) : null}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-gray-300">{formatDuration(user.watch_duration || 0)}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-gray-300">{formatDuration(user.listen_duration || 0)}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-gray-300">{formatTimeAgo(user.last_seen)}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-gray-300">{formatDuration(user.watch_duration || 0)}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-gray-300">{formatDuration(user.listen_duration || 0)}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-gray-300">{formatTimeAgo(user.last_seen)}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

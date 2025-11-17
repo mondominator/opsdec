@@ -60,6 +60,8 @@ function UserDetails() {
         return <img src="/logos/plex.svg" alt="Plex" className="w-5 h-5" title="Plex" />;
       case 'audiobookshelf':
         return <img src="/logos/audiobookshelf.svg" alt="Audiobookshelf" className="w-5 h-5" title="Audiobookshelf" />;
+      case 'sappho':
+        return <img src="/logos/sappho.svg" alt="Sappho" className="w-5 h-5" title="Sappho" />;
       default:
         return <Server className="w-5 h-5 text-gray-500" />;
     }
