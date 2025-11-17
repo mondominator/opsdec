@@ -210,9 +210,9 @@ function Dashboard() {
                       <div className="flex justify-between text-xs text-gray-400 mb-1">
                         <span>
                           {session.current_time && session.duration
-                            ? `${formatDuration(session.current_time)} / ${formatDuration(session.duration)}`
+                            ? `${formatDuration(session.current_time, session.server_type === 'sapho')} / ${formatDuration(session.duration, session.server_type === 'sapho')}`
                             : session.duration
-                            ? formatDuration(session.duration)
+                            ? formatDuration(session.duration, session.server_type === 'sapho')
                             : 'Unknown'}
                         </span>
                         {session.progress_percent > 0 && (

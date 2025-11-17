@@ -10,7 +10,7 @@ export const setTimezone = (timezone) => {
 
 export const getTimezone = () => currentTimezone;
 
-export const formatDuration = (seconds) => {
+export const formatDuration = (seconds, showSeconds = false) => {
   if (!seconds) return 'N/A';
 
   const hours = Math.floor(seconds / 3600);
@@ -18,7 +18,7 @@ export const formatDuration = (seconds) => {
   const secs = seconds % 60;
 
   if (hours > 0) {
-    return `${hours}h ${minutes}m`;
+    return showSeconds ? `${hours}h ${minutes}m ${secs}s` : `${hours}h ${minutes}m`;
   } else if (minutes > 0) {
     return `${minutes}m ${secs}s`;
   } else {

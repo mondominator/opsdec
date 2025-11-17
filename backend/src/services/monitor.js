@@ -658,7 +658,7 @@ function stopInactiveSessions(activeSessionKeys) {
 
   // First, clean up stale paused sessions (paused for more than 30 seconds)
   // Note: Audiobookshelf is excluded because it handles its own history import
-  // Sapho paused sessions are included to prevent them from staying active indefinitely
+  // Sapho, Plex, and Emby sessions are included for proper history tracking
   console.log(`🔍 Paused session check: now=${now}, timeout=${PAUSED_SESSION_TIMEOUT}`);
 
   const stalePausedSessions = db.prepare(`
@@ -754,8 +754,9 @@ function stopInactiveSessions(activeSessionKeys) {
   `).all();
 
   for (const session of activeSessions) {
-    // Skip Audiobookshelf and Sapho sessions - they handle their own cleanup
-    if (session.server_type === 'audiobookshelf' || session.server_type === 'sapho') {
+    // Skip Audiobookshelf sessions - they handle their own cleanup via history import
+    // Sapho sessions are included in the normal cleanup flow
+    if (session.server_type === 'audiobookshelf') {
       continue;
     }
 
