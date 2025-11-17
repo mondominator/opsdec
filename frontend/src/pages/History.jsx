@@ -442,52 +442,21 @@ function History() {
 
           {/* Desktop View - Table */}
           <div className="hidden md:block card">
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <div>
+              <table className="w-full table-fixed">
                 <thead className="bg-dark-700">
                   <tr>
                     <th
-                      className="px-6 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors relative"
+                      className="px-6 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors relative w-[30%]"
                       onClick={() => handleSort('title')}
-                      style={{ maxWidth: `${mediaColumnWidth}px` }}
                     >
                       <div className="flex items-center gap-2">
                         <span>Media</span>
                         {getSortIcon('title')}
                       </div>
-                      <div
-                        className="absolute right-0 top-0 bottom-0 w-8 cursor-col-resize hover:bg-primary-500/20 transition-colors flex items-center justify-end pr-1"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          const startX = e.clientX;
-                          const startWidth = mediaColumnWidth;
-
-                          const handleMouseMove = (moveEvent) => {
-                            const newWidth = Math.max(200, Math.min(800, startWidth + (moveEvent.clientX - startX)));
-                            setMediaColumnWidth(newWidth);
-                          };
-
-                          const handleMouseUp = () => {
-                            document.removeEventListener('mousemove', handleMouseMove);
-                            document.removeEventListener('mouseup', handleMouseUp);
-                            document.body.style.cursor = '';
-                            document.body.style.userSelect = '';
-                          };
-
-                          document.body.style.cursor = 'col-resize';
-                          document.body.style.userSelect = 'none';
-                          document.addEventListener('mousemove', handleMouseMove);
-                          document.addEventListener('mouseup', handleMouseUp);
-                        }}
-                      >
-                        <div className="w-1 h-6 bg-gray-600 rounded" />
-                      </div>
                     </th>
                     <th
-                      className="px-6 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors"
+                      className="px-4 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors w-[12%]"
                       onClick={() => handleSort('username')}
                     >
                       <div className="flex items-center gap-2">
@@ -496,7 +465,7 @@ function History() {
                       </div>
                     </th>
                     <th
-                      className="px-6 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors"
+                      className="px-4 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors w-[8%]"
                       onClick={() => handleSort('server_type')}
                     >
                       <div className="flex items-center gap-2">
@@ -505,7 +474,7 @@ function History() {
                       </div>
                     </th>
                     <th
-                      className="px-6 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors"
+                      className="px-4 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors w-[10%]"
                       onClick={() => handleSort('media_type')}
                     >
                       <div className="flex items-center gap-2">
@@ -514,7 +483,7 @@ function History() {
                       </div>
                     </th>
                     <th
-                      className="px-6 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors"
+                      className="px-4 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors w-[8%]"
                       onClick={() => handleSort('percent_complete')}
                     >
                       <div className="flex items-center gap-2">
@@ -523,16 +492,16 @@ function History() {
                       </div>
                     </th>
                     <th
-                      className="px-6 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors"
+                      className="px-4 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors w-[10%]"
                       onClick={() => handleSort('stream_duration')}
                     >
                       <div className="flex items-center gap-2">
-                        <span>Stream Time</span>
+                        <span>Duration</span>
                         {getSortIcon('stream_duration')}
                       </div>
                     </th>
                     <th
-                      className="px-6 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors"
+                      className="px-4 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors w-[10%]"
                       onClick={() => handleSort('location')}
                     >
                       <div className="flex items-center gap-2">
@@ -541,15 +510,15 @@ function History() {
                       </div>
                     </th>
                     <th
-                      className="px-6 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors"
+                      className="px-4 py-4 text-left text-sm font-semibold text-gray-300 cursor-pointer hover:bg-dark-600 transition-colors w-[10%]"
                       onClick={() => handleSort('watched_at')}
                     >
                       <div className="flex items-center gap-2">
-                        <span>Watched / Listened</span>
+                        <span>Timestamp</span>
                         {getSortIcon('watched_at')}
                       </div>
                     </th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-300">
+                    <th className="px-4 py-4 text-center text-sm font-semibold text-gray-300 w-[8%]">
                       Actions
                     </th>
                   </tr>
@@ -557,7 +526,7 @@ function History() {
                 <tbody className="divide-y divide-dark-700">
                   {paginatedHistory.map((item) => (
                     <tr key={item.id} className="hover:bg-dark-700/50 transition-colors">
-                      <td className="px-6 py-4 relative" style={{ maxWidth: `${mediaColumnWidth}px` }}>
+                      <td className="px-6 py-4">
                         <div className="flex items-center space-x-4">
                           <div className="flex-shrink-0">
                             {item.thumb ? (
@@ -583,7 +552,7 @@ function History() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-4">
                         <div
                           className="flex items-center space-x-2 cursor-pointer group"
                           onClick={(e) => {
@@ -595,50 +564,50 @@ function History() {
                             <img
                               src={`/proxy/image?url=${encodeURIComponent(item.user_thumb)}`}
                               alt={item.username}
-                              className="w-8 h-8 rounded-full object-cover"
+                              className="w-8 h-8 rounded-full object-cover flex-shrink-0"
                               loading="lazy"
                             />
                           ) : (
-                            <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white font-medium text-xs">
+                            <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white font-medium text-xs flex-shrink-0">
                               {item.username.charAt(0).toUpperCase()}
                             </div>
                           )}
-                          <span className="text-gray-300 group-hover:text-primary-400 transition-colors">
+                          <span className="text-gray-300 group-hover:text-primary-400 transition-colors truncate">
                             {item.username}
                           </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-4">
                         <div className="flex items-center justify-center">
                           {getServerIcon(item.server_type)}
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="text-gray-300">{formatMediaType(item.media_type)}</span>
+                      <td className="px-4 py-4">
+                        <span className="text-gray-300 text-sm truncate">{formatMediaType(item.media_type)}</span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-4">
                         <div className="flex items-center space-x-2">
-                          <div className="w-24 bg-dark-600 rounded-full h-2">
+                          <div className="flex-1 bg-dark-600 rounded-full h-2 min-w-0">
                             <div
                               className="bg-primary-500 h-2 rounded-full"
                               style={{ width: `${item.percent_complete}%` }}
                             />
                           </div>
-                          <span className="text-sm text-gray-400">{item.percent_complete}%</span>
+                          <span className="text-xs text-gray-400 flex-shrink-0">{item.percent_complete}%</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="text-gray-400 text-sm">
+                      <td className="px-4 py-4">
+                        <span className="text-gray-400 text-sm truncate block">
                           {item.stream_duration ? formatDuration(item.stream_duration) : '-'}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="text-gray-400 text-sm">{formatLocation(item)}</span>
+                      <td className="px-4 py-4">
+                        <span className="text-gray-400 text-sm truncate block">{formatLocation(item)}</span>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="text-gray-400 text-sm">{formatTimestamp(item.watched_at)}</span>
+                      <td className="px-4 py-4">
+                        <span className="text-gray-400 text-sm truncate block">{formatTimestamp(item.watched_at)}</span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-4">
                         <div className="flex justify-center">
                           <button
                             onClick={() => handleDelete(item.id)}
