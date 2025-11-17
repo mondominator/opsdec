@@ -93,13 +93,83 @@ function Dashboard() {
               Currently Streaming ({activity.length})
             </h3>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="space-y-4">
             {activity.map((session) => (
               <div
                 key={session.id}
                 className={`card hover:border-primary-500 transition-colors ${session.state === 'playing' ? 'streaming-active' : ''}`}
               >
-                <div className="flex p-4 gap-4">
+                {/* Mobile View - Compact */}
+                <div className="flex md:hidden p-3 gap-3">
+                  {/* Thumbnail */}
+                  <div className="flex-shrink-0">
+                    <div className="relative w-16 h-24 bg-dark-700 rounded overflow-hidden">
+                      {session.thumb ? (
+                        <img
+                          src={`/proxy/image?url=${encodeURIComponent(session.thumb)}`}
+                          alt={session.title}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <PlayCircle className="w-8 h-8 text-gray-500" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    {/* Title and Status */}
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <h4 className="text-sm font-semibold text-white line-clamp-1" title={session.title}>
+                        {session.title}
+                      </h4>
+                      <span
+                        className={`flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          session.state === 'playing'
+                            ? 'bg-green-500/20 text-green-400'
+                            : session.state === 'paused'
+                            ? 'bg-yellow-500/20 text-yellow-400'
+                            : 'bg-gray-500/20 text-gray-400'
+                        }`}
+                      >
+                        {session.state === 'playing' ? '▶' : session.state === 'paused' ? '⏸' : '⏹'}
+                      </span>
+                    </div>
+
+                    {/* User and Server */}
+                    <div className="flex items-center gap-2 text-xs text-gray-400 mb-2">
+                      <span className="truncate">{session.username}</span>
+                      <span>•</span>
+                      {getServerIcon(session.server_type, session.server_type === 'sappho' ? 'w-4 h-4' : 'w-3.5 h-3.5')}
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="mb-1">
+                      <div className="bg-dark-600 rounded-full h-1.5">
+                        <div
+                          className="bg-primary-500 h-1.5 rounded-full transition-all duration-300"
+                          style={{ width: `${session.progress_percent}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Time */}
+                    <div className="text-xs text-gray-500">
+                      {session.current_time && session.duration
+                        ? `${formatDuration(session.current_time, session.server_type === 'sappho')} / ${formatDuration(session.duration, session.server_type === 'sappho')}`
+                        : session.duration
+                        ? formatDuration(session.duration, session.server_type === 'sappho')
+                        : 'Unknown'}
+                      {session.progress_percent > 0 && ` • ${session.progress_percent}%`}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Desktop View - Full Details */}
+                <div className="hidden md:flex p-4 gap-4">
                   {/* Thumbnail and Server Label */}
                   <div className="flex-shrink-0">
                     <div className="relative w-24 h-36 bg-dark-700 rounded-lg mb-1">
@@ -269,7 +339,7 @@ function Dashboard() {
 
       {/* Top Users and Popular - Grid layout */}
       {(stats.topWatchers?.length > 0 || stats.topListeners?.length > 0 || stats.mostWatchedMovies?.length > 0 || stats.mostWatchedEpisodes?.length > 0 || stats.mostWatchedAudiobooks?.length > 0 || stats.topLocations?.length > 0) && (
-        <div className="flex gap-3 w-full">
+        <div className="flex flex-col md:flex-row gap-3 w-full">
           {/* Top Watchers */}
           {stats.topWatchers?.length > 0 && (
             <div className="card flex-1 min-w-0">

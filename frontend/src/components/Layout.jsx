@@ -66,7 +66,7 @@ function Layout({ children }) {
       case 'audiobookshelf':
         return <img src="/logos/audiobookshelf.svg" alt="Audiobookshelf" className="w-3 h-3" />;
       case 'sappho':
-        return <img src="/logos/sappho.svg" alt="Sappho" className="w-4 h-4" />;
+        return <img src="/logos/sappho.svg" alt="Sappho" className="w-3 h-3" />;
       default:
         return null;
     }
@@ -82,21 +82,22 @@ function Layout({ children }) {
       <header className="bg-dark-850 border-b border-dark-700 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-1">
           <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
-              <img src="/logo-icon.svg" alt="OpsDec" className="w-6 h-6" />
-              <h1 className="text-sm font-bold">
+            {/* Logo - Icon only on mobile, icon + text on desktop */}
+            <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
+              <img src="/logo-icon.svg" alt="OpsDec" className="w-7 h-7 md:w-6 md:h-6" />
+              <h1 className="hidden md:block text-sm font-bold ml-2">
                 <span className="text-white">Ops</span>
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Dec</span>
               </h1>
             </Link>
 
-            {/* Server Health Status */}
+            {/* Server Health Status - Touching on mobile, spaced on desktop */}
             {serverHealth.length > 0 && (
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center -space-x-px md:space-x-2">
                 {serverHealth.map((server) => (
                   <div
                     key={server.id}
-                    className="flex items-center space-x-1 px-2 py-1 rounded bg-dark-800"
+                    className="flex items-center space-x-1 px-2 py-1 rounded bg-dark-800 border border-dark-700 md:border-0"
                     title={`${server.name}: ${server.healthy ? 'Healthy' : 'Inactive'}`}
                   >
                     <div className={`flex items-center ${
