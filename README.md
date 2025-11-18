@@ -2,6 +2,9 @@
 
 > **100% vibe coded** - Built with AI assistance and good vibes 🤖✨
 
+> [!WARNING]
+> **Early Development Software** - OpsDec is currently in active development and testing. While functional, you may encounter bugs or incomplete features. Use in production environments at your own risk. Feedback and contributions are welcome!
+
 A modern, self-hosted media server monitoring and statistics platform inspired by Tautulli. Track your Plex, Emby, Audiobookshelf, and Sappho server activity with real-time monitoring, detailed statistics, and a beautiful dark-themed interface.
 
 ![OpsDec](https://img.shields.io/badge/version-0.1.0-blue)
