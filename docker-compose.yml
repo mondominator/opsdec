@@ -1,6 +1,8 @@
 services:
   opsdec:
-    build: .
+    image: ghcr.io/mondominator/opsdec:latest
+    # Uncomment below to build from source instead
+    # build: .
     container_name: opsdec
     restart: unless-stopped
     ports:
@@ -28,16 +30,20 @@ services:
       - PGID=1000
 
       # Emby Configuration
-      - EMBY_URL=http://your-server-ip:8097
+      - EMBY_URL=http://your-emby-server:8096
       - EMBY_API_KEY=your_emby_api_key_here
 
       # Plex Configuration
-      - PLEX_URL=http://your-server-ip:32401
+      - PLEX_URL=http://your-plex-server:32400
       - PLEX_TOKEN=your_plex_token_here
 
       # Audiobookshelf Configuration (Optional)
-      - AUDIOBOOKSHELF_URL=http://your-server-ip:13378
+      - AUDIOBOOKSHELF_URL=http://your-audiobookshelf-server:13378
       - AUDIOBOOKSHELF_API_KEY=your_audiobookshelf_token_here
+
+      # Sappho Configuration (Optional)
+      - SAPPHO_URL=http://your-sappho-server:3000
+      - SAPPHO_API_KEY=your_sappho_api_key_here
 
       # Polling Configuration
       - POLL_INTERVAL=30

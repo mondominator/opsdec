@@ -15,6 +15,9 @@ build/
 .env.local
 .env.*.local
 
+# Docker Compose overrides with secrets
+docker-compose.override.yml
+
 # Database
 *.db
 *.db-shm

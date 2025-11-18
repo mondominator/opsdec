@@ -7,6 +7,7 @@ A modern, self-hosted media server monitoring and statistics platform inspired b
 ![OpsDec](https://img.shields.io/badge/version-0.1.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Docker](https://img.shields.io/badge/docker-ready-blue)
+[![Docker Image](https://ghcr-badge.egpl.dev/mondominator/opsdec/latest_tag?trim=major&label=latest)](https://github.com/mondominator/opsdec/pkgs/container/opsdec)
 
 ## Features
 
@@ -49,7 +50,11 @@ A modern, self-hosted media server monitoring and statistics platform inspired b
 
 ### Option 1: Docker (Recommended)
 
-The easiest way to run OpsDec is with Docker:
+The easiest way to run OpsDec is with Docker. Pre-built images are automatically published to GitHub Container Registry.
+
+#### Using Pre-built Image from GitHub Container Registry
+
+The latest image is available at `ghcr.io/mondominator/opsdec:latest`
 
 #### Using Docker Compose
 
