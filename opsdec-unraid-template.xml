@@ -1,19 +1,19 @@
 <?xml version="1.0"?>
 <Container version="2">
   <Name>OpsDec</Name>
-  <Repository>ghcr.io/yourusername/opsdec:latest</Repository>
+  <Repository>ghcr.io/mondominator/opsdec:latest</Repository>
   <Registry>https://ghcr.io/</Registry>
   <Network>bridge</Network>
   <MyIP/>
   <Shell>sh</Shell>
   <Privileged>false</Privileged>
-  <Support>https://git.bitstorm.ca/global_dynamics/opsdec/issues</Support>
-  <Project>https://git.bitstorm.ca/global_dynamics/opsdec</Project>
-  <Overview>OpsDec is a unified media server monitoring dashboard that tracks activity across Plex, Emby, and Audiobookshelf. View real-time streams, playback history, user statistics, and server health in a beautiful, modern interface.</Overview>
-  <Category>MediaApp:Other Status:Stable</Category>
+  <Support>https://github.com/mondominator/opsdec/issues</Support>
+  <Project>https://github.com/mondominator/opsdec</Project>
+  <Overview>OpsDec is a unified media server monitoring dashboard that tracks activity across Plex, Emby, Audiobookshelf, and Sappho. View real-time streams, playback history, user statistics, and server health in a beautiful, modern interface. Early development software - feedback welcome!</Overview>
+  <Category>MediaApp:Other</Category>
   <WebUI>http://[IP]:[PORT:3001]</WebUI>
-  <TemplateURL>https://git.bitstorm.ca/global_dynamics/opsdec/raw/branch/main/opsdec-unraid-template.xml</TemplateURL>
-  <Icon>https://git.bitstorm.ca/global_dynamics/opsdec/raw/branch/main/frontend/public/logo-icon.svg</Icon>
+  <TemplateURL>https://raw.githubusercontent.com/mondominator/opsdec/main/opsdec-unraid-template.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/mondominator/opsdec/main/frontend/public/logo-icon.svg</Icon>
   <ExtraParams/>
   <PostArgs/>
   <CPUset/>
@@ -29,6 +29,9 @@
   <Config Name="Emby API Key" Target="EMBY_API_KEY" Default="" Mode="" Description="Emby API key (get from Dashboard > Advanced > API Keys)" Type="Variable" Display="always" Required="false" Mask="true"></Config>
   <Config Name="Audiobookshelf URL" Target="AUDIOBOOKSHELF_URL" Default="" Mode="" Description="Audiobookshelf server URL (e.g., http://192.168.1.100:13378)" Type="Variable" Display="always" Required="false" Mask="false"></Config>
   <Config Name="Audiobookshelf Token" Target="AUDIOBOOKSHELF_TOKEN" Default="" Mode="" Description="Audiobookshelf API token (get from Settings > Users > API Tokens)" Type="Variable" Display="always" Required="false" Mask="true"></Config>
+  <Config Name="Sappho URL" Target="SAPPHO_URL" Default="" Mode="" Description="Sappho server URL (e.g., http://192.168.1.100:3000)" Type="Variable" Display="always" Required="false" Mask="false"></Config>
+  <Config Name="Sappho API Key" Target="SAPPHO_API_KEY" Default="" Mode="" Description="Sappho API key (get from Settings > API Keys)" Type="Variable" Display="always" Required="false" Mask="true"></Config>
+  <Config Name="Repository Tag" Target="" Default="latest" Mode="" Description="Docker image tag (latest, 0.1.0, or date-based like 20251118). Use 'latest' for newest, or pin to specific version for stability." Type="Variable" Display="always" Required="true" Mask="false">latest</Config>
   <Config Name="PUID" Target="PUID" Default="1000" Mode="" Description="User ID for file permissions" Type="Variable" Display="advanced" Required="false" Mask="false">1000</Config>
   <Config Name="PGID" Target="PGID" Default="1000" Mode="" Description="Group ID for file permissions" Type="Variable" Display="advanced" Required="false" Mask="false">1000</Config>
   <Config Name="TZ" Target="TZ" Default="America/New_York" Mode="" Description="Timezone (e.g., America/New_York, Europe/London)" Type="Variable" Display="advanced" Required="false" Mask="false">America/New_York</Config>
