@@ -50,8 +50,8 @@ jobs:
             type=ref,event=branch
             # PR number
             type=ref,event=pr
-            # Git commit SHA (short)
-            type=sha,prefix={{branch}}-,format=short
+            # Git commit SHA (short) - only for main branch
+            type=sha,prefix=sha-,format=short,enable={{is_default_branch}}
             # Latest tag for main branch
             type=raw,value=latest,enable={{is_default_branch}}
             # Date tag for main branch (YYYYMMDD)
