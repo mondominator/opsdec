@@ -279,7 +279,71 @@ async function updateSession(activity, serverType) {
     }
     // Check if media changed (new episode/movie in same session)
     else if (existing.media_id !== activity.mediaId) {
-      // Media changed, stop old session and create new one
+      // If session is already stopped, don't process media change - just create a new session
+      // This prevents duplicate history entries when resuming after a stopped session
+      if (existing.state === 'stopped' && existing.stopped_at) {
+        console.log(`⏭️  Session already stopped, creating new session for new media: ${activity.title}`);
+
+        // Delete the old stopped session to allow session_key reuse
+        db.prepare(`DELETE FROM sessions WHERE id = ?`).run(existing.id);
+
+        // Create new session (code will fall through to new session creation at bottom)
+        // We need to force creating a new session, so we'll do it inline here
+        const playbackTime = 0;
+        const lastPositionUpdate = activity.state === 'playing' ? now : null;
+
+        db.prepare(`
+          INSERT INTO sessions (
+            session_key, server_type, server_id, user_id, username, user_thumb,
+            media_type, media_id, title, parent_title, grandparent_title,
+            season_number, episode_number,
+            year, thumb, art, started_at, state, progress_percent, duration,
+            current_time, playback_time, last_position_update,
+            bitrate, transcoding, video_codec, audio_codec, container, resolution,
+            ip_address, location, city, region, country
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          activity.sessionKey,
+          serverType,
+          'default',
+          activity.userId,
+          activity.username,
+          activity.userThumb || null,
+          activity.mediaType,
+          activity.mediaId,
+          activity.title,
+          activity.parentTitle,
+          activity.grandparentTitle,
+          activity.seasonNumber || null,
+          activity.episodeNumber || null,
+          activity.year,
+          activity.thumb,
+          activity.art,
+          now,
+          activity.state,
+          activity.progressPercent,
+          activity.duration,
+          activity.currentTime || 0,
+          playbackTime,
+          lastPositionUpdate,
+          activity.bitrate || null,
+          activity.transcoding ? 1 : 0,
+          activity.videoCodec || null,
+          activity.audioCodec || null,
+          activity.container || null,
+          activity.resolution || null,
+          activity.ipAddress || null,
+          activity.location || null,
+          activity.city || null,
+          activity.region || null,
+          activity.country || null
+        );
+
+        console.log(`📺 New session created: ${activity.username} watching ${activity.title} (${serverType})`);
+        return;
+      }
+
+      // Media changed in an active session, stop old session and create new one
       console.log(`🔄 Media changed in session: ${existing.title} -> ${activity.title}`);
 
       // Stop the old session
@@ -289,18 +353,24 @@ async function updateSession(activity, serverType) {
       // Calculate stream duration: use playback_time (actual watch time, not wall-clock time)
       const streamDuration = existing.playback_time || (existing.current_time || 0);
 
+      // Mark old session as stopped (we'll delete it after adding to history)
+      db.prepare(`
+        UPDATE sessions
+        SET state = 'stopped',
+            stopped_at = ?,
+            updated_at = ?
+        WHERE id = ?
+      `).run(stopNow, stopNow, oldSessionId);
+
       // Add old session to history if it meets criteria
       if (shouldAddToHistory(existing.title, existing.duration, existing.progress_percent, existing.user_id, streamDuration, existing.media_type)) {
         try {
           // Check for duplicate history entries
-          // Look for entries with same user, media, and similar timestamp/duration
+          // Use session_id as primary duplicate check - each session should only create ONE history entry
           const existingHistory = db.prepare(`
             SELECT id FROM history
-            WHERE user_id = ?
-              AND media_id = ?
-              AND ABS(watched_at - ?) < 60
-              AND ABS(stream_duration - ?) < 5
-          `).get(existing.user_id, existing.media_id, stopNow, streamDuration);
+            WHERE session_id = ? AND media_id = ?
+          `).get(oldSessionId, existing.media_id);
 
           if (!existingHistory) {
             db.prepare(`
@@ -347,45 +417,33 @@ async function updateSession(activity, serverType) {
         }
       }
 
-      // Update the session with new media info
-      // Reset playback_time to 0 for new media
+      // Delete the old session row to allow reuse of session_key
+      // (session_key has UNIQUE constraint, so we must delete before inserting)
+      db.prepare(`DELETE FROM sessions WHERE id = ?`).run(oldSessionId);
+      console.log(`   Deleted old session row (id: ${oldSessionId}) to allow session_key reuse`);
+
+      // Create a NEW session for the new media (don't reuse the old session row)
+      // This ensures each media item gets its own session_id for proper history tracking
       const playbackTime = 0;
       const lastPositionUpdate = activity.state === 'playing' ? now : null;
 
       db.prepare(`
-        UPDATE sessions
-        SET media_type = ?,
-            media_id = ?,
-            title = ?,
-            parent_title = ?,
-            grandparent_title = ?,
-            season_number = ?,
-            episode_number = ?,
-            year = ?,
-            thumb = ?,
-            art = ?,
-            started_at = ?,
-            state = ?,
-            progress_percent = ?,
-            duration = ?,
-            current_time = ?,
-            playback_time = ?,
-            last_position_update = ?,
-            bitrate = ?,
-            transcoding = ?,
-            video_codec = ?,
-            audio_codec = ?,
-            container = ?,
-            resolution = ?,
-            user_thumb = ?,
-            ip_address = ?,
-            location = ?,
-            city = ?,
-            region = ?,
-            country = ?,
-            updated_at = ?
-        WHERE session_key = ?
+        INSERT INTO sessions (
+          session_key, server_type, server_id, user_id, username, user_thumb,
+          media_type, media_id, title, parent_title, grandparent_title,
+          season_number, episode_number,
+          year, thumb, art, started_at, state, progress_percent, duration,
+          current_time, playback_time, last_position_update,
+          bitrate, transcoding, video_codec, audio_codec, container, resolution,
+          ip_address, location, city, region, country
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
+        activity.sessionKey,
+        serverType,
+        'default',
+        activity.userId,
+        activity.username,
+        activity.userThumb || null,
         activity.mediaType,
         activity.mediaId,
         activity.title,
@@ -409,17 +467,14 @@ async function updateSession(activity, serverType) {
         activity.audioCodec || null,
         activity.container || null,
         activity.resolution || null,
-        activity.userThumb || null,
         activity.ipAddress || null,
         activity.location || null,
         activity.city || null,
         activity.region || null,
-        activity.country || null,
-        now,
-        activity.sessionKey
+        activity.country || null
       );
 
-      console.log(`📺 Session updated: ${activity.username} now watching ${activity.title} (${serverType})`);
+      console.log(`📺 New session created: ${activity.username} now watching ${activity.title} (${serverType})`);
     } else {
       // Same media, just update progress and stream info
       // Calculate playback_time based on elapsed time while playing
@@ -716,14 +771,11 @@ function stopInactiveSessions(activeSessionKeys) {
     if (shouldAddToHistory(session.title, session.duration, session.progress_percent, session.user_id, streamDuration, sessionData.media_type)) {
       try {
         // Check for duplicate history entries
-        // Look for entries with same user, media, duration within 60 seconds
+        // Use session_id as primary duplicate check - each session should only create ONE history entry
         const existingHistory = db.prepare(`
           SELECT id FROM history
-          WHERE user_id = ?
-            AND media_id = ?
-            AND ABS(watched_at - ?) < 60
-            AND ABS(stream_duration - ?) < 5
-        `).get(sessionData.user_id, sessionData.media_id, now, streamDuration);
+          WHERE session_id = ? AND media_id = ?
+        `).get(sessionData.id, sessionData.media_id);
 
         if (!existingHistory) {
           db.prepare(`
@@ -806,14 +858,11 @@ function stopInactiveSessions(activeSessionKeys) {
       if (shouldAddToHistory(session.title, session.duration, session.progress_percent, session.user_id, streamDuration, sessionData.media_type)) {
         try {
           // Check for duplicate history entries
-          // Look for entries with same user, media, and similar timestamp/duration
+          // Use session_id as primary duplicate check - each session should only create ONE history entry
           const existingHistory = db.prepare(`
             SELECT id FROM history
-            WHERE user_id = ?
-              AND media_id = ?
-              AND ABS(watched_at - ?) < 60
-              AND ABS(stream_duration - ?) < 5
-          `).get(sessionData.user_id, sessionData.media_id, now, streamDuration);
+            WHERE session_id = ? AND media_id = ?
+          `).get(sessionData.id, sessionData.media_id);
 
           if (!existingHistory) {
 
