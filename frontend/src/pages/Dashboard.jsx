@@ -16,7 +16,7 @@ function Dashboard() {
       case 'audiobookshelf':
         return <img src="/logos/audiobookshelf.svg" alt="Audiobookshelf" className={size} title="Audiobookshelf" />;
       case 'sappho':
-        return <img src="/logos/sappho.svg" alt="Sappho" className={size} title="Sappho" />;
+        return <img src="/logos/sappho.png" alt="Sappho" className={size} title="Sappho" />;
       default:
         return null;
     }
@@ -172,7 +172,7 @@ function Dashboard() {
                 <div className="hidden md:flex p-4 gap-4">
                   {/* Thumbnail and Server Label */}
                   <div className="flex-shrink-0">
-                    <div className="relative w-24 h-36 bg-dark-700 rounded-lg mb-1">
+                    <div className="relative w-24 h-36 bg-dark-700 rounded-lg mb-3">
                       {session.thumb ? (
                         <img
                           src={`/proxy/image?url=${encodeURIComponent(session.thumb)}`}

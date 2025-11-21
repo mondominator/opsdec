@@ -85,7 +85,7 @@ function Users() {
       case 'audiobookshelf':
         return <img src="/logos/audiobookshelf.svg" alt="Audiobookshelf" className="w-4 h-4" title="Audiobookshelf" />;
       case 'sappho':
-        return <img src="/logos/sappho.svg" alt="Sappho" className="w-4 h-4" title="Sappho" />;
+        return <img src="/logos/sappho.png" alt="Sappho" className="w-4 h-4" title="Sappho" />;
       default:
         return null;
     }
