@@ -172,7 +172,7 @@ function Dashboard() {
                 <div className="hidden md:flex p-4 gap-4">
                   {/* Thumbnail and Server Label */}
                   <div className="flex-shrink-0">
-                    <div className="relative w-24 h-36 bg-dark-700 rounded-lg mb-2">
+                    <div className="relative w-24 h-36 bg-dark-700 rounded-lg mb-3">
                       {session.thumb ? (
                         <img
                           src={`/proxy/image?url=${encodeURIComponent(session.thumb)}`}
