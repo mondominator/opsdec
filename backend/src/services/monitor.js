@@ -243,41 +243,71 @@ async function updateSession(activity, serverType) {
       return;
     }
 
-    // If session was stopped but now resumed with same media (playing or buffering), reset it as a new session
-    // This prevents accumulating playback time across multiple viewing sessions
+    // If session was stopped but now resumed with same media (playing or buffering), create a new session
+    // Each viewing session will create its own history entry with a unique session_id
     // Note: Don't resume if state is 'paused' - that's just the client still reporting the stopped session
     if (existing.state === 'stopped' && existing.stopped_at && existing.media_id === activity.mediaId && (activity.state === 'playing' || activity.state === 'buffering')) {
       console.log(`▶️  Resuming stopped session as new session: ${existing.title}`);
-      // Reset the session (history was already created when it stopped)
-      // Delete the old history entry so we can create a new one when this session stops again
-      db.prepare(`DELETE FROM history WHERE session_id = ? AND media_id = ?`).run(existing.id, existing.media_id);
+      // History was already created when it stopped
+      // Delete the old session row to allow reuse of session_key
+      // (session_key has UNIQUE constraint, so we must delete before inserting)
+      const oldSessionId = existing.id;
+      db.prepare(`DELETE FROM sessions WHERE id = ?`).run(oldSessionId);
+      console.log(`   Deleted old session row (id: ${oldSessionId}) to allow session_key reuse`);
 
-      // Update it to look like a fresh new session starting now
+      // Create a NEW session for the resumed viewing (don't reuse the old session row)
+      // This ensures each viewing session gets its own session_id for proper history tracking
+      const playbackTime = 0;
       const lastPositionUpdate = activity.state === 'playing' ? now : null;
 
       db.prepare(`
-        UPDATE sessions
-        SET state = ?,
-            started_at = ?,
-            stopped_at = NULL,
-            playback_time = 0,
-            last_position_update = ?,
-            progress_percent = ?,
-            current_time = ?,
-            paused_counter = 0,
-            updated_at = ?
-        WHERE session_key = ?
+        INSERT INTO sessions (
+          session_key, server_type, server_id, user_id, username, user_thumb,
+          media_type, media_id, title, parent_title, grandparent_title,
+          season_number, episode_number,
+          year, thumb, art, started_at, state, progress_percent, duration,
+          current_time, playback_time, last_position_update,
+          bitrate, transcoding, video_codec, audio_codec, container, resolution,
+          ip_address, location, city, region, country
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
+        activity.sessionKey,
+        serverType,
+        'default',
+        activity.userId,
+        activity.username,
+        activity.userThumb || null,
+        activity.mediaType,
+        activity.mediaId,
+        activity.title,
+        activity.parentTitle || null,
+        activity.grandparentTitle || null,
+        activity.seasonNumber || null,
+        activity.episodeNumber || null,
+        activity.year || null,
+        activity.thumb || null,
+        activity.art || null,
+        now,
         activity.state,
-        now,
-        lastPositionUpdate,
-        activity.progressPercent,
+        activity.progressPercent || 0,
+        activity.duration || 0,
         activity.currentTime || 0,
-        now,
-        activity.sessionKey
+        playbackTime,
+        lastPositionUpdate,
+        activity.bitrate || null,
+        activity.transcoding ? 1 : 0,
+        activity.videoCodec || null,
+        activity.audioCodec || null,
+        activity.container || null,
+        activity.resolution || null,
+        activity.ipAddress || null,
+        activity.location || null,
+        activity.city || null,
+        activity.region || null,
+        activity.country || null
       );
 
-      console.log(`📺 Session reset: ${activity.username} resumed ${activity.title}`);
+      console.log(`📺 New session created for resumed viewing: ${activity.username} resumed ${activity.title}`);
       return;
     }
     // Check if media changed (new episode/movie in same session)
