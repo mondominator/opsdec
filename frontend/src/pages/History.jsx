@@ -14,7 +14,7 @@ const getServerIcon = (serverType) => {
     case 'audiobookshelf':
       return <img src="/logos/audiobookshelf.svg" alt="Audiobookshelf" className="w-5 h-5" title="Audiobookshelf" />;
     case 'sappho':
-      return <img src="/logos/sappho.svg" alt="Sappho" className="w-5 h-5" title="Sappho" />;
+      return <img src="/logos/sappho.png" alt="Sappho" className="w-5 h-5" title="Sappho" />;
     default:
       return null;
   }

@@ -16,7 +16,7 @@ function Dashboard() {
       case 'audiobookshelf':
         return <img src="/logos/audiobookshelf.svg" alt="Audiobookshelf" className={size} title="Audiobookshelf" />;
       case 'sappho':
-        return <img src="/logos/sappho.svg" alt="Sappho" className={size} title="Sappho" />;
+        return <img src="/logos/sappho.png" alt="Sappho" className={size} title="Sappho" />;
       default:
         return null;
     }

@@ -499,7 +499,7 @@ export default function Settings() {
       case 'audiobookshelf':
         return <img src="/logos/audiobookshelf.svg" alt="Audiobookshelf" className="w-5 h-5" />;
       case 'sappho':
-        return <img src="/logos/sappho.svg" alt="Sappho" className="w-5 h-5" />;
+        return <img src="/logos/sappho.png" alt="Sappho" className="w-5 h-5" />;
       default:
         return <Server className="w-5 h-5" />;
     }

@@ -66,7 +66,7 @@ function Layout({ children }) {
       case 'audiobookshelf':
         return <img src="/logos/audiobookshelf.svg" alt="Audiobookshelf" className="w-3 h-3" />;
       case 'sappho':
-        return <img src="/logos/sappho.svg" alt="Sappho" className="w-3 h-3" />;
+        return <img src="/logos/sappho.png" alt="Sappho" className="w-3 h-3" />;
       default:
         return null;
     }
