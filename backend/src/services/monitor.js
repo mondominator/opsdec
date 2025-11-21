@@ -857,10 +857,14 @@ function stopInactiveSessions(activeSessionKeys) {
   // Find sessions that are no longer active
   // Exclude Audiobookshelf sessions - they will be handled by importAudiobookshelfHistory
   const activeSessions = db.prepare(`
-    SELECT session_key, user_id, username, title, progress_percent, duration, server_type
+    SELECT session_key, user_id, username, title, progress_percent, duration, server_type, updated_at
     FROM sessions
     WHERE state != 'stopped'
   `).all();
+
+  // For Sappho, use a 60-second stale timeout before marking as stopped
+  // This handles intermittent API failures where /api/sessions temporarily returns no data
+  const SAPPHO_STALE_TIMEOUT = 60;
 
   for (const session of activeSessions) {
     // Skip Audiobookshelf sessions - they handle their own cleanup via history import
@@ -870,6 +874,16 @@ function stopInactiveSessions(activeSessionKeys) {
     }
 
     if (!activeSessionKeys.has(session.session_key)) {
+      // For Sappho: only stop if session hasn't been updated for 60+ seconds
+      // This prevents false stops due to intermittent API failures
+      if (session.server_type === 'sappho') {
+        const timeSinceUpdate = now - session.updated_at;
+        if (timeSinceUpdate < SAPPHO_STALE_TIMEOUT) {
+          console.log(`⏸️  Sappho session temporarily missing from API, waiting... (${timeSinceUpdate}s / ${SAPPHO_STALE_TIMEOUT}s): ${session.title}`);
+          continue; // Don't stop yet, wait for grace period
+        }
+      }
+
       // Session is no longer active, mark as stopped
       db.prepare(`
         UPDATE sessions
