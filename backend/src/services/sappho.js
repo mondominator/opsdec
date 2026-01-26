@@ -87,6 +87,11 @@ class SapphoService {
 
       console.log(`📊 Found ${sessions.length} active Sappho session(s)`);
 
+      // Debug: log session states and all state-related fields
+      for (const session of sessions) {
+        console.log(`   📡 Sappho raw session: ${session.title || 'Unknown'} - state: ${session.state}, paused: ${session.paused}, isPaused: ${session.isPaused}, stopped: ${session.stopped}`);
+      }
+
       for (const session of sessions) {
         const activity = this.parseSessionToActivity(session);
         if (activity) {
@@ -138,6 +143,17 @@ class SapphoService {
         progressPercent = Math.round((currentTime / duration) * 100);
       }
 
+      // Determine state - Sappho may use different conventions
+      // Check for explicit state field, or paused/isPaused boolean fields
+      let state = 'playing';
+      if (session.state) {
+        state = session.state;
+      } else if (session.paused === true || session.isPaused === true) {
+        state = 'paused';
+      } else if (session.stopped === true || session.isStopped === true) {
+        state = 'stopped';
+      }
+
       return {
         sessionKey: session.sessionId,
         userId: session.userId ? session.userId.toString() : 'unknown',
@@ -154,7 +170,7 @@ class SapphoService {
         // Cover art URL - use API token in query param for compatibility
         thumb: session.audiobookId ? `${this.baseUrl}/api/audiobooks/${session.audiobookId}/cover` : null,
         art: null,
-        state: session.state || 'playing', // 'playing', 'paused', 'stopped'
+        state: state, // 'playing', 'paused', 'stopped'
         progressPercent: progressPercent,
         duration: duration,
         currentTime: currentTime,
