@@ -179,14 +179,15 @@ class AudiobookshelfService {
     }
   }
 
-  // Get item info including mediaType (book vs podcast)
+  // Get item info including mediaType (book vs podcast) and coverUrl
   async getItemInfo(libraryItemId) {
     try {
       const response = await this.client.get(`/api/items/${libraryItemId}`);
       return {
         exists: true,
         mediaType: response.data.mediaType, // 'book' or 'podcast'
-        title: response.data.media?.metadata?.title
+        title: response.data.media?.metadata?.title,
+        coverUrl: `${this.baseUrl}/api/items/${libraryItemId}/cover`
       };
     } catch (error) {
       return { exists: false };

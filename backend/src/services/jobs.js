@@ -225,14 +225,27 @@ async function repairCoversJob() {
   `).all();
 
   let repaired = 0;
+  let coverUpdated = 0;
   let notFound = 0;
   let alreadyValid = 0;
 
   for (const entry of absHistory) {
-    // Check if current item exists
-    const exists = await audiobookshelfServiceRef.itemExists(entry.media_id);
-    if (exists) {
-      alreadyValid++;
+    // Check if current item exists and get its info
+    const itemInfo = await audiobookshelfServiceRef.getItemInfo(entry.media_id);
+
+    if (itemInfo.exists) {
+      // Item exists - check if cover URL changed
+      if (itemInfo.coverUrl && itemInfo.coverUrl !== entry.thumb) {
+        // Cover URL is different, update it
+        db.prepare(`
+          UPDATE history
+          SET thumb = ?
+          WHERE id = ?
+        `).run(itemInfo.coverUrl, entry.id);
+        coverUpdated++;
+      } else {
+        alreadyValid++;
+      }
       continue;
     }
 
@@ -251,7 +264,7 @@ async function repairCoversJob() {
     }
   }
 
-  return { repaired, notFound, alreadyValid, total: absHistory.length };
+  return { repaired, coverUpdated, notFound, alreadyValid, total: absHistory.length };
 }
 
 function mergeDuplicatesJob() {
