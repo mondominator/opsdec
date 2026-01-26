@@ -704,6 +704,12 @@ async function importAudiobookshelfHistory(service, serverType) {
       }
     }
 
+    // Also load ignored session IDs (from deleted history entries)
+    const ignoredSessions = db.prepare('SELECT session_id FROM ignored_abs_sessions').all();
+    for (const row of ignoredSessions) {
+      processedAbsSessions.add(row.session_id);
+    }
+
     for (const session of listeningSessions) {
       if (!session || !session.id || !session.userId || !session.libraryItemId) {
         continue;
@@ -714,7 +720,7 @@ async function importAudiobookshelfHistory(service, serverType) {
         continue;
       }
 
-      // Skip if we've already processed this ABS session
+      // Skip if we've already processed this ABS session (or it was deleted)
       if (processedAbsSessions.has(session.id)) {
         continue;
       }

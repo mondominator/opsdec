@@ -135,11 +135,24 @@ router.get('/history', (req, res) => {
 router.delete('/history/:id', (req, res) => {
   try {
     const { id } = req.params;
-    const result = db.prepare('DELETE FROM history WHERE id = ?').run(id);
 
-    if (result.changes === 0) {
+    // Get the history item first to save its ABS session IDs (prevents re-import)
+    const historyItem = db.prepare('SELECT title, server_type, abs_session_ids FROM history WHERE id = ?').get(id);
+
+    if (!historyItem) {
       return res.status(404).json({ success: false, error: 'History item not found' });
     }
+
+    // If this is an Audiobookshelf entry with session IDs, save them to ignored list
+    if (historyItem.server_type === 'audiobookshelf' && historyItem.abs_session_ids) {
+      const sessionIds = historyItem.abs_session_ids.split(',');
+      const insertIgnored = db.prepare('INSERT OR IGNORE INTO ignored_abs_sessions (session_id, title) VALUES (?, ?)');
+      for (const sessionId of sessionIds) {
+        insertIgnored.run(sessionId.trim(), historyItem.title);
+      }
+    }
+
+    const result = db.prepare('DELETE FROM history WHERE id = ?').run(id);
 
     res.json({ success: true, message: 'History item deleted' });
   } catch (error) {

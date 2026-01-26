@@ -152,6 +152,15 @@ export function initDatabase() {
     )
   `);
 
+  // Ignored ABS sessions - track deleted history entries to prevent re-import
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS ignored_abs_sessions (
+      session_id TEXT PRIMARY KEY,
+      title TEXT,
+      deleted_at INTEGER DEFAULT (strftime('%s', 'now'))
+    )
+  `);
+
   // User mappings - map usernames from different servers to a unified username
   db.exec(`
     CREATE TABLE IF NOT EXISTS user_mappings (
