@@ -709,6 +709,11 @@ async function importAudiobookshelfHistory(service, serverType) {
         continue;
       }
 
+      // Skip podcasts - only import audiobooks
+      if (session.mediaType === 'podcast') {
+        continue;
+      }
+
       // Skip if we've already processed this ABS session
       if (processedAbsSessions.has(session.id)) {
         continue;
