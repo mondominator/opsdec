@@ -69,16 +69,16 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #1e293b;
+  background: #0c0f14;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #475569;
+  background: #262d3a;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: #3d4654;
 }
 
 /* Pulsing animation for active streaming cards */
