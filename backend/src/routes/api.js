@@ -147,6 +147,57 @@ router.delete('/history/:id', (req, res) => {
   }
 });
 
+// Repair Audiobookshelf covers - searches by title to find new item IDs for moved books
+router.post('/history/repair-covers', async (req, res) => {
+  try {
+    if (!audiobookshelfService) {
+      return res.status(400).json({ success: false, error: 'Audiobookshelf not configured' });
+    }
+
+    // Get all Audiobookshelf history entries
+    const absHistory = db.prepare(`
+      SELECT id, title, media_id, thumb
+      FROM history
+      WHERE server_type = 'audiobookshelf'
+    `).all();
+
+    let repaired = 0;
+    let notFound = 0;
+
+    for (const entry of absHistory) {
+      // Check if current item exists
+      const exists = await audiobookshelfService.itemExists(entry.media_id);
+      if (exists) continue;
+
+      // Item doesn't exist, search by title
+      const found = await audiobookshelfService.searchByTitle(entry.title);
+      if (found) {
+        // Update the history entry with new media_id and thumb
+        db.prepare(`
+          UPDATE history
+          SET media_id = ?, thumb = ?
+          WHERE id = ?
+        `).run(found.id, found.coverUrl, entry.id);
+        repaired++;
+        console.log(`🔧 Repaired cover for "${entry.title}" - new ID: ${found.id}`);
+      } else {
+        notFound++;
+        console.log(`⚠️ Could not find replacement for "${entry.title}"`);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Repaired ${repaired} covers, ${notFound} not found`,
+      repaired,
+      notFound
+    });
+  } catch (error) {
+    console.error('Error repairing covers:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Get users
 router.get('/users', (req, res) => {
   try {

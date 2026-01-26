@@ -2,8 +2,41 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getHistory, deleteHistoryItem } from '../utils/api';
 import { formatTimestamp, formatMediaType, formatDuration } from '../utils/format';
-import { History as HistoryIcon, PlayCircle, Search, Filter, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Trash2 } from 'lucide-react';
+import { History as HistoryIcon, PlayCircle, Search, Filter, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Book } from 'lucide-react';
 import { useTimezone } from '../contexts/TimezoneContext';
+
+// Thumbnail component with error handling - shows placeholder on load failure
+function MediaThumbnail({ src, alt, title, serverType, className = "w-12 h-16" }) {
+  const [hasError, setHasError] = useState(false);
+
+  const imgSrc = (serverType === 'sappho' || serverType === 'audiobookshelf')
+    ? `/proxy/image?url=${encodeURIComponent(src)}`
+    : src;
+
+  if (hasError || !src) {
+    // Show placeholder with first letter of title
+    return (
+      <div className={`${className} bg-gradient-to-br from-dark-600 to-dark-700 rounded flex items-center justify-center border border-dark-500`}>
+        {serverType === 'audiobookshelf' ? (
+          <Book className="w-6 h-6 text-gray-500" />
+        ) : (
+          <span className="text-gray-400 font-bold text-lg">
+            {title?.charAt(0)?.toUpperCase() || '?'}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={imgSrc}
+      alt={alt}
+      className={`${className} object-cover rounded`}
+      onError={() => setHasError(true)}
+    />
+  );
+}
 
 const getServerIcon = (serverType) => {
   switch (serverType) {
@@ -365,20 +398,13 @@ function History() {
                 <div className="flex gap-3 mb-3">
                   {/* Thumbnail */}
                   <div className="flex-shrink-0">
-                    {item.thumb ? (
-                      <img
-                        src={item.server_type === 'sappho' || item.server_type === 'audiobookshelf'
-                          ? `/proxy/image?url=${encodeURIComponent(item.thumb)}`
-                          : item.thumb
-                        }
-                        alt={item.title}
-                        className="w-12 h-16 object-cover rounded"
-                      />
-                    ) : (
-                      <div className="w-12 h-16 bg-dark-600 rounded flex items-center justify-center">
-                        <PlayCircle className="w-6 h-6 text-gray-500" />
-                      </div>
-                    )}
+                    <MediaThumbnail
+                      src={item.thumb}
+                      alt={item.title}
+                      title={item.title}
+                      serverType={item.server_type}
+                      className="w-12 h-16"
+                    />
                   </div>
 
                   {/* Title and User */}
@@ -531,20 +557,13 @@ function History() {
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-4">
                           <div className="flex-shrink-0">
-                            {item.thumb ? (
-                              <img
-                                src={item.server_type === 'sappho' || item.server_type === 'audiobookshelf'
-                                  ? `/proxy/image?url=${encodeURIComponent(item.thumb)}`
-                                  : item.thumb
-                                }
-                                alt={item.title}
-                                className="w-12 h-16 object-cover rounded"
-                              />
-                            ) : (
-                              <div className="w-12 h-16 bg-dark-600 rounded flex items-center justify-center">
-                                <PlayCircle className="w-6 h-6 text-gray-500" />
-                              </div>
-                            )}
+                            <MediaThumbnail
+                              src={item.thumb}
+                              alt={item.title}
+                              title={item.title}
+                              serverType={item.server_type}
+                              className="w-12 h-16"
+                            />
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="text-white font-medium truncate">{item.title}</div>

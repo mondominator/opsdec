@@ -138,6 +138,47 @@ class AudiobookshelfService {
     }
   }
 
+  // Search for a book by title - used to find current item ID when book was moved/reimported
+  async searchByTitle(title) {
+    try {
+      const libraries = await this.getLibraries();
+      for (const library of libraries) {
+        if (library.type !== 'book') continue; // Skip podcast libraries
+
+        const response = await this.client.get(`/api/libraries/${library.id}/search`, {
+          params: { q: title, limit: 5 }
+        });
+
+        const books = response.data.book || [];
+        // Find exact or close title match
+        for (const book of books) {
+          const bookTitle = book.libraryItem?.media?.metadata?.title || '';
+          if (bookTitle.toLowerCase() === title.toLowerCase()) {
+            return {
+              id: book.libraryItem.id,
+              title: bookTitle,
+              coverUrl: `${this.baseUrl}/api/items/${book.libraryItem.id}/cover`
+            };
+          }
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('Error searching Audiobookshelf by title:', error.message);
+      return null;
+    }
+  }
+
+  // Check if a library item exists (cover is accessible)
+  async itemExists(libraryItemId) {
+    try {
+      await this.client.get(`/api/items/${libraryItemId}`);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
   parseSessionToActivity(session) {
     // Audiobookshelf sessions are structured differently
     // This is a basic implementation - may need refinement based on actual API structure
