@@ -1302,7 +1302,28 @@ export function startActivityMonitor() {
 
         // Also trigger a full check to update UI
         checkActivity(services);
-      } else if (type === 'session.start' || type === 'session.update' || type === 'session.pause') {
+      } else if (type === 'session.pause') {
+        console.log('📨 Sappho WebSocket: session.pause event - marking session as paused');
+
+        const session = message.session;
+        if (session && session.sessionId) {
+          // Directly update session state to paused so timeout logic works
+          const dbSession = db.prepare('SELECT * FROM sessions WHERE session_key = ?').get(session.sessionId);
+          if (dbSession && dbSession.state === 'playing') {
+            const now = Math.floor(Date.now() / 1000);
+            db.prepare(`
+              UPDATE sessions
+              SET state = 'paused',
+                  updated_at = ?
+              WHERE session_key = ?
+            `).run(now, session.sessionId);
+            console.log(`   ⏸️ Marked session as paused: ${dbSession.title}`);
+          }
+        }
+
+        // Trigger check to update UI
+        checkActivity(services);
+      } else if (type === 'session.start' || type === 'session.update') {
         console.log(`📨 Sappho WebSocket: ${type} event - updating session`);
         // For other events, just trigger the normal check
         checkActivity(services);
