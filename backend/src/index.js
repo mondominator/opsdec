@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { WebSocketServer } from 'ws';
 import http from 'http';
+import https from 'https';
 import axios from 'axios';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -51,10 +52,16 @@ app.get('/proxy/image', async (req, res) => {
       console.error('Error checking database for server auth:', dbError.message);
     }
 
+    // Create HTTPS agent that allows self-signed certificates
+    const httpsAgent = new https.Agent({
+      rejectUnauthorized: false,
+    });
+
     const response = await axios.get(imageUrl, {
       responseType: 'arraybuffer',
       timeout: 10000,
       headers,
+      httpsAgent,
     });
 
     res.set('Content-Type', response.headers['content-type']);
