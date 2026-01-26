@@ -1,6 +1,6 @@
 import express from 'express';
 import db from '../database/init.js';
-import { embyService, audiobookshelfService, sapphoService } from '../services/monitor.js';
+import { embyService, audiobookshelfService, sapphoService, jellyfinService } from '../services/monitor.js';
 import multer from 'multer';
 
 const router = express.Router();
@@ -965,6 +965,40 @@ router.get('/sappho/libraries', async (req, res) => {
   }
 });
 
+// Test Jellyfin connection
+router.get('/jellyfin/test', async (req, res) => {
+  try {
+    if (!jellyfinService) {
+      return res.status(503).json({
+        success: false,
+        error: 'Jellyfin service not configured',
+      });
+    }
+
+    const result = await jellyfinService.testConnection();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get Jellyfin libraries
+router.get('/jellyfin/libraries', async (req, res) => {
+  try {
+    if (!jellyfinService) {
+      return res.status(503).json({
+        success: false,
+        error: 'Jellyfin service not configured',
+      });
+    }
+
+    const libraries = await jellyfinService.getLibraries();
+    res.json({ success: true, data: libraries });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Server Configuration Endpoints
 // Get all servers (including environment variable servers)
 router.get('/servers', (req, res) => {
@@ -1095,6 +1129,12 @@ router.post('/servers/:id/test', async (req, res) => {
           url: process.env.SAPHO_URL,
           api_key: process.env.SAPHO_API_KEY
         };
+      } else if (envType === 'jellyfin' && process.env.JELLYFIN_URL && process.env.JELLYFIN_API_KEY) {
+        server = {
+          type: 'jellyfin',
+          url: process.env.JELLYFIN_URL,
+          api_key: process.env.JELLYFIN_API_KEY
+        };
       }
     }
 
@@ -1116,6 +1156,9 @@ router.post('/servers/:id/test', async (req, res) => {
     } else if (server.type === 'sappho') {
       const { default: SapphoService } = await import('../services/sappho.js');
       ServiceClass = SapphoService;
+    } else if (server.type === 'jellyfin') {
+      const { default: JellyfinService } = await import('../services/jellyfin.js');
+      ServiceClass = JellyfinService;
     } else {
       return res.status(400).json({ success: false, error: 'Invalid server type' });
     }
@@ -1329,6 +1372,7 @@ router.get('/settings/users-by-server', (req, res) => {
     const grouped = {
       plex: [],
       emby: [],
+      jellyfin: [],
       audiobookshelf: [],
       sappho: []
     };
@@ -1362,7 +1406,9 @@ router.get('/settings/user-mappings', (req, res) => {
           mappings: {
             plex: null,
             emby: null,
-            audiobookshelf: null
+            jellyfin: null,
+            audiobookshelf: null,
+            sappho: null
           },
           preferred_avatar_server: mapping.preferred_avatar_server || 'plex'
         };
@@ -1400,7 +1446,7 @@ router.post('/settings/user-mappings', (req, res) => {
     const now = Math.floor(Date.now() / 1000);
 
     // First, check for conflicts BEFORE deleting existing mappings
-    const serverTypes = ['plex', 'emby', 'audiobookshelf', 'sappho'];
+    const serverTypes = ['plex', 'emby', 'jellyfin', 'audiobookshelf', 'sappho'];
     for (const serverType of serverTypes) {
       if (mappings[serverType] && mappings[serverType].trim() !== '') {
         const mapped_username = mappings[serverType].trim();

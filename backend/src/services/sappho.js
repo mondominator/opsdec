@@ -119,6 +119,25 @@ class SapphoService {
         location = isPrivate ? 'lan' : 'wan';
       }
 
+      // Sappho API returns duration and position in seconds (not milliseconds)
+      // Validate and ensure we have reasonable values
+      let duration = session.duration ? Math.round(session.duration) : null;
+      let currentTime = session.position ? Math.round(session.position) : 0;
+
+      // If duration seems unreasonably large (> 100 hours), it might be in milliseconds
+      // Convert to seconds in that case
+      if (duration && duration > 360000) {
+        console.log(`⚠️ Sappho: Large duration detected (${duration}), assuming milliseconds - converting to seconds`);
+        duration = Math.round(duration / 1000);
+        currentTime = Math.round(currentTime / 1000);
+      }
+
+      // Calculate progress percent if not provided
+      let progressPercent = session.progressPercent || 0;
+      if (!progressPercent && duration && currentTime) {
+        progressPercent = Math.round((currentTime / duration) * 100);
+      }
+
       return {
         sessionKey: session.sessionId,
         userId: session.userId ? session.userId.toString() : 'unknown',
@@ -132,13 +151,13 @@ class SapphoService {
         seasonNumber: session.seriesPosition || null,
         episodeNumber: null,
         year: session.year || null,
-        // Fixed cover art URL with proper authentication
+        // Cover art URL - use API token in query param for compatibility
         thumb: session.audiobookId ? `${this.baseUrl}/api/audiobooks/${session.audiobookId}/cover` : null,
         art: null,
         state: session.state || 'playing', // 'playing', 'paused', 'stopped'
-        progressPercent: session.progressPercent || 0,
-        duration: session.duration ? Math.round(session.duration) : null,
-        currentTime: session.position ? Math.round(session.position) : 0,
+        progressPercent: progressPercent,
+        duration: duration,
+        currentTime: currentTime,
         // Client information
         clientName: session.clientName || 'Sappho Web Player',
         deviceName: session.platform || 'Web',

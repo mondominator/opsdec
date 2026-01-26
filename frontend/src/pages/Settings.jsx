@@ -26,13 +26,14 @@ export default function Settings() {
 
   // User mappings state
   const [userMappings, setUserMappings] = useState([]);
-  const [usersByServer, setUsersByServer] = useState({ plex: [], emby: [], audiobookshelf: [], sappho: [] });
+  const [usersByServer, setUsersByServer] = useState({ plex: [], emby: [], jellyfin: [], audiobookshelf: [], sappho: [] });
   const [showMappingForm, setShowMappingForm] = useState(false);
   const [mappingFormData, setMappingFormData] = useState({
     primary_username: '',
     mappings: {
       plex: '',
       emby: '',
+      jellyfin: '',
       audiobookshelf: '',
       sappho: ''
     },
@@ -77,7 +78,7 @@ export default function Settings() {
   const loadUsersByServer = async () => {
     try {
       const response = await getUsersByServer();
-      setUsersByServer(response.data.data || { plex: [], emby: [], audiobookshelf: [], sappho: [] });
+      setUsersByServer(response.data.data || { plex: [], emby: [], jellyfin: [], audiobookshelf: [], sappho: [] });
     } catch (error) {
       console.error('Failed to load users by server:', error);
     }
@@ -417,6 +418,7 @@ export default function Settings() {
       mappings: {
         plex: '',
         emby: '',
+        jellyfin: '',
         audiobookshelf: '',
         sappho: ''
       },
@@ -431,6 +433,7 @@ export default function Settings() {
       mappings: {
         plex: mapping.mappings.plex || '',
         emby: mapping.mappings.emby || '',
+        jellyfin: mapping.mappings.jellyfin || '',
         audiobookshelf: mapping.mappings.audiobookshelf || '',
         sappho: mapping.mappings.sappho || ''
       },
@@ -445,6 +448,7 @@ export default function Settings() {
       mappings: {
         plex: '',
         emby: '',
+        jellyfin: '',
         audiobookshelf: '',
         sappho: ''
       },
@@ -484,6 +488,7 @@ export default function Settings() {
     const labels = {
       emby: { name: 'Emby', color: 'bg-green-500/20 text-green-400' },
       plex: { name: 'Plex', color: 'bg-yellow-500/20 text-yellow-400' },
+      jellyfin: { name: 'Jellyfin', color: 'bg-purple-500/20 text-purple-400' },
       audiobookshelf: { name: 'Audiobookshelf', color: 'bg-amber-500/20 text-amber-600' },
       sappho: { name: 'Sappho', color: 'bg-blue-500/20 text-blue-400' }
     };
@@ -496,6 +501,8 @@ export default function Settings() {
         return <img src="/logos/emby.svg" alt="Emby" className="w-5 h-5" />;
       case 'plex':
         return <img src="/logos/plex.svg" alt="Plex" className="w-5 h-5" />;
+      case 'jellyfin':
+        return <img src="/logos/jellyfin.svg" alt="Jellyfin" className="w-5 h-5" />;
       case 'audiobookshelf':
         return <img src="/logos/audiobookshelf.svg" alt="Audiobookshelf" className="w-5 h-5" />;
       case 'sappho':
@@ -560,6 +567,7 @@ export default function Settings() {
                   required
                 >
                   <option value="emby">Emby</option>
+                  <option value="jellyfin">Jellyfin</option>
                   <option value="plex">Plex</option>
                   <option value="audiobookshelf">Audiobookshelf</option>
                   <option value="sappho">Sappho</option>
@@ -841,6 +849,27 @@ export default function Settings() {
                   </select>
                 </div>
 
+                {/* Jellyfin */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
+                    {getServerIcon('jellyfin')}
+                    Jellyfin Username
+                  </label>
+                  <select
+                    value={mappingFormData.mappings.jellyfin}
+                    onChange={(e) => setMappingFormData({
+                      ...mappingFormData,
+                      mappings: { ...mappingFormData.mappings, jellyfin: e.target.value }
+                    })}
+                    className="w-full px-4 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  >
+                    <option value="">None</option>
+                    {usersByServer.jellyfin?.map(user => (
+                      <option key={user.username} value={user.username}>{user.username}</option>
+                    ))}
+                  </select>
+                </div>
+
                 {/* Audiobookshelf */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
@@ -931,6 +960,28 @@ export default function Settings() {
                       {getServerIcon('emby')}
                       <span className={`text-sm ${mappingFormData.mappings.emby ? 'text-gray-200' : 'text-gray-500'}`}>
                         Emby
+                      </span>
+                    </div>
+                  </label>
+
+                  {/* Jellyfin Avatar Option */}
+                  <label className="flex items-center gap-3 p-3 bg-dark-700 border border-dark-600 rounded-lg cursor-pointer hover:border-primary-500 transition-colors">
+                    <input
+                      type="radio"
+                      name="preferred_avatar"
+                      value="jellyfin"
+                      checked={mappingFormData.preferred_avatar_server === 'jellyfin'}
+                      onChange={(e) => setMappingFormData({
+                        ...mappingFormData,
+                        preferred_avatar_server: e.target.value
+                      })}
+                      className="w-4 h-4 text-primary-600 focus:ring-primary-500 focus:ring-2"
+                      disabled={!mappingFormData.mappings.jellyfin}
+                    />
+                    <div className="flex items-center gap-2">
+                      {getServerIcon('jellyfin')}
+                      <span className={`text-sm ${mappingFormData.mappings.jellyfin ? 'text-gray-200' : 'text-gray-500'}`}>
+                        Jellyfin
                       </span>
                     </div>
                   </label>
@@ -1028,7 +1079,7 @@ export default function Settings() {
 
               // If no avatar from preferred server, try others
               if (!avatarUrl) {
-                for (const serverType of ['plex', 'emby', 'audiobookshelf', 'sappho']) {
+                for (const serverType of ['plex', 'emby', 'jellyfin', 'audiobookshelf', 'sappho']) {
                   if (serverType !== preferredServer && mapping.mappings[serverType]) {
                     const user = usersByServer[serverType]?.find(u => u.username === mapping.mappings[serverType]);
                     if (user?.thumb) {
@@ -1076,6 +1127,13 @@ export default function Settings() {
                               <span className="text-gray-300">{mapping.mappings.emby}</span>
                             </div>
                           )}
+                          {/* Jellyfin */}
+                          {mapping.mappings.jellyfin && (
+                            <div className="flex items-center gap-1.5 px-2 py-1 bg-dark-700 rounded text-xs">
+                              {getServerIcon('jellyfin')}
+                              <span className="text-gray-300">{mapping.mappings.jellyfin}</span>
+                            </div>
+                          )}
                           {/* Audiobookshelf */}
                           {mapping.mappings.audiobookshelf && (
                             <div className="flex items-center gap-1.5 px-2 py-1 bg-dark-700 rounded text-xs">
@@ -1090,7 +1148,7 @@ export default function Settings() {
                               <span className="text-gray-300">{mapping.mappings.sappho}</span>
                             </div>
                           )}
-                          {!mapping.mappings.plex && !mapping.mappings.emby && !mapping.mappings.audiobookshelf && !mapping.mappings.sappho && (
+                          {!mapping.mappings.plex && !mapping.mappings.emby && !mapping.mappings.jellyfin && !mapping.mappings.audiobookshelf && !mapping.mappings.sappho && (
                             <span className="text-gray-500 text-sm">No server mappings</span>
                           )}
                         </div>

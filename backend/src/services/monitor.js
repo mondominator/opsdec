@@ -3,6 +3,7 @@ import EmbyService from './emby.js';
 import PlexService from './plex.js';
 import AudiobookshelfService from './audiobookshelf.js';
 import SapphoService from './sappho.js';
+import JellyfinService from './jellyfin.js';
 import db from '../database/init.js';
 import { broadcast } from '../index.js';
 import geolocation from './geolocation.js';
@@ -11,6 +12,7 @@ let embyService = null;
 let plexService = null;
 let audiobookshelfService = null;
 let sapphoService = null;
+let jellyfinService = null;
 let lastActiveSessions = new Map();
 let cronJob = null;
 
@@ -117,6 +119,11 @@ export function initServices() {
           sapphoService = service;
           services.push({ name: server.name, service, type: 'sappho', id: server.id });
           console.log(`✅ ${server.name} (Sappho) initialized from database`);
+        } else if (server.type === 'jellyfin') {
+          service = new JellyfinService(server.url, server.api_key);
+          jellyfinService = service;
+          services.push({ name: server.name, service, type: 'jellyfin', id: server.id });
+          console.log(`✅ ${server.name} (Jellyfin) initialized from database`);
         }
       } catch (error) {
         console.error(`❌ Failed to initialize ${server.name}:`, error.message);
@@ -195,6 +202,21 @@ function migrateEnvToDatabase() {
           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `).run(id, 'sappho', 'Sappho', sapphoUrl, sapphoApiKey, 1, now, now);
         console.log('📥 Migrated Sappho from environment variables to database');
+      }
+    }
+
+    // Check and migrate Jellyfin
+    const jellyfinUrl = process.env.JELLYFIN_URL;
+    const jellyfinApiKey = process.env.JELLYFIN_API_KEY;
+    if (jellyfinUrl && jellyfinApiKey) {
+      const existing = db.prepare('SELECT * FROM servers WHERE type = ? AND url = ?').get('jellyfin', jellyfinUrl);
+      if (!existing) {
+        const id = `jellyfin-${Date.now()}`;
+        db.prepare(`
+          INSERT INTO servers (id, type, name, url, api_key, enabled, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(id, 'jellyfin', 'Jellyfin', jellyfinUrl, jellyfinApiKey, 1, now, now);
+        console.log('📥 Migrated Jellyfin from environment variables to database');
       }
     }
   } catch (error) {
@@ -384,7 +406,26 @@ async function updateSession(activity, serverType) {
       const oldSessionId = existing.id;
 
       // Calculate stream duration: use playback_time (actual watch time, not wall-clock time)
-      const streamDuration = existing.playback_time || (existing.current_time || 0);
+      let streamDuration = existing.playback_time || 0;
+
+      // If playback_time is 0 or very small but we have last_position_update, calculate elapsed time
+      if (streamDuration < 5 && existing.last_position_update && existing.state === 'playing') {
+        streamDuration = stopNow - existing.last_position_update;
+        console.log(`   📊 Calculated stream duration from elapsed time: ${streamDuration}s`);
+      }
+
+      // Sanity check: stream duration should never exceed the time since session started
+      const maxSessionDuration = stopNow - existing.started_at;
+      if (streamDuration > maxSessionDuration) {
+        console.log(`   ⚠️ Stream duration (${streamDuration}s) exceeds session time (${maxSessionDuration}s), capping`);
+        streamDuration = maxSessionDuration;
+      }
+
+      // Also cap at media duration if available
+      if (existing.duration && streamDuration > existing.duration) {
+        console.log(`   ⚠️ Stream duration (${streamDuration}s) exceeds media duration (${existing.duration}s), capping`);
+        streamDuration = existing.duration;
+      }
 
       // Mark old session as stopped (we'll delete it after adding to history)
       db.prepare(`
@@ -675,12 +716,22 @@ async function importAudiobookshelfHistory(service, serverType) {
       const metadata = session.mediaMetadata || {};
       const title = metadata.title || session.displayTitle || 'Unknown Title';
       const seriesName = metadata.series?.[0]?.name || null;
-      const duration = session.duration || 0;
-      const currentTime = session.currentTime || 0;
-      const percentComplete = duration ? Math.round((currentTime / duration) * 100) : 0;
 
-      // Use timeListening from the session as stream duration (actual time spent listening)
-      const streamDuration = session.timeListening || 0;
+      // Audiobookshelf API returns durations in seconds
+      // But validate in case they're in milliseconds (> 10 days would be unusual)
+      let duration = session.duration || 0;
+      let currentTime = session.currentTime || 0;
+      let streamDuration = session.timeListening || 0;
+
+      // If values seem too large (> 864000 seconds = 10 days), assume milliseconds
+      if (duration > 864000) {
+        console.log(`⚠️ Audiobookshelf: Large duration detected (${duration}), assuming milliseconds - converting to seconds`);
+        duration = Math.round(duration / 1000);
+        currentTime = Math.round(currentTime / 1000);
+        streamDuration = Math.round(streamDuration / 1000);
+      }
+
+      const percentComplete = duration ? Math.round((currentTime / duration) * 100) : 0;
 
       // Check if it should be added to history
       if (!shouldAddToHistory(
@@ -797,8 +848,24 @@ function stopInactiveSessions(activeSessionKeys) {
 
     // Get session data to calculate stream duration
     const sessionData = db.prepare('SELECT * FROM sessions WHERE session_key = ?').get(session.session_key);
-    // Use playback_time (actual watch time, not wall-clock time including pauses)
-    const streamDuration = sessionData.playback_time || (sessionData.current_time || 0);
+
+    // Calculate stream duration with sanity checks
+    let streamDuration = sessionData.playback_time || 0;
+    const now = Math.floor(Date.now() / 1000);
+
+    // If playback_time is very small but we have timing info, calculate from elapsed time
+    if (streamDuration < 5 && sessionData.last_position_update && sessionData.state === 'playing') {
+      streamDuration = now - sessionData.last_position_update;
+    }
+
+    // Cap at session duration and media duration
+    const maxSessionDuration = now - sessionData.started_at;
+    if (streamDuration > maxSessionDuration) {
+      streamDuration = maxSessionDuration;
+    }
+    if (sessionData.duration && streamDuration > sessionData.duration) {
+      streamDuration = sessionData.duration;
+    }
 
     // Add to history if it meets criteria
     if (shouldAddToHistory(session.title, session.duration, session.progress_percent, session.user_id, streamDuration, sessionData.media_type)) {
@@ -898,8 +965,23 @@ function stopInactiveSessions(activeSessionKeys) {
       // Get session data to calculate stream duration
       const sessionData = db.prepare('SELECT * FROM sessions WHERE session_key = ?').get(session.session_key);
 
-      // Calculate stream duration: use playback_time (actual watch time, not wall-clock time)
-      const streamDuration = sessionData.playback_time || (sessionData.current_time || 0);
+      // Calculate stream duration with sanity checks
+      let streamDuration = sessionData.playback_time || 0;
+      const now = Math.floor(Date.now() / 1000);
+
+      // If playback_time is very small but we have timing info, calculate from elapsed time
+      if (streamDuration < 5 && sessionData.last_position_update && sessionData.state === 'playing') {
+        streamDuration = now - sessionData.last_position_update;
+      }
+
+      // Cap at session duration and media duration
+      const maxSessionDuration = now - sessionData.started_at;
+      if (streamDuration > maxSessionDuration) {
+        streamDuration = maxSessionDuration;
+      }
+      if (sessionData.duration && streamDuration > sessionData.duration) {
+        streamDuration = sessionData.duration;
+      }
 
       // Add to history if it meets criteria
       if (shouldAddToHistory(session.title, session.duration, session.progress_percent, session.user_id, streamDuration, sessionData.media_type)) {
@@ -1068,6 +1150,25 @@ export function startActivityMonitor() {
     });
   }
 
+  // Set up WebSocket for Jellyfin if available
+  if (jellyfinService) {
+    console.log('🔌 Setting up Jellyfin WebSocket for real-time updates...');
+
+    // Connect to WebSocket
+    jellyfinService.connectWebSocket();
+
+    // Register event handler for session updates
+    jellyfinService.onWebSocketEvent((event) => {
+      if (event.type === 'session_update' || event.type === 'session_started' ||
+          event.type === 'session_stopped' || event.type === 'session_ended' ||
+          event.type === 'session_progress') {
+        console.log('📨 Jellyfin WebSocket event triggered immediate session check');
+        // Immediately check activity when we get a WebSocket event
+        checkActivity(services);
+      }
+    });
+  }
+
   // Set up WebSocket for Sappho if available
   if (sapphoService) {
     console.log('🔌 Setting up Sappho WebSocket for real-time updates...');
@@ -1093,27 +1194,62 @@ export function startActivityMonitor() {
             if (dbSession && dbSession.state !== 'stopped') {
               const now = Math.floor(Date.now() / 1000);
 
+              // Calculate actual playback time: time since session started while playing
+              // If playback_time was accumulated, use it; otherwise calculate from elapsed time
+              let streamDuration = dbSession.playback_time || 0;
+
+              // If playback_time is 0 or very small but we have last_position_update, calculate elapsed time
+              if (streamDuration < 5 && dbSession.last_position_update && dbSession.state === 'playing') {
+                streamDuration = now - dbSession.last_position_update;
+                console.log(`   📊 Calculated stream duration from elapsed time: ${streamDuration}s`);
+              }
+
+              // Sanity check: stream duration should never exceed the time since session started
+              const maxDuration = now - dbSession.started_at;
+              if (streamDuration > maxDuration) {
+                console.log(`   ⚠️ Stream duration (${streamDuration}s) exceeds session time (${maxDuration}s), capping`);
+                streamDuration = maxDuration;
+              }
+
+              // Also cap at audiobook duration if available (don't record more than 100% of content)
+              if (dbSession.duration && streamDuration > dbSession.duration) {
+                console.log(`   ⚠️ Stream duration (${streamDuration}s) exceeds media duration (${dbSession.duration}s), capping`);
+                streamDuration = dbSession.duration;
+              }
+
               // Mark session as stopped
               db.prepare(`
                 UPDATE sessions
                 SET state = 'stopped',
                     stopped_at = ?,
-                    updated_at = ?
+                    updated_at = ?,
+                    playback_time = ?
                 WHERE session_key = ?
-              `).run(now, now, session.sessionId);
-
-              // Calculate stream duration: use playback_time (actual watch time)
-              const streamDuration = dbSession.playback_time || (dbSession.current_time || 0);
+              `).run(now, now, streamDuration, session.sessionId);
 
               console.log(`   🛑 Stopped session: ${dbSession.title} (${dbSession.username}) - ${streamDuration}s duration`);
 
               // Add to history if it meets criteria
               if (shouldAddToHistory(dbSession.title, dbSession.duration, dbSession.progress_percent, dbSession.user_id, streamDuration, dbSession.media_type)) {
                 try {
-                  // Check if already in history
-                  const existingHistory = db.prepare(`
+                  // Check if already in history - use session_id first
+                  let existingHistory = db.prepare(`
                     SELECT id FROM history WHERE session_id = ? AND media_id = ?
                   `).get(dbSession.id, dbSession.media_id);
+
+                  // Also check for very recent entries (within 60 seconds) for same user/media
+                  // This prevents duplicates when session.stop fires multiple times
+                  if (!existingHistory) {
+                    const recentDuplicate = db.prepare(`
+                      SELECT id FROM history
+                      WHERE user_id = ? AND media_id = ? AND watched_at > ?
+                    `).get(dbSession.user_id, dbSession.media_id, now - 60);
+
+                    if (recentDuplicate) {
+                      console.log(`   Skipped history: Recent entry exists for same user/media (within 60s)`);
+                      existingHistory = recentDuplicate;
+                    }
+                  }
 
                   if (!existingHistory) {
                     db.prepare(`
@@ -1220,6 +1356,11 @@ export function restartMonitoring() {
     console.log('   Disconnected Emby WebSocket');
   }
 
+  if (jellyfinService && jellyfinService.disconnectWebSocket) {
+    jellyfinService.disconnectWebSocket();
+    console.log('   Disconnected Jellyfin WebSocket');
+  }
+
   if (sapphoService && sapphoService.disconnectWebSocket) {
     sapphoService.disconnectWebSocket();
     console.log('   Disconnected Sappho WebSocket');
@@ -1232,6 +1373,7 @@ export function restartMonitoring() {
   plexService = null;
   audiobookshelfService = null;
   sapphoService = null;
+  jellyfinService = null;
   lastActiveSessions = new Map();
 
   // Restart monitoring
@@ -1240,4 +1382,4 @@ export function restartMonitoring() {
   console.log('✅ Monitoring service restarted');
 }
 
-export { embyService, plexService, audiobookshelfService, sapphoService };
+export { embyService, plexService, audiobookshelfService, sapphoService, jellyfinService };

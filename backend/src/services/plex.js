@@ -118,9 +118,21 @@ class PlexService {
       // Calculate bitrate
       const bitrate = media.bitrate ? (media.bitrate / 1000).toFixed(2) : null; // Convert to Mbps
 
+      // Generate a stable session key - prefer Session.id, then sessionKey
+      // Fallback to a deterministic key based on user, device, and media to avoid duplicates
+      let sessionKey = session.Session?.id || session.sessionKey;
+      if (!sessionKey) {
+        // Generate deterministic key from user + device + media to prevent duplicates
+        const userId = user?.id || 'unknown';
+        const deviceId = player.machineIdentifier || player.device || 'unknown';
+        const mediaId = session.ratingKey || 'unknown';
+        sessionKey = `plex-${userId}-${deviceId}-${mediaId}`;
+        console.log(`⚠️ Plex: Generated fallback session key: ${sessionKey}`);
+      }
+
       // Build activity object
       return {
-        sessionKey: session.Session?.id || session.sessionKey || Math.random().toString(36),
+        sessionKey: sessionKey,
         userId: user?.id?.toString() || 'unknown',
         username: user?.title || 'Unknown User',
         userThumb: user?.thumb || null,

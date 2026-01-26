@@ -403,6 +403,18 @@ class AudiobookshelfService {
         console.log(`Could not fetch audio details for ${session.libraryItemId}`);
       }
 
+      // Audiobookshelf API returns durations in seconds
+      // But validate in case they're in milliseconds (> 10 days would be unusual)
+      let duration = session.duration ? Math.round(session.duration) : null;
+      let currentTime = session.currentTime ? Math.round(session.currentTime) : 0;
+
+      // If values seem too large (> 864000 seconds = 10 days), assume milliseconds
+      if (duration && duration > 864000) {
+        console.log(`⚠️ Audiobookshelf: Large duration detected (${duration}), assuming milliseconds - converting to seconds`);
+        duration = Math.round(duration / 1000);
+        currentTime = Math.round(currentTime / 1000);
+      }
+
       return {
         sessionKey: session.id,
         userId: session.userId,
@@ -417,12 +429,12 @@ class AudiobookshelfService {
         year: metadata.publishedYear || null,
         thumb: session.libraryItemId ? `${this.baseUrl}/api/items/${session.libraryItemId}/cover` : null,
         art: null,
-        state: session.currentTime > 0 ? 'playing' : 'paused',
-        progressPercent: session.duration
-          ? Math.round((session.currentTime / session.duration) * 100)
+        state: currentTime > 0 ? 'playing' : 'paused',
+        progressPercent: duration
+          ? Math.round((currentTime / duration) * 100)
           : 0,
-        duration: session.duration ? Math.round(session.duration) : null,
-        currentTime: session.currentTime ? Math.round(session.currentTime) : 0,
+        duration: duration,
+        currentTime: currentTime,
         clientName: session.deviceInfo?.clientName || 'Audiobookshelf',
         deviceName: session.deviceInfo?.deviceName || 'Unknown Device',
         platform: 'Audiobookshelf',

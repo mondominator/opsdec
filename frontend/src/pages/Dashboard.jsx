@@ -13,6 +13,8 @@ function Dashboard() {
         return <img src="/logos/emby.svg" alt="Emby" className={size} title="Emby" />;
       case 'plex':
         return <img src="/logos/plex.svg" alt="Plex" className={size} title="Plex" />;
+      case 'jellyfin':
+        return <img src="/logos/jellyfin.svg" alt="Jellyfin" className={size} title="Jellyfin" />;
       case 'audiobookshelf':
         return <img src="/logos/audiobookshelf.svg" alt="Audiobookshelf" className={size} title="Audiobookshelf" />;
       case 'sappho':
@@ -194,6 +196,7 @@ function Dashboard() {
                       <span className={
                         session.server_type === 'emby' ? 'text-green-400' :
                         session.server_type === 'plex' ? 'text-yellow-400' :
+                        session.server_type === 'jellyfin' ? 'text-purple-400' :
                         session.server_type === 'audiobookshelf' ? 'text-amber-600' :
                         session.server_type === 'sappho' ? 'text-blue-400' :
                         'text-gray-400'
