@@ -63,6 +63,8 @@ function Layout({ children }) {
         return <img src="/logos/emby.svg" alt="Emby" className="w-3 h-3" />;
       case 'plex':
         return <img src="/logos/plex.svg" alt="Plex" className="w-3 h-3" />;
+      case 'jellyfin':
+        return <img src="/logos/jellyfin.svg" alt="Jellyfin" className="w-3 h-3" />;
       case 'audiobookshelf':
         return <img src="/logos/audiobookshelf.svg" alt="Audiobookshelf" className="w-3 h-3" />;
       case 'sappho':
@@ -103,6 +105,7 @@ function Layout({ children }) {
                     <div className={`flex items-center ${
                       server.type === 'emby' ? 'text-green-400' :
                       server.type === 'plex' ? 'text-yellow-400' :
+                      server.type === 'jellyfin' ? 'text-purple-400' :
                       server.type === 'audiobookshelf' ? 'text-amber-600' :
                       server.type === 'sappho' ? 'text-blue-400' :
                       'text-gray-400'

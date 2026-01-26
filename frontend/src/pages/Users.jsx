@@ -82,6 +82,8 @@ function Users() {
         return <img src="/logos/emby.svg" alt="Emby" className="w-4 h-4" title="Emby" />;
       case 'plex':
         return <img src="/logos/plex.svg" alt="Plex" className="w-4 h-4" title="Plex" />;
+      case 'jellyfin':
+        return <img src="/logos/jellyfin.svg" alt="Jellyfin" className="w-4 h-4" title="Jellyfin" />;
       case 'audiobookshelf':
         return <img src="/logos/audiobookshelf.svg" alt="Audiobookshelf" className="w-4 h-4" title="Audiobookshelf" />;
       case 'sappho':
