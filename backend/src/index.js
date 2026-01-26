@@ -9,7 +9,8 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync } from 'fs';
 import { initDatabase, db } from './database/init.js';
-import { startActivityMonitor } from './services/monitor.js';
+import { startActivityMonitor, audiobookshelfService } from './services/monitor.js';
+import { initializeJobs, setAudiobookshelfService } from './services/jobs.js';
 import apiRouter from './routes/api.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -130,6 +131,13 @@ server.listen(PORT, () => {
 
   // Start activity monitoring
   startActivityMonitor();
+
+  // Initialize scheduled jobs
+  // Set the audiobookshelf service reference for repair-covers job
+  if (audiobookshelfService) {
+    setAudiobookshelfService(audiobookshelfService);
+  }
+  initializeJobs();
 });
 
 // Graceful shutdown handler to ensure database is properly closed

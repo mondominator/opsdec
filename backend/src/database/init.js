@@ -161,6 +161,22 @@ export function initDatabase() {
     )
   `);
 
+  // Scheduled jobs - track maintenance task runs
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS scheduled_jobs (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      cron_schedule TEXT NOT NULL,
+      last_run INTEGER,
+      last_status TEXT,
+      last_result TEXT,
+      last_duration INTEGER,
+      enabled INTEGER DEFAULT 1,
+      created_at INTEGER DEFAULT (strftime('%s', 'now'))
+    )
+  `);
+
   // User mappings - map usernames from different servers to a unified username
   db.exec(`
     CREATE TABLE IF NOT EXISTS user_mappings (

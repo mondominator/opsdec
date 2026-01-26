@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Save, Trash2, RefreshCw, Check, X, Server, AlertCircle, Film, Tv, Headphones, Globe, Users as UsersIcon, Database, Download, Upload, Archive } from 'lucide-react';
+import { Plus, Save, Trash2, RefreshCw, Check, X, Server, AlertCircle, Film, Tv, Headphones, Globe, Users as UsersIcon, Database, Download, Upload, Archive, Clock, Play, Pause, Calendar } from 'lucide-react';
 import api, { getSettings, updateSetting, getUserMappings, createUserMapping, deleteUserMapping, getUsersByServer, purgeDatabase, createBackup, getBackups, restoreBackup, deleteBackup, uploadBackup } from '../utils/api';
 import { useTimezone } from '../contexts/TimezoneContext';
 
@@ -23,6 +23,12 @@ export default function Settings() {
   const [creatingBackup, setCreatingBackup] = useState(false);
   const [uploadingBackup, setUploadingBackup] = useState(false);
   const [restoringBackup, setRestoringBackup] = useState(null);
+
+  // Scheduled jobs state
+  const [jobs, setJobs] = useState([]);
+  const [loadingJobs, setLoadingJobs] = useState(false);
+  const [runningJob, setRunningJob] = useState(null);
+  const [jobResults, setJobResults] = useState({});
 
   // User mappings state
   const [userMappings, setUserMappings] = useState([]);
@@ -55,6 +61,7 @@ export default function Settings() {
     loadUserMappings();
     loadUsersByServer();
     loadBackups();
+    loadJobs();
   }, []);
 
   const loadSettings = async () => {
@@ -94,6 +101,91 @@ export default function Settings() {
     } finally {
       setLoadingBackups(false);
     }
+  };
+
+  const loadJobs = async () => {
+    setLoadingJobs(true);
+    try {
+      const response = await api.get('/jobs');
+      setJobs(response.data.data || []);
+    } catch (error) {
+      console.error('Failed to load jobs:', error);
+    } finally {
+      setLoadingJobs(false);
+    }
+  };
+
+  const handleRunJob = async (jobId) => {
+    setRunningJob(jobId);
+    setJobResults(prev => ({ ...prev, [jobId]: null }));
+
+    try {
+      const response = await api.post(`/jobs/${jobId}/run`);
+      setJobResults(prev => ({
+        ...prev,
+        [jobId]: {
+          success: response.data.data.success,
+          result: response.data.data.result,
+          duration: response.data.data.duration
+        }
+      }));
+      // Reload jobs to get updated last_run time
+      await loadJobs();
+
+      // Clear result after 10 seconds
+      setTimeout(() => {
+        setJobResults(prev => {
+          const newResults = { ...prev };
+          delete newResults[jobId];
+          return newResults;
+        });
+      }, 10000);
+    } catch (error) {
+      console.error('Failed to run job:', error);
+      setJobResults(prev => ({
+        ...prev,
+        [jobId]: {
+          success: false,
+          error: error.response?.data?.error || error.message
+        }
+      }));
+    } finally {
+      setRunningJob(null);
+    }
+  };
+
+  const handleToggleJob = async (jobId, enabled) => {
+    try {
+      await api.patch(`/jobs/${jobId}`, { enabled });
+      await loadJobs();
+    } catch (error) {
+      console.error('Failed to toggle job:', error);
+      alert(`Failed to update job: ${error.response?.data?.error || error.message}`);
+    }
+  };
+
+  const formatJobTime = (timestamp) => {
+    if (!timestamp) return 'Never';
+    const date = new Date(timestamp * 1000);
+    return date.toLocaleString();
+  };
+
+  const formatNextRun = (timestamp) => {
+    if (!timestamp) return 'N/A';
+    const date = new Date(timestamp * 1000);
+    const now = new Date();
+    const diff = date - now;
+    if (diff < 0) return 'Soon';
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h ${minutes % 60}m`;
+  };
+
+  const formatDuration = (ms) => {
+    if (!ms) return '';
+    if (ms < 1000) return `${ms}ms`;
+    return `${(ms / 1000).toFixed(1)}s`;
   };
 
   // Silently fetch version info when page loads
@@ -1268,6 +1360,179 @@ export default function Settings() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Scheduled Jobs */}
+      <div className="bg-dark-800 rounded-lg p-4 sm:p-6 border border-dark-700 mt-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div className="flex items-center gap-2">
+            <Clock className="w-5 h-5 text-primary-500" />
+            <h2 className="text-xl font-semibold text-gray-100">Scheduled Jobs</h2>
+          </div>
+          <button
+            onClick={loadJobs}
+            disabled={loadingJobs}
+            className="px-4 py-2 bg-dark-700 hover:bg-dark-600 disabled:opacity-50 text-gray-300 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm sm:flex-none"
+          >
+            <RefreshCw className={`w-4 h-4 ${loadingJobs ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
+
+        <p className="text-sm text-gray-400 mb-4">
+          Maintenance jobs run automatically on a schedule. You can also run them manually or toggle them on/off.
+        </p>
+
+        {loadingJobs && jobs.length === 0 ? (
+          <div className="text-center py-8 text-gray-400">Loading jobs...</div>
+        ) : jobs.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            No scheduled jobs available.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {jobs.map((job) => (
+              <div
+                key={job.id}
+                className="bg-dark-750 border border-dark-600 rounded-lg p-4"
+              >
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                  {/* Job Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                        job.enabled ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-gray-500'
+                      }`} />
+                      <h4 className="text-white font-semibold">{job.name}</h4>
+                      {job.isRunning && (
+                        <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs font-medium rounded-full animate-pulse">
+                          Running
+                        </span>
+                      )}
+                      {!job.hasHandler && (
+                        <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs font-medium rounded-full">
+                          No Handler
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-400 mb-3">{job.description}</p>
+
+                    {/* Schedule & Status */}
+                    <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-gray-500">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span>Schedule: <code className="bg-dark-700 px-1.5 py-0.5 rounded text-gray-400">{job.cron_schedule}</code></span>
+                      </div>
+                      {job.enabled && job.nextRun && (
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>Next run: {formatNextRun(job.nextRun)}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1.5">
+                        <span>Last run: {formatJobTime(job.last_run)}</span>
+                        {job.last_status && (
+                          <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                            job.last_status === 'success' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                          }`}>
+                            {job.last_status}
+                          </span>
+                        )}
+                        {job.last_duration && (
+                          <span className="text-gray-500">({formatDuration(job.last_duration)})</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Last Result */}
+                    {job.lastResult && (
+                      <div className="mt-2 text-xs text-gray-500">
+                        {job.lastResult.repaired !== undefined && (
+                          <span>Repaired: {job.lastResult.repaired}, Not found: {job.lastResult.notFound}, Valid: {job.lastResult.alreadyValid}</span>
+                        )}
+                        {job.lastResult.merged !== undefined && (
+                          <span>Merged: {job.lastResult.merged} duplicate sets</span>
+                        )}
+                        {job.lastResult.error && (
+                          <span className="text-red-400">Error: {job.lastResult.error}</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Current Run Result */}
+                    {jobResults[job.id] && (
+                      <div className={`mt-2 p-2 rounded text-xs ${
+                        jobResults[job.id].success ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+                      }`}>
+                        {jobResults[job.id].success ? (
+                          <>
+                            <span className="font-medium">Completed</span>
+                            {jobResults[job.id].duration && (
+                              <span className="ml-2">({formatDuration(jobResults[job.id].duration)})</span>
+                            )}
+                            {jobResults[job.id].result && (
+                              <div className="mt-1">
+                                {jobResults[job.id].result.repaired !== undefined && (
+                                  <span>Repaired: {jobResults[job.id].result.repaired}, Not found: {jobResults[job.id].result.notFound}, Valid: {jobResults[job.id].result.alreadyValid}</span>
+                                )}
+                                {jobResults[job.id].result.merged !== undefined && (
+                                  <span>Merged: {jobResults[job.id].result.merged} duplicate sets</span>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <span>Error: {jobResults[job.id].error}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleRunJob(job.id)}
+                      disabled={runningJob === job.id || job.isRunning || !job.hasHandler}
+                      className="px-3 py-1.5 bg-primary-600 hover:bg-primary-500 disabled:bg-primary-700 disabled:opacity-50 text-white rounded text-sm font-medium transition-colors flex items-center gap-1.5"
+                    >
+                      {runningJob === job.id ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          Running...
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-4 h-4" />
+                          Run Now
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleToggleJob(job.id, !job.enabled)}
+                      className={`px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                        job.enabled
+                          ? 'bg-dark-600 hover:bg-dark-500 text-gray-300'
+                          : 'bg-green-600 hover:bg-green-500 text-white'
+                      }`}
+                    >
+                      {job.enabled ? (
+                        <>
+                          <Pause className="w-4 h-4" />
+                          Disable
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-4 h-4" />
+                          Enable
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Database Management */}

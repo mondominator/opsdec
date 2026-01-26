@@ -1,6 +1,7 @@
 import express from 'express';
 import db from '../database/init.js';
 import { embyService, audiobookshelfService, sapphoService, jellyfinService } from '../services/monitor.js';
+import { getJobs, runJob, updateJob } from '../services/jobs.js';
 import multer from 'multer';
 
 const router = express.Router();
@@ -275,6 +276,40 @@ router.post('/history/merge-duplicates', (req, res) => {
     });
   } catch (error) {
     console.error('Error merging duplicates:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Scheduled Jobs Endpoints
+// Get all jobs with status
+router.get('/jobs', (req, res) => {
+  try {
+    const jobs = getJobs();
+    res.json({ success: true, data: jobs });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Run a job manually
+router.post('/jobs/:id/run', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await runJob(id, true); // true = manual run
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update job settings (enable/disable, schedule)
+router.patch('/jobs/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { enabled, cronSchedule } = req.body;
+    const job = updateJob(id, { enabled, cronSchedule });
+    res.json({ success: true, data: job });
+  } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
