@@ -1341,16 +1341,16 @@ export function startActivityMonitor() {
         const session = message.session;
         if (session && session.sessionId) {
           // Directly update session state to paused so timeout logic works
+          // IMPORTANT: Do NOT update updated_at here - we want the 30-second paused timeout
+          // to count from when the session was last actively playing, not from now
           const dbSession = db.prepare('SELECT * FROM sessions WHERE session_key = ?').get(session.sessionId);
           if (dbSession && dbSession.state === 'playing') {
-            const now = Math.floor(Date.now() / 1000);
             db.prepare(`
               UPDATE sessions
-              SET state = 'paused',
-                  updated_at = ?
+              SET state = 'paused'
               WHERE session_key = ?
-            `).run(now, session.sessionId);
-            console.log(`   ⏸️ Marked session as paused: ${dbSession.title}`);
+            `).run(session.sessionId);
+            console.log(`   ⏸️ Marked session as paused: ${dbSession.title} (timeout in 30s from last activity)`);
           }
         }
 
