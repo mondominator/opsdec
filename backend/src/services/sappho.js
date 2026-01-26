@@ -87,11 +87,6 @@ class SapphoService {
 
       console.log(`📊 Found ${sessions.length} active Sappho session(s)`);
 
-      // Debug: log session states and all state-related fields
-      for (const session of sessions) {
-        console.log(`   📡 Sappho raw session: ${session.title || 'Unknown'} - state: ${session.state}, paused: ${session.paused}, isPaused: ${session.isPaused}, stopped: ${session.stopped}`);
-      }
-
       for (const session of sessions) {
         const activity = this.parseSessionToActivity(session);
         if (activity) {

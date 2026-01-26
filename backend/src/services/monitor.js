@@ -227,11 +227,6 @@ function migrateEnvToDatabase() {
 async function updateSession(activity, serverType) {
   const now = Math.floor(Date.now() / 1000);
 
-  // Debug: log incoming activity state
-  if (serverType === 'sappho') {
-    console.log(`   🔄 updateSession for Sappho: ${activity.title} - incoming state: '${activity.state}'`);
-  }
-
   // Lookup geolocation for IP address if available
   let geoData = null;
   if (activity.ipAddress) {
@@ -857,22 +852,6 @@ function stopInactiveSessions(activeSessionKeys) {
   // First, clean up stale paused sessions (paused for more than 30 seconds)
   // Note: Audiobookshelf is excluded because it handles its own history import
   // Sappho, Plex, and Emby sessions are included for proper history tracking
-  console.log(`🔍 Paused session check: now=${now}, timeout=${PAUSED_SESSION_TIMEOUT}s`);
-
-  // Debug: show ALL paused sessions first
-  const allPausedSessions = db.prepare(`
-    SELECT session_key, title, server_type, state, updated_at, (? - updated_at) as age
-    FROM sessions
-    WHERE state = 'paused'
-  `).all(now);
-
-  if (allPausedSessions.length > 0) {
-    console.log(`   📋 All paused sessions in DB: ${allPausedSessions.length}`);
-    for (const s of allPausedSessions) {
-      console.log(`      - ${s.title} (${s.server_type}): age=${s.age}s, updated_at=${s.updated_at}, should_timeout=${s.age > PAUSED_SESSION_TIMEOUT}`);
-    }
-  }
-
   const stalePausedSessions = db.prepare(`
     SELECT session_key, user_id, username, title, progress_percent, duration, server_type, updated_at, (? - updated_at) as age
     FROM sessions
@@ -880,11 +859,6 @@ function stopInactiveSessions(activeSessionKeys) {
       AND server_type NOT IN ('audiobookshelf')
       AND (? - updated_at) > ?
   `).all(now, now, PAUSED_SESSION_TIMEOUT);
-
-  console.log(`🔍 Stale paused sessions to stop: ${stalePausedSessions.length}`);
-  if (stalePausedSessions.length > 0) {
-    console.log(`   Sessions:`, stalePausedSessions.map(s => `${s.title} (${s.age}s old)`).join(', '));
-  }
 
   for (const session of stalePausedSessions) {
     // Mark as stopped
