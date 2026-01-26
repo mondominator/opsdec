@@ -240,7 +240,8 @@ class AudiobookshelfService {
         for (const user of usersResponse.data.users) {
           try {
             // Get listening sessions for each user
-            const sessionsResponse = await this.client.get(`/api/users/${user.id}/listening-sessions`);
+            // Note: API defaults to 10 items, so we need to request more
+            const sessionsResponse = await this.client.get(`/api/users/${user.id}/listening-sessions?itemsPerPage=1000`);
             const sessions = sessionsResponse.data.sessions || [];
 
             // Add user info to each session
