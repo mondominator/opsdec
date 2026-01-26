@@ -211,6 +211,74 @@ router.post('/history/repair-covers', async (req, res) => {
   }
 });
 
+// Merge duplicate Audiobookshelf history entries (same media_id + user_id)
+router.post('/history/merge-duplicates', (req, res) => {
+  try {
+    // Find duplicates: same media_id + user_id with multiple entries
+    const duplicates = db.prepare(`
+      SELECT media_id, user_id, COUNT(*) as count
+      FROM history
+      WHERE server_type = 'audiobookshelf'
+      GROUP BY media_id, user_id
+      HAVING COUNT(*) > 1
+    `).all();
+
+    let merged = 0;
+
+    for (const dup of duplicates) {
+      // Get all entries for this book + user
+      const entries = db.prepare(`
+        SELECT id, title, percent_complete, stream_duration, watched_at, abs_session_ids
+        FROM history
+        WHERE media_id = ? AND user_id = ? AND server_type = 'audiobookshelf'
+        ORDER BY watched_at DESC
+      `).all(dup.media_id, dup.user_id);
+
+      if (entries.length <= 1) continue;
+
+      // Keep the most recent entry, merge stats from others
+      const keepEntry = entries[0];
+      const mergeEntries = entries.slice(1);
+
+      // Calculate merged values
+      let totalStreamDuration = keepEntry.stream_duration || 0;
+      let maxPercent = keepEntry.percent_complete || 0;
+      let allSessionIds = keepEntry.abs_session_ids ? [keepEntry.abs_session_ids] : [];
+
+      for (const entry of mergeEntries) {
+        totalStreamDuration += entry.stream_duration || 0;
+        maxPercent = Math.max(maxPercent, entry.percent_complete || 0);
+        if (entry.abs_session_ids) {
+          allSessionIds.push(entry.abs_session_ids);
+        }
+      }
+
+      // Update the kept entry with merged values
+      db.prepare(`
+        UPDATE history
+        SET stream_duration = ?, percent_complete = ?, abs_session_ids = ?
+        WHERE id = ?
+      `).run(totalStreamDuration, maxPercent, allSessionIds.join(','), keepEntry.id);
+
+      // Delete the duplicate entries
+      const deleteIds = mergeEntries.map(e => e.id);
+      db.prepare(`DELETE FROM history WHERE id IN (${deleteIds.map(() => '?').join(',')})`).run(...deleteIds);
+
+      merged++;
+      console.log(`🔀 Merged ${entries.length} entries for "${keepEntry.title}" into one`);
+    }
+
+    res.json({
+      success: true,
+      message: `Merged ${merged} sets of duplicates`,
+      merged
+    });
+  } catch (error) {
+    console.error('Error merging duplicates:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Get users
 router.get('/users', (req, res) => {
   try {
