@@ -680,35 +680,37 @@ function updateUserStats(userId, username, serverType, userThumb = null) {
 }
 
 // Import history from Audiobookshelf listening sessions API
+// Uses consolidation: ONE history entry per user/book, updated as progress increases
 async function importAudiobookshelfHistory(service, serverType) {
   try {
     const listeningSessions = await service.getListeningSessions();
     const now = Math.floor(Date.now() / 1000);
-    const sevenDaysAgo = now - (7 * 24 * 60 * 60); // Only import sessions from last 7 days
     let importedCount = 0;
-    let skippedCount = 0;
+    let updatedCount = 0;
+
+    // Track which sessions we've already processed in this import run
+    // to avoid double-counting stream duration from the same ABS session
+    const processedAbsSessions = new Set();
+
+    // Get existing processed session IDs from database to avoid reprocessing
+    const existingProcessed = db.prepare(`
+      SELECT abs_session_ids FROM history
+      WHERE server_type = ? AND abs_session_ids IS NOT NULL
+    `).all(serverType);
+
+    for (const row of existingProcessed) {
+      if (row.abs_session_ids) {
+        row.abs_session_ids.split(',').forEach(id => processedAbsSessions.add(id));
+      }
+    }
 
     for (const session of listeningSessions) {
       if (!session || !session.id || !session.userId || !session.libraryItemId) {
         continue;
       }
 
-      // Only import sessions from the last 7 days
-      const sessionTime = session.updatedAt ? Math.floor(session.updatedAt / 1000) : 0;
-      if (sessionTime < sevenDaysAgo) {
-        skippedCount++;
-        continue;
-      }
-
-      // Check if we've already imported this session
-      // Use media_id, user_id, and session updatedAt timestamp for deduplication
-      const existingHistory = db.prepare(`
-        SELECT id FROM history
-        WHERE media_id = ? AND user_id = ? AND server_type = ? AND watched_at = ?
-      `).get(session.libraryItemId, session.userId, serverType, sessionTime);
-
-      if (existingHistory) {
-        // Already imported this session
+      // Skip if we've already processed this ABS session
+      if (processedAbsSessions.has(session.id)) {
         continue;
       }
 
@@ -716,6 +718,7 @@ async function importAudiobookshelfHistory(service, serverType) {
       const metadata = session.mediaMetadata || {};
       const title = metadata.title || session.displayTitle || 'Unknown Title';
       const seriesName = metadata.series?.[0]?.name || null;
+      const sessionTime = session.updatedAt ? Math.floor(session.updatedAt / 1000) : now;
 
       // Audiobookshelf API returns durations in seconds
       // But validate in case they're in milliseconds (> 10 days would be unusual)
@@ -733,7 +736,7 @@ async function importAudiobookshelfHistory(service, serverType) {
 
       const percentComplete = duration ? Math.round((currentTime / duration) * 100) : 0;
 
-      // Check if it should be added to history
+      // Check if it should be added to history (basic filtering)
       if (!shouldAddToHistory(
         title,
         duration,
@@ -745,66 +748,96 @@ async function importAudiobookshelfHistory(service, serverType) {
         continue;
       }
 
-      // Add to history
+      // Ensure user exists in database
+      updateUserStats(session.userId, session.username, serverType, null);
+
+      const thumb = session.libraryItemId ? `${service.baseUrl}/api/items/${session.libraryItemId}/cover` : null;
+
+      // Check if we have an existing history entry for this user + book
+      const existingHistory = db.prepare(`
+        SELECT id, percent_complete, stream_duration, abs_session_ids
+        FROM history
+        WHERE media_id = ? AND user_id = ? AND server_type = ?
+        ORDER BY watched_at DESC
+        LIMIT 1
+      `).get(session.libraryItemId, session.userId, serverType);
+
       try {
-        // Ensure user exists in database BEFORE inserting history
-        console.log(`Creating/updating user ${session.userId} (${session.username}) for Audiobookshelf`);
-        updateUserStats(session.userId, session.username, serverType, null);
+        if (existingHistory) {
+          // UPDATE existing entry - consolidate progress
+          const newStreamDuration = existingHistory.stream_duration + streamDuration;
+          const newPercent = Math.max(existingHistory.percent_complete, percentComplete);
+          const newSessionIds = existingHistory.abs_session_ids
+            ? `${existingHistory.abs_session_ids},${session.id}`
+            : session.id;
 
-        // Verify user exists
-        const userCheck = db.prepare('SELECT id FROM users WHERE id = ?').get(session.userId);
-        if (!userCheck) {
-          console.error(`Failed to create user ${session.userId} - skipping history import for this session`);
-          continue;
+          db.prepare(`
+            UPDATE history
+            SET percent_complete = ?,
+                stream_duration = ?,
+                watched_at = ?,
+                abs_session_ids = ?
+            WHERE id = ?
+          `).run(newPercent, newStreamDuration, sessionTime, newSessionIds, existingHistory.id);
+
+          // Update user total duration (not play count - same book)
+          db.prepare(`
+            UPDATE users
+            SET total_duration = total_duration + ?
+            WHERE id = ?
+          `).run(streamDuration, session.userId);
+
+          updatedCount++;
+          console.log(`📚 Updated Audiobookshelf history: ${title} (${newPercent}% - ${Math.floor(newStreamDuration / 60)}m total)`);
+        } else {
+          // INSERT new entry for this user + book
+          db.prepare(`
+            INSERT INTO history (
+              session_id, server_type, user_id, username,
+              media_type, media_id, title, parent_title, grandparent_title,
+              watched_at, duration, percent_complete, thumb, stream_duration,
+              ip_address, city, region, country, abs_session_ids
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            null, // session_id
+            serverType,
+            session.userId,
+            session.username,
+            'audiobook',
+            session.libraryItemId,
+            title,
+            seriesName,
+            null, // grandparent_title
+            sessionTime,
+            duration,
+            percentComplete,
+            thumb,
+            streamDuration,
+            null, // ip_address
+            null, // city
+            null, // region
+            null, // country
+            session.id // abs_session_ids - track which ABS sessions we've processed
+          );
+
+          // Update user play count and duration
+          db.prepare(`
+            UPDATE users
+            SET total_plays = total_plays + 1,
+                total_duration = total_duration + ?
+            WHERE id = ?
+          `).run(streamDuration, session.userId);
+
+          importedCount++;
+          console.log(`📚 Imported Audiobookshelf history: ${title} (${percentComplete}% - ${Math.floor(streamDuration / 60)}m)`);
         }
-
-        const thumb = session.libraryItemId ? `${service.baseUrl}/api/items/${session.libraryItemId}/cover` : null;
-
-        db.prepare(`
-          INSERT INTO history (
-            session_id, server_type, user_id, username,
-            media_type, media_id, title, parent_title, grandparent_title,
-            watched_at, duration, percent_complete, thumb, stream_duration,
-            ip_address, city, region, country
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
-          null, // session_id - Audiobookshelf sessions aren't in the sessions table
-          serverType,
-          session.userId,
-          session.username,
-          'audiobook',
-          session.libraryItemId,
-          title,
-          seriesName,
-          null, // grandparent_title
-          sessionTime,
-          duration,
-          percentComplete,
-          thumb,
-          streamDuration,
-          null, // ip_address
-          null, // city
-          null, // region
-          null  // country
-        );
-
-        // Update user play count
-        db.prepare(`
-          UPDATE users
-          SET total_plays = total_plays + 1,
-              total_duration = total_duration + ?
-          WHERE id = ?
-        `).run(streamDuration, session.userId);
-
-        importedCount++;
-        console.log(`📚 Imported Audiobookshelf history: ${title} (${percentComplete}% - ${Math.floor(streamDuration / 60)}m)`);
       } catch (error) {
         console.error(`Error importing Audiobookshelf history for session ${session.id}:`, error.message, `User: ${session.userId} (${session.username})`);
       }
     }
 
-    if (importedCount > 0 || skippedCount > 0) {
-      console.log(`✅ Audiobookshelf history import: ${importedCount} new sessions imported, ${skippedCount} old sessions skipped (older than 7 days)`);
+    if (importedCount > 0 || updatedCount > 0) {
+      console.log(`📚 Audiobookshelf history sync complete: ${importedCount} new, ${updatedCount} updated`);
     }
   } catch (error) {
     console.error('Error in importAudiobookshelfHistory:', error.message);

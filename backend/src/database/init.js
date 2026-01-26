@@ -294,6 +294,11 @@ export function initDatabase() {
       db.exec('ALTER TABLE history ADD COLUMN country TEXT');
     }
 
+    if (!historyColumnNames.includes('abs_session_ids')) {
+      console.log('🔧 Adding abs_session_ids column to history (for Audiobookshelf consolidation)...');
+      db.exec('ALTER TABLE history ADD COLUMN abs_session_ids TEXT'); // Comma-separated list of processed ABS session IDs
+    }
+
     // Add location fields to sessions table
     if (!columnNames.includes('ip_address')) {
       console.log('🔧 Adding ip_address column to sessions...');
