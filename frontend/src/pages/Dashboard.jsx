@@ -2,8 +2,41 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getDashboardStats, getActivity } from '../utils/api';
 import { formatDuration, formatTimeAgo } from '../utils/format';
-import { Users, PlayCircle, TrendingUp, Clock, Activity as ActivityIcon, Film, Tv, Headphones, ChevronDown, MapPin } from 'lucide-react';
+import { Users, PlayCircle, TrendingUp, Clock, Activity as ActivityIcon, Film, Tv, Headphones, ChevronDown, MapPin, Book } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
+// Thumbnail component with error handling and placeholder
+function MediaThumbnail({ src, alt, title, serverType, className = "w-full h-full", iconSize = "w-8 h-8" }) {
+  const [hasError, setHasError] = useState(false);
+
+  const imgSrc = (serverType === 'sappho' || serverType === 'audiobookshelf')
+    ? `/proxy/image?url=${encodeURIComponent(src)}`
+    : src;
+
+  if (hasError || !src) {
+    return (
+      <div className={`${className} bg-gradient-to-br from-dark-600 to-dark-700 rounded flex items-center justify-center`}>
+        {serverType === 'audiobookshelf' || serverType === 'sappho' ? (
+          <Book className={`${iconSize} text-gray-500`} />
+        ) : (
+          <span className="text-gray-400 font-bold text-lg">
+            {title?.charAt(0)?.toUpperCase() || '?'}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={imgSrc}
+      alt={alt}
+      className={`${className} object-cover rounded`}
+      loading="lazy"
+      onError={() => setHasError(true)}
+    />
+  );
+}
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -106,18 +139,14 @@ function Dashboard() {
                   {/* Thumbnail */}
                   <div className="flex-shrink-0">
                     <div className="relative w-16 h-24 bg-dark-700 rounded overflow-hidden">
-                      {session.thumb ? (
-                        <img
-                          src={`/proxy/image?url=${encodeURIComponent(session.thumb)}`}
-                          alt={session.title}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <PlayCircle className="w-8 h-8 text-gray-500" />
-                        </div>
-                      )}
+                      <MediaThumbnail
+                        src={session.thumb}
+                        alt={session.title}
+                        title={session.title}
+                        serverType={session.server_type}
+                        className="w-full h-full"
+                        iconSize="w-8 h-8"
+                      />
                     </div>
                   </div>
 
@@ -174,21 +203,15 @@ function Dashboard() {
                 <div className="hidden md:flex p-4 gap-4">
                   {/* Thumbnail and Server Label */}
                   <div className="flex-shrink-0">
-                    <div className="relative w-24 h-36 bg-dark-700 rounded-lg mb-3">
-                      {session.thumb ? (
-                        <img
-                          src={`/proxy/image?url=${encodeURIComponent(session.thumb)}`}
-                          alt={session.title}
-                          className="w-full h-full object-contain rounded-lg"
-                          loading="lazy"
-                        />
-                      ) : null}
-                      <div
-                        className="placeholder absolute inset-0 bg-dark-600 rounded-lg flex items-center justify-center"
-                        style={{ display: session.thumb ? 'none' : 'flex' }}
-                      >
-                        <PlayCircle className="w-12 h-12 text-gray-500" />
-                      </div>
+                    <div className="relative w-24 h-36 bg-dark-700 rounded-lg mb-3 overflow-hidden">
+                      <MediaThumbnail
+                        src={session.thumb}
+                        alt={session.title}
+                        title={session.title}
+                        serverType={session.server_type}
+                        className="w-full h-full"
+                        iconSize="w-12 h-12"
+                      />
                     </div>
                     {/* Server label */}
                     <div className={`flex items-center justify-center text-xs font-semibold ${session.server_type === 'sappho' ? '-space-x-0.5' : 'gap-1 capitalize'}`}>
@@ -445,18 +468,14 @@ function Dashboard() {
                           </div>
                           {/* Thumbnail */}
                           <div className="flex-shrink-0 relative w-6 h-9">
-                            {item.thumb ? (
-                              <img
-                                src={`/proxy/image?url=${encodeURIComponent(item.thumb)}`}
-                                alt={item.title}
-                                className="w-full h-full object-cover rounded"
-                                loading="lazy"
-                              />
-                            ) : (
-                              <div className="w-full h-full bg-dark-600 rounded flex items-center justify-center">
-                                <PlayCircle className="w-3 h-3 text-gray-500" />
-                              </div>
-                            )}
+                            <MediaThumbnail
+                              src={item.thumb}
+                              alt={item.title}
+                              title={item.title}
+                              serverType={item.server_type}
+                              className="w-full h-full"
+                              iconSize="w-3 h-3"
+                            />
                           </div>
                           {/* Content */}
                           <div className="flex-1 min-w-0">
@@ -537,18 +556,14 @@ function Dashboard() {
                           </div>
                           {/* Thumbnail */}
                           <div className="flex-shrink-0 relative w-6 h-9">
-                            {item.thumb ? (
-                              <img
-                                src={`/proxy/image?url=${encodeURIComponent(item.thumb)}`}
-                                alt={item.title}
-                                className="w-full h-full object-cover rounded"
-                                loading="lazy"
-                              />
-                            ) : (
-                              <div className="w-full h-full bg-dark-600 rounded flex items-center justify-center">
-                                <PlayCircle className="w-3 h-3 text-gray-500" />
-                              </div>
-                            )}
+                            <MediaThumbnail
+                              src={item.thumb}
+                              alt={item.title}
+                              title={item.title}
+                              serverType={item.server_type}
+                              className="w-full h-full"
+                              iconSize="w-3 h-3"
+                            />
                           </div>
                           {/* Content */}
                           <div className="flex-1 min-w-0">
@@ -629,18 +644,14 @@ function Dashboard() {
                           </div>
                           {/* Thumbnail */}
                           <div className="flex-shrink-0 relative w-6 h-9">
-                            {item.thumb ? (
-                              <img
-                                src={`/proxy/image?url=${encodeURIComponent(item.thumb)}`}
-                                alt={item.title}
-                                className="w-full h-full object-cover rounded"
-                                loading="lazy"
-                              />
-                            ) : (
-                              <div className="w-full h-full bg-dark-600 rounded flex items-center justify-center">
-                                <PlayCircle className="w-3 h-3 text-gray-500" />
-                              </div>
-                            )}
+                            <MediaThumbnail
+                              src={item.thumb}
+                              alt={item.title}
+                              title={item.title}
+                              serverType="audiobookshelf"
+                              className="w-full h-full"
+                              iconSize="w-3 h-3"
+                            />
                           </div>
                           {/* Content */}
                           <div className="flex-1 min-w-0">
