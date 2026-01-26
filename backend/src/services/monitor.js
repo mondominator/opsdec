@@ -716,6 +716,7 @@ async function importAudiobookshelfHistory(service, serverType) {
       }
 
       // Skip podcasts - only import audiobooks
+      // Check both the session mediaType and the actual library item type
       if (session.mediaType === 'podcast') {
         continue;
       }
@@ -723,6 +724,22 @@ async function importAudiobookshelfHistory(service, serverType) {
       // Skip if we've already processed this ABS session (or it was deleted)
       if (processedAbsSessions.has(session.id)) {
         continue;
+      }
+
+      // Double-check that this is actually a book by verifying the library item
+      // Some podcast episodes come through without mediaType set correctly
+      try {
+        const itemInfo = await service.getItemInfo(session.libraryItemId);
+        if (!itemInfo.exists) {
+          // Item no longer exists, skip it
+          continue;
+        }
+        if (itemInfo.mediaType === 'podcast') {
+          // This is actually a podcast, skip it
+          continue;
+        }
+      } catch (e) {
+        // If we can't verify, continue with import
       }
 
       // Extract data from listening session

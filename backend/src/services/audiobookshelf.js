@@ -169,13 +169,27 @@ class AudiobookshelfService {
     }
   }
 
-  // Check if a library item exists (cover is accessible)
+  // Check if a library item exists and return its info
   async itemExists(libraryItemId) {
     try {
       await this.client.get(`/api/items/${libraryItemId}`);
       return true;
     } catch (error) {
       return false;
+    }
+  }
+
+  // Get item info including mediaType (book vs podcast)
+  async getItemInfo(libraryItemId) {
+    try {
+      const response = await this.client.get(`/api/items/${libraryItemId}`);
+      return {
+        exists: true,
+        mediaType: response.data.mediaType, // 'book' or 'podcast'
+        title: response.data.media?.metadata?.title
+      };
+    } catch (error) {
+      return { exists: false };
     }
   }
 
