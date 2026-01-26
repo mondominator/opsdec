@@ -903,7 +903,6 @@ function stopInactiveSessions(activeSessionKeys) {
 
     // Calculate stream duration with sanity checks
     let streamDuration = sessionData.playback_time || 0;
-    const now = Math.floor(Date.now() / 1000);
 
     // If playback_time is very small but we have timing info, calculate from elapsed time
     if (streamDuration < 5 && sessionData.last_position_update && sessionData.state === 'playing') {
@@ -1019,7 +1018,6 @@ function stopInactiveSessions(activeSessionKeys) {
 
       // Calculate stream duration with sanity checks
       let streamDuration = sessionData.playback_time || 0;
-      const now = Math.floor(Date.now() / 1000);
 
       // If playback_time is very small but we have timing info, calculate from elapsed time
       if (streamDuration < 5 && sessionData.last_position_update && sessionData.state === 'playing') {
