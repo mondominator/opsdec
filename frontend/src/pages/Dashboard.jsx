@@ -422,15 +422,15 @@ function Dashboard() {
 
       {/* Top Users and Popular - Grid layout */}
       {(stats.topWatchers?.length > 0 || stats.topListeners?.length > 0 || stats.mostWatchedMovies?.length > 0 || stats.mostWatchedEpisodes?.length > 0 || stats.mostWatchedAudiobooks?.length > 0 || stats.topLocations?.length > 0) && (
-        <div className="flex flex-col md:flex-row gap-3 w-full">
+        <div className="flex flex-col md:flex-row md:flex-wrap md:justify-center items-start gap-3 w-full">
           {/* Top Watchers */}
           {stats.topWatchers?.length > 0 && (
-            <div className="card w-fit">
+            <div className="card flex-1 min-w-0">
               <div className="card-header py-2">
-                <h3 className="card-title text-center text-sm whitespace-nowrap">Top Watchers</h3>
+                <h3 className="card-title text-center text-sm">Top Watchers</h3>
               </div>
-              <div className="card-body p-0">
-                <div className="divide-y divide-dark-600">
+              <div className="card-body p-0 flex justify-center">
+                <div className="divide-y divide-dark-600 w-fit">
                   {stats.topWatchers.slice(0, 5).map((user, index) => (
                     <div
                       key={user.username}
@@ -452,8 +452,8 @@ function Dashboard() {
                         </div>
                       )}
                       <div>
-                        <div className="text-white text-xs whitespace-nowrap">{user.username}</div>
-                        <div className="text-xs text-gray-500 whitespace-nowrap">
+                        <div className="text-white text-xs">{user.username}</div>
+                        <div className="text-xs text-gray-500">
                           {formatDuration(user.total_duration)}
                         </div>
                       </div>
@@ -465,12 +465,12 @@ function Dashboard() {
           )}
           {/* Top Listeners */}
           {stats.topListeners?.length > 0 && (
-            <div className="card w-fit">
+            <div className="card flex-1 min-w-0">
               <div className="card-header py-2">
-                <h3 className="card-title text-center text-sm whitespace-nowrap">Top Listeners</h3>
+                <h3 className="card-title text-center text-sm">Top Listeners</h3>
               </div>
-              <div className="card-body p-0">
-                <div className="divide-y divide-dark-600">
+              <div className="card-body p-0 flex justify-center">
+                <div className="divide-y divide-dark-600 w-fit">
                   {stats.topListeners.slice(0, 5).map((user, index) => (
                     <div
                       key={user.username}
@@ -492,8 +492,8 @@ function Dashboard() {
                         </div>
                       )}
                       <div>
-                        <div className="text-white text-xs whitespace-nowrap">{user.username}</div>
-                        <div className="text-xs text-gray-500 whitespace-nowrap">
+                        <div className="text-white text-xs">{user.username}</div>
+                        <div className="text-xs text-gray-500">
                           {formatDuration(user.total_duration)}
                         </div>
                       </div>
@@ -769,12 +769,12 @@ function Dashboard() {
 
           {/* Top Locations */}
           {stats.topLocations?.length > 0 && (
-            <div className="card w-fit">
+            <div className="card flex-1 min-w-0">
               <div className="card-header py-2">
-                <h3 className="card-title text-center text-sm whitespace-nowrap">Top Locations</h3>
+                <h3 className="card-title text-center text-sm">Top Locations</h3>
               </div>
-              <div className="card-body p-0">
-                <div className="divide-y divide-dark-600">
+              <div className="card-body p-0 flex justify-center">
+                <div className="divide-y divide-dark-600 w-fit">
                   {stats.topLocations.slice(0, 10).map((location, index) => {
                     const locationKey = `location-${location.city}-${location.region}`;
                     const isExpanded = expandedItems[locationKey];
@@ -792,13 +792,13 @@ function Dashboard() {
                             {index + 1}
                           </div>
                           <div>
-                            <div className="text-white text-xs whitespace-nowrap">
+                            <div className="text-white text-xs">
                               {location.city === 'Local Network'
                                 ? 'Local Network'
                                 : `${location.city}${location.region ? `, ${location.region}` : ''}`
                               }
                             </div>
-                            <div className="text-xs text-gray-500 whitespace-nowrap">
+                            <div className="text-xs text-gray-500">
                               {location.streams} {location.streams === 1 ? 'stream' : 'streams'}
                             </div>
                           </div>
