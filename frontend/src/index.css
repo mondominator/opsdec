@@ -95,20 +95,3 @@
   animation: pulse-glow 3s ease-in-out infinite;
 }
 
-/* Marquee animation for long titles */
-@keyframes marquee {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
-}
-
-.animate-marquee {
-  animation: marquee 10s linear infinite;
-}
-
-.animate-marquee:hover {
-  animation-play-state: paused;
-}
