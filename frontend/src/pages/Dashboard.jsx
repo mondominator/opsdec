@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDashboardStats, getActivity } from '../utils/api';
+import { getDashboardStats, getActivity, getAccessToken } from '../utils/api';
 import { formatDuration, formatTimeAgo } from '../utils/format';
 import { Users, PlayCircle, TrendingUp, Clock, Activity as ActivityIcon, Film, Tv, Headphones, ChevronDown, MapPin, Book } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -71,12 +71,69 @@ function Dashboard() {
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedItems, setExpandedItems] = useState({});
+  const wsRef = useRef(null);
+  const reconnectTimeoutRef = useRef(null);
+
+  // WebSocket connection with authentication
+  const connectWebSocket = useCallback(() => {
+    const token = getAccessToken();
+    if (!token) return;
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws?token=${encodeURIComponent(token)}`;
+
+    try {
+      wsRef.current = new WebSocket(wsUrl);
+
+      wsRef.current.onopen = () => {
+        console.log('WebSocket connected');
+      };
+
+      wsRef.current.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'session.update') {
+            setActivity(data.data || []);
+          }
+        } catch (e) {
+          console.error('Error parsing WebSocket message:', e);
+        }
+      };
+
+      wsRef.current.onclose = (event) => {
+        console.log('WebSocket disconnected:', event.code, event.reason);
+        wsRef.current = null;
+
+        // Reconnect after 5 seconds unless auth error
+        if (event.code !== 4001 && event.code !== 4003) {
+          reconnectTimeoutRef.current = setTimeout(connectWebSocket, 5000);
+        }
+      };
+
+      wsRef.current.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+    } catch (error) {
+      console.error('Failed to connect WebSocket:', error);
+    }
+  }, []);
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 5000); // Refresh every 5 seconds
-    return () => clearInterval(interval);
-  }, []);
+    connectWebSocket();
+
+    const interval = setInterval(loadData, 30000); // Refresh stats every 30 seconds (activity via WebSocket)
+
+    return () => {
+      clearInterval(interval);
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [connectWebSocket]);
 
   const loadData = async () => {
     try {

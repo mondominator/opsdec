@@ -8,10 +8,13 @@ import axios from 'axios';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync } from 'fs';
+import { parse as parseUrl } from 'url';
 import { initDatabase, db } from './database/init.js';
 import { startActivityMonitor, audiobookshelfService } from './services/monitor.js';
 import { initializeJobs, setAudiobookshelfService } from './services/jobs.js';
 import apiRouter from './routes/api.js';
+import authRouter from './routes/auth.js';
+import { authenticateToken, isSetupRequired, verifyToken } from './middleware/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -26,8 +29,11 @@ const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 app.use(cors());
 app.use(express.json());
 
-// API Routes
-app.use('/api', apiRouter);
+// Auth Routes (unprotected)
+app.use('/api/auth', authRouter);
+
+// Protected API Routes
+app.use('/api', authenticateToken, apiRouter);
 
 // Image proxy to avoid CORS issues
 app.get('/proxy/image', async (req, res) => {
@@ -105,11 +111,31 @@ const server = http.createServer(app);
 // WebSocket server for real-time updates
 const wss = new WebSocketServer({ server, path: '/ws' });
 
-wss.on('connection', (ws) => {
-  console.log('WebSocket client connected');
+wss.on('connection', (ws, req) => {
+  // Parse token from query string
+  const url = parseUrl(req.url, true);
+  const token = url.query.token;
+
+  // Verify token
+  if (!token) {
+    console.log('WebSocket connection rejected: no token');
+    ws.close(4001, 'Authentication required');
+    return;
+  }
+
+  const user = verifyToken(token);
+  if (!user) {
+    console.log('WebSocket connection rejected: invalid token');
+    ws.close(4003, 'Invalid token');
+    return;
+  }
+
+  // Attach user to websocket for reference
+  ws.user = user;
+  console.log(`WebSocket client connected: ${user.username}`);
 
   ws.on('close', () => {
-    console.log('WebSocket client disconnected');
+    console.log(`WebSocket client disconnected: ${user.username}`);
   });
 });
 

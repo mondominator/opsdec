@@ -189,6 +189,33 @@ export function initDatabase() {
     )
   `);
 
+  // Auth users - application login accounts
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS auth_users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      email TEXT UNIQUE,
+      password_hash TEXT NOT NULL,
+      is_admin INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 1,
+      last_login INTEGER,
+      created_at INTEGER DEFAULT (strftime('%s', 'now')),
+      updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+    )
+  `);
+
+  // Refresh tokens for JWT authentication
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS refresh_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      token_hash TEXT UNIQUE NOT NULL,
+      expires_at INTEGER NOT NULL,
+      created_at INTEGER DEFAULT (strftime('%s', 'now')),
+      FOREIGN KEY (user_id) REFERENCES auth_users(id) ON DELETE CASCADE
+    )
+  `);
+
   // Create indexes for better query performance
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
@@ -199,6 +226,9 @@ export function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_users_server ON users(server_type);
     CREATE INDEX IF NOT EXISTS idx_user_mappings_mapped ON user_mappings(mapped_username);
     CREATE INDEX IF NOT EXISTS idx_user_mappings_primary ON user_mappings(primary_username);
+    CREATE INDEX IF NOT EXISTS idx_auth_users_username ON auth_users(username);
+    CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);
+    CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires ON refresh_tokens(expires_at);
   `);
 
   // Migrations - add missing columns if they don't exist

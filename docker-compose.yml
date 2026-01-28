@@ -1,8 +1,8 @@
 services:
   opsdec:
-    image: ghcr.io/mondominator/opsdec:latest
+    # image: ghcr.io/mondominator/opsdec:latest
     # Uncomment below to build from source instead
-    # build: .
+    build: .
     container_name: opsdec
     restart: unless-stopped
     ports:
@@ -14,6 +14,10 @@ services:
       # Server Configuration
       - PORT=3001
       - NODE_ENV=production
+
+      # JWT Authentication Secret (IMPORTANT: Change this to a secure random string!)
+      # Generate one with: openssl rand -hex 32
+      - JWT_SECRET=change-this-to-a-secure-random-string
 
       # Timezone Configuration
       # Set your timezone for correct peak hour statistics
