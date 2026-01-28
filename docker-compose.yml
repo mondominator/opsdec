@@ -1,8 +1,8 @@
 services:
   opsdec:
-    # image: ghcr.io/mondominator/opsdec:latest
+    image: ghcr.io/mondominator/opsdec:latest
     # Uncomment below to build from source instead
-    build: .
+    # build: .
     container_name: opsdec
     restart: unless-stopped
     ports:
