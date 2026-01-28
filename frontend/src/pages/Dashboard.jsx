@@ -429,13 +429,13 @@ function Dashboard() {
               <div className="card-header">
                 <h3 className="card-title text-center">Top Watchers</h3>
               </div>
-              <div className="card-body p-0">
-                <div className="divide-y divide-dark-600 flex flex-col items-center">
+              <div className="card-body p-0 flex justify-center">
+                <div className="divide-y divide-dark-600 w-fit">
                   {stats.topWatchers.slice(0, 5).map((user, index) => (
                     <div
                       key={user.username}
                       onClick={() => user.user_id && navigate(`/users/${user.user_id}`)}
-                      className="flex items-center gap-2 px-3 py-1.5 hover:bg-dark-700 transition-colors cursor-pointer w-full justify-center"
+                      className="flex items-center gap-2 px-3 py-1.5 hover:bg-dark-700 transition-colors cursor-pointer"
                     >
                       <div className="flex-shrink-0 w-4 text-center text-gray-500 text-xs">
                         {index + 1}
@@ -469,13 +469,13 @@ function Dashboard() {
               <div className="card-header">
                 <h3 className="card-title text-center">Top Listeners</h3>
               </div>
-              <div className="card-body p-0">
-                <div className="divide-y divide-dark-600 flex flex-col items-center">
+              <div className="card-body p-0 flex justify-center">
+                <div className="divide-y divide-dark-600 w-fit">
                   {stats.topListeners.slice(0, 5).map((user, index) => (
                     <div
                       key={user.username}
                       onClick={() => user.user_id && navigate(`/users/${user.user_id}`)}
-                      className="flex items-center gap-2 px-3 py-1.5 hover:bg-dark-700 transition-colors cursor-pointer w-full justify-center"
+                      className="flex items-center gap-2 px-3 py-1.5 hover:bg-dark-700 transition-colors cursor-pointer"
                     >
                       <div className="flex-shrink-0 w-4 text-center text-gray-500 text-xs">
                         {index + 1}
