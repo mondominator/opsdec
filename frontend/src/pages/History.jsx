@@ -9,9 +9,7 @@ import { useTimezone } from '../contexts/TimezoneContext';
 function MediaThumbnail({ src, alt, title, serverType, className = "w-12 h-16" }) {
   const [hasError, setHasError] = useState(false);
 
-  const imgSrc = (serverType === 'sappho' || serverType === 'audiobookshelf')
-    ? `/proxy/image?url=${encodeURIComponent(src)}`
-    : src;
+  const imgSrc = src ? `/proxy/image?url=${encodeURIComponent(src)}` : null;
 
   if (hasError || !src) {
     // Show placeholder with first letter of title

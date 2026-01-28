@@ -9,9 +9,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 function MediaThumbnail({ src, alt, title, serverType, className = "w-full h-full", iconSize = "w-8 h-8" }) {
   const [hasError, setHasError] = useState(false);
 
-  const imgSrc = (serverType === 'sappho' || serverType === 'audiobookshelf')
-    ? `/proxy/image?url=${encodeURIComponent(src)}`
-    : src;
+  const imgSrc = src ? `/proxy/image?url=${encodeURIComponent(src)}` : null;
 
   if (hasError || !src) {
     return (
@@ -422,15 +420,15 @@ function Dashboard() {
 
       {/* Top Users and Popular - Grid layout */}
       {(stats.topWatchers?.length > 0 || stats.topListeners?.length > 0 || stats.mostWatchedMovies?.length > 0 || stats.mostWatchedEpisodes?.length > 0 || stats.mostWatchedAudiobooks?.length > 0 || stats.topLocations?.length > 0) && (
-        <div className="flex flex-col md:flex-row md:flex-wrap md:justify-center items-start gap-3 w-full">
+        <div className="flex flex-col md:flex-row gap-3 w-full">
           {/* Top Watchers */}
           {stats.topWatchers?.length > 0 && (
             <div className="card flex-1 min-w-0">
-              <div className="card-header py-2">
-                <h3 className="card-title text-center text-sm">Top Watchers</h3>
+              <div className="card-header">
+                <h3 className="card-title text-center">Top Watchers</h3>
               </div>
-              <div className="card-body p-0 flex justify-center">
-                <div className="divide-y divide-dark-600 w-fit">
+              <div className="card-body p-0">
+                <div className="divide-y divide-dark-600">
                   {stats.topWatchers.slice(0, 5).map((user, index) => (
                     <div
                       key={user.username}
@@ -466,11 +464,11 @@ function Dashboard() {
           {/* Top Listeners */}
           {stats.topListeners?.length > 0 && (
             <div className="card flex-1 min-w-0">
-              <div className="card-header py-2">
-                <h3 className="card-title text-center text-sm">Top Listeners</h3>
+              <div className="card-header">
+                <h3 className="card-title text-center">Top Listeners</h3>
               </div>
-              <div className="card-body p-0 flex justify-center">
-                <div className="divide-y divide-dark-600 w-fit">
+              <div className="card-body p-0">
+                <div className="divide-y divide-dark-600">
                   {stats.topListeners.slice(0, 5).map((user, index) => (
                     <div
                       key={user.username}
@@ -506,8 +504,8 @@ function Dashboard() {
           {/* Popular Movies */}
           {stats.mostWatchedMovies?.length > 0 && (
             <div className="card flex-1 min-w-0">
-              <div className="card-header py-2">
-                <h3 className="card-title text-center text-sm">Popular Movies</h3>
+              <div className="card-header">
+                <h3 className="card-title text-center">Popular Movies</h3>
               </div>
               <div className="card-body p-0">
                 <div className="divide-y divide-dark-600">
@@ -594,8 +592,8 @@ function Dashboard() {
           {/* Popular TV Shows */}
           {stats.mostWatchedEpisodes?.length > 0 && (
             <div className="card flex-1 min-w-0">
-              <div className="card-header py-2">
-                <h3 className="card-title text-center text-sm">Popular Shows</h3>
+              <div className="card-header">
+                <h3 className="card-title text-center">Popular Shows</h3>
               </div>
               <div className="card-body p-0">
                 <div className="divide-y divide-dark-600">
@@ -682,8 +680,8 @@ function Dashboard() {
           {/* Popular Books */}
           {stats.mostWatchedAudiobooks?.length > 0 && (
             <div className="card flex-1 min-w-0">
-              <div className="card-header py-2">
-                <h3 className="card-title text-center text-sm">Popular Books</h3>
+              <div className="card-header">
+                <h3 className="card-title text-center">Popular Books</h3>
               </div>
               <div className="card-body p-0">
                 <div className="divide-y divide-dark-600">
@@ -770,11 +768,11 @@ function Dashboard() {
           {/* Top Locations */}
           {stats.topLocations?.length > 0 && (
             <div className="card flex-1 min-w-0">
-              <div className="card-header py-2">
-                <h3 className="card-title text-center text-sm">Top Locations</h3>
+              <div className="card-header">
+                <h3 className="card-title text-center">Top Locations</h3>
               </div>
-              <div className="card-body p-0 flex justify-center">
-                <div className="divide-y divide-dark-600 w-fit">
+              <div className="card-body p-0">
+                <div className="divide-y divide-dark-600">
                   {stats.topLocations.slice(0, 10).map((location, index) => {
                     const locationKey = `location-${location.city}-${location.region}`;
                     const isExpanded = expandedItems[locationKey];
