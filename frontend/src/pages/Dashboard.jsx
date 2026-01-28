@@ -38,6 +38,37 @@ function MediaThumbnail({ src, alt, title, serverType, className = "w-full h-ful
   );
 }
 
+// Marquee text component for long titles
+function MarqueeText({ text, className = "" }) {
+  const containerRef = useRef(null);
+  const textRef = useRef(null);
+  const [shouldScroll, setShouldScroll] = useState(false);
+
+  useEffect(() => {
+    const checkOverflow = () => {
+      if (containerRef.current && textRef.current) {
+        setShouldScroll(textRef.current.scrollWidth > containerRef.current.clientWidth);
+      }
+    };
+    checkOverflow();
+    window.addEventListener('resize', checkOverflow);
+    return () => window.removeEventListener('resize', checkOverflow);
+  }, [text]);
+
+  return (
+    <div ref={containerRef} className={`overflow-hidden ${className}`} title={text}>
+      <div
+        ref={textRef}
+        className={`whitespace-nowrap ${shouldScroll ? 'animate-marquee hover:animation-paused' : ''}`}
+      >
+        {text}
+        {shouldScroll && <span className="mx-4">•</span>}
+        {shouldScroll && text}
+      </div>
+    </div>
+  );
+}
+
 function Dashboard() {
   const navigate = useNavigate();
   const getServerIcon = (serverType, size = 'w-5 h-5') => {
@@ -536,11 +567,9 @@ function Dashboard() {
                           </div>
                           {/* Content */}
                           <div className="flex-1 min-w-0">
-                            <div className="text-white text-xs leading-tight truncate" title={item.title}>
-                              {item.title}
-                            </div>
+                            <MarqueeText text={item.title} className="text-white text-xs leading-tight" />
                             <div className="text-xs text-gray-500">
-                              {item.plays} {item.plays === 1 ? 'user' : 'users'}
+                              {item.plays} {item.plays === 1 ? 'viewer' : 'viewers'}
                             </div>
                           </div>
                           {/* Chevron */}
@@ -624,11 +653,9 @@ function Dashboard() {
                           </div>
                           {/* Content */}
                           <div className="flex-1 min-w-0">
-                            <div className="text-white text-xs leading-tight truncate" title={item.title}>
-                              {item.title}
-                            </div>
+                            <MarqueeText text={item.title} className="text-white text-xs leading-tight" />
                             <div className="text-xs text-gray-500">
-                              {item.plays} {item.plays === 1 ? 'user' : 'users'}
+                              {item.plays} {item.plays === 1 ? 'watcher' : 'watchers'}
                             </div>
                           </div>
                           {/* Chevron */}
@@ -712,11 +739,9 @@ function Dashboard() {
                           </div>
                           {/* Content */}
                           <div className="flex-1 min-w-0">
-                            <div className="text-white text-xs leading-tight truncate" title={item.title}>
-                              {item.title}
-                            </div>
+                            <MarqueeText text={item.title} className="text-white text-xs leading-tight" />
                             <div className="text-xs text-gray-500">
-                              {item.plays} {item.plays === 1 ? 'user' : 'users'}
+                              {item.plays} {item.plays === 1 ? 'listener' : 'listeners'}
                             </div>
                           </div>
                           {/* Chevron */}
