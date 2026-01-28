@@ -425,9 +425,9 @@ function Dashboard() {
         <div className="flex flex-col md:flex-row gap-3 w-full">
           {/* Top Watchers */}
           {stats.topWatchers?.length > 0 && (
-            <div className="card flex-1 min-w-0">
+            <div className="card w-fit">
               <div className="card-header py-2">
-                <h3 className="card-title text-center text-sm">Top Watchers</h3>
+                <h3 className="card-title text-center text-sm whitespace-nowrap">Top Watchers</h3>
               </div>
               <div className="card-body p-0">
                 <div className="divide-y divide-dark-600">
@@ -451,9 +451,9 @@ function Dashboard() {
                           {user.username.charAt(0).toUpperCase()}
                         </div>
                       )}
-                      <div className="min-w-0">
-                        <div className="text-white text-xs truncate">{user.username}</div>
-                        <div className="text-xs text-gray-500">
+                      <div>
+                        <div className="text-white text-xs whitespace-nowrap">{user.username}</div>
+                        <div className="text-xs text-gray-500 whitespace-nowrap">
                           {formatDuration(user.total_duration)}
                         </div>
                       </div>
@@ -465,9 +465,9 @@ function Dashboard() {
           )}
           {/* Top Listeners */}
           {stats.topListeners?.length > 0 && (
-            <div className="card flex-1 min-w-0">
+            <div className="card w-fit">
               <div className="card-header py-2">
-                <h3 className="card-title text-center text-sm">Top Listeners</h3>
+                <h3 className="card-title text-center text-sm whitespace-nowrap">Top Listeners</h3>
               </div>
               <div className="card-body p-0">
                 <div className="divide-y divide-dark-600">
@@ -491,9 +491,9 @@ function Dashboard() {
                           {user.username.charAt(0).toUpperCase()}
                         </div>
                       )}
-                      <div className="min-w-0">
-                        <div className="text-white text-xs truncate">{user.username}</div>
-                        <div className="text-xs text-gray-500">
+                      <div>
+                        <div className="text-white text-xs whitespace-nowrap">{user.username}</div>
+                        <div className="text-xs text-gray-500 whitespace-nowrap">
                           {formatDuration(user.total_duration)}
                         </div>
                       </div>
@@ -769,9 +769,9 @@ function Dashboard() {
 
           {/* Top Locations */}
           {stats.topLocations?.length > 0 && (
-            <div className="card flex-1 min-w-0">
+            <div className="card w-fit">
               <div className="card-header py-2">
-                <h3 className="card-title text-center text-sm">Top Locations</h3>
+                <h3 className="card-title text-center text-sm whitespace-nowrap">Top Locations</h3>
               </div>
               <div className="card-body p-0">
                 <div className="divide-y divide-dark-600">
@@ -791,14 +791,14 @@ function Dashboard() {
                           <div className="flex-shrink-0 w-4 text-center text-gray-500 text-xs">
                             {index + 1}
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-white text-xs truncate">
+                          <div>
+                            <div className="text-white text-xs whitespace-nowrap">
                               {location.city === 'Local Network'
                                 ? 'Local Network'
                                 : `${location.city}${location.region ? `, ${location.region}` : ''}`
                               }
                             </div>
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-gray-500 whitespace-nowrap">
                               {location.streams} {location.streams === 1 ? 'stream' : 'streams'}
                             </div>
                           </div>
