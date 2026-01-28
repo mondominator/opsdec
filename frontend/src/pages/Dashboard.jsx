@@ -430,12 +430,12 @@ function Dashboard() {
                 <h3 className="card-title text-center">Top Watchers</h3>
               </div>
               <div className="card-body p-0">
-                <div className="divide-y divide-dark-600">
+                <div className="divide-y divide-dark-600 flex flex-col items-center">
                   {stats.topWatchers.slice(0, 5).map((user, index) => (
                     <div
                       key={user.username}
                       onClick={() => user.user_id && navigate(`/users/${user.user_id}`)}
-                      className="flex items-center gap-2 px-3 py-1.5 hover:bg-dark-700 transition-colors cursor-pointer"
+                      className="flex items-center gap-2 px-3 py-1.5 hover:bg-dark-700 transition-colors cursor-pointer w-full justify-center"
                     >
                       <div className="flex-shrink-0 w-4 text-center text-gray-500 text-xs">
                         {index + 1}
@@ -451,7 +451,7 @@ function Dashboard() {
                           {user.username.charAt(0).toUpperCase()}
                         </div>
                       )}
-                      <div className="flex-1 min-w-0">
+                      <div className="min-w-0">
                         <div className="text-white text-xs truncate">{user.username}</div>
                         <div className="text-xs text-gray-500">
                           {formatDuration(user.total_duration)}
@@ -470,12 +470,12 @@ function Dashboard() {
                 <h3 className="card-title text-center">Top Listeners</h3>
               </div>
               <div className="card-body p-0">
-                <div className="divide-y divide-dark-600">
+                <div className="divide-y divide-dark-600 flex flex-col items-center">
                   {stats.topListeners.slice(0, 5).map((user, index) => (
                     <div
                       key={user.username}
                       onClick={() => user.user_id && navigate(`/users/${user.user_id}`)}
-                      className="flex items-center gap-2 px-3 py-1.5 hover:bg-dark-700 transition-colors cursor-pointer"
+                      className="flex items-center gap-2 px-3 py-1.5 hover:bg-dark-700 transition-colors cursor-pointer w-full justify-center"
                     >
                       <div className="flex-shrink-0 w-4 text-center text-gray-500 text-xs">
                         {index + 1}
@@ -491,7 +491,7 @@ function Dashboard() {
                           {user.username.charAt(0).toUpperCase()}
                         </div>
                       )}
-                      <div className="flex-1 min-w-0">
+                      <div className="min-w-0">
                         <div className="text-white text-xs truncate">{user.username}</div>
                         <div className="text-xs text-gray-500">
                           {formatDuration(user.total_duration)}
