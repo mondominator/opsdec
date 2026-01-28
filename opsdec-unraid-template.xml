@@ -32,6 +32,7 @@
   <Config Name="Sappho URL" Target="SAPPHO_URL" Default="" Mode="" Description="Sappho server URL (e.g., http://192.168.1.100:3000)" Type="Variable" Display="always" Required="false" Mask="false"></Config>
   <Config Name="Sappho API Key" Target="SAPPHO_API_KEY" Default="" Mode="" Description="Sappho API key (get from Settings > API Keys)" Type="Variable" Display="always" Required="false" Mask="true"></Config>
   <Config Name="Repository Tag" Target="" Default="latest" Mode="" Description="Docker image tag (latest, 0.1.0, or date-based like 20251118). Use 'latest' for newest, or pin to specific version for stability." Type="Variable" Display="always" Required="true" Mask="false">latest</Config>
+  <Config Name="JWT Secret" Target="JWT_SECRET" Default="" Mode="" Description="Secret key for authentication tokens. Generate with: openssl rand -hex 32. IMPORTANT: Set this to a unique random string!" Type="Variable" Display="always" Required="true" Mask="true"></Config>
   <Config Name="PUID" Target="PUID" Default="1000" Mode="" Description="User ID for file permissions" Type="Variable" Display="advanced" Required="false" Mask="false">1000</Config>
   <Config Name="PGID" Target="PGID" Default="1000" Mode="" Description="Group ID for file permissions" Type="Variable" Display="advanced" Required="false" Mask="false">1000</Config>
   <Config Name="TZ" Target="TZ" Default="America/New_York" Mode="" Description="Timezone (e.g., America/New_York, Europe/London)" Type="Variable" Display="advanced" Required="false" Mask="false">America/New_York</Config>
