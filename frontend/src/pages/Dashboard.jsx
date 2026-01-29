@@ -420,7 +420,7 @@ function Dashboard() {
 
       {/* Top Users and Popular - Grid layout */}
       {(stats.topWatchers?.length > 0 || stats.topListeners?.length > 0 || stats.mostWatchedMovies?.length > 0 || stats.mostWatchedEpisodes?.length > 0 || stats.mostWatchedAudiobooks?.length > 0 || stats.topLocations?.length > 0) && (
-        <div className="flex flex-col md:flex-row gap-3 w-full">
+        <div className="flex flex-col md:flex-row md:items-start gap-3 w-full">
           {/* Top Watchers */}
           {stats.topWatchers?.length > 0 && (
             <div className="card flex-1 min-w-0">
