@@ -538,7 +538,8 @@ function Dashboard() {
                               {item.title}
                             </div>
                             <div className="text-xs text-gray-500">
-                              {item.plays} {item.plays === 1 ? 'viewer' : 'viewers'}
+                              {item.unique_users || item.plays} {(item.unique_users || item.plays) === 1 ? 'viewer' : 'viewers'}
+                              {item.plays > (item.unique_users || item.plays) && <span className="text-gray-600"> · {item.plays} plays</span>}
                             </div>
                           </div>
                           {/* Chevron */}
@@ -626,7 +627,8 @@ function Dashboard() {
                               {item.title}
                             </div>
                             <div className="text-xs text-gray-500">
-                              {item.plays} {item.plays === 1 ? 'watcher' : 'watchers'}
+                              {item.unique_users || item.plays} {(item.unique_users || item.plays) === 1 ? 'watcher' : 'watchers'}
+                              {item.plays > (item.unique_users || item.plays) && <span className="text-gray-600"> · {item.plays} plays</span>}
                             </div>
                           </div>
                           {/* Chevron */}
@@ -714,7 +716,8 @@ function Dashboard() {
                               {item.title}
                             </div>
                             <div className="text-xs text-gray-500">
-                              {item.plays} {item.plays === 1 ? 'listener' : 'listeners'}
+                              {item.unique_users || item.plays} {(item.unique_users || item.plays) === 1 ? 'listener' : 'listeners'}
+                              {item.plays > (item.unique_users || item.plays) && <span className="text-gray-600"> · {item.plays} plays</span>}
                             </div>
                           </div>
                           {/* Chevron */}

@@ -791,7 +791,7 @@ router.get('/stats/dashboard', (req, res) => {
         };
       });
 
-    // Most watched media - split by type (based on total plays)
+    // Most watched media - split by type (unique users first, then total plays as tiebreaker)
     const mostWatchedMovies = db.prepare(`
       SELECT
         title,
@@ -799,11 +799,12 @@ router.get('/stats/dashboard', (req, res) => {
         media_type,
         MAX(thumb) as thumb,
         MAX(media_id) as media_id,
+        COUNT(DISTINCT username) as unique_users,
         COUNT(*) as plays
       FROM history
       WHERE media_type = 'movie'
       GROUP BY title
-      ORDER BY plays DESC
+      ORDER BY unique_users DESC, plays DESC
       LIMIT 10
     `).all();
 
@@ -813,11 +814,12 @@ router.get('/stats/dashboard', (req, res) => {
         grandparent_title as media_id,
         media_type,
         MAX(thumb) as thumb,
+        COUNT(DISTINCT username) as unique_users,
         COUNT(*) as plays
       FROM history
       WHERE media_type = 'episode' AND grandparent_title IS NOT NULL
       GROUP BY grandparent_title
-      ORDER BY plays DESC
+      ORDER BY unique_users DESC, plays DESC
       LIMIT 10
     `).all();
 
@@ -828,11 +830,12 @@ router.get('/stats/dashboard', (req, res) => {
         media_type,
         MAX(thumb) as thumb,
         MAX(media_id) as media_id,
+        COUNT(DISTINCT username) as unique_users,
         COUNT(*) as plays
       FROM history
       WHERE media_type IN ('audiobook', 'track', 'book')
       GROUP BY title
-      ORDER BY plays DESC
+      ORDER BY unique_users DESC, plays DESC
       LIMIT 10
     `).all();
 
