@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
-import { Home, History, Users, Radio, Settings, Menu, ChevronDown, Film, Tv, Headphones, LogOut, Shield, User, UserPlus, X, Trash2 } from 'lucide-react';
-import { getDashboardStats, getServerHealth, getAuthUsers, createAuthUser, deleteAuthUser, updateAuthUser } from '../utils/api';
+import { Home, History, Users, Settings, Menu, ChevronDown, LogOut, Shield } from 'lucide-react';
+import { getDashboardStats, getServerHealth } from '../utils/api';
 import { formatDuration } from '../utils/format';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -11,76 +11,11 @@ function Layout({ children }) {
   const [stats, setStats] = useState(null);
   const [serverHealth, setServerHealth] = useState([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [admins, setAdmins] = useState([]);
-  const [showAddAdmin, setShowAddAdmin] = useState(false);
-  const [newAdminUsername, setNewAdminUsername] = useState('');
-  const [newAdminPassword, setNewAdminPassword] = useState('');
-  const [adminError, setAdminError] = useState('');
-  const [adminLoading, setAdminLoading] = useState(false);
   const dropdownRef = useRef(null);
 
   const handleLogout = async () => {
     setIsDropdownOpen(false);
     await logout();
-  };
-
-  const loadAdmins = async () => {
-    if (!user?.is_admin) return;
-    try {
-      const response = await getAuthUsers();
-      setAdmins(response.data.users || []);
-    } catch (error) {
-      console.error('Error loading admins:', error);
-    }
-  };
-
-  const handleAddAdmin = async (e) => {
-    e.preventDefault();
-    setAdminError('');
-    setAdminLoading(true);
-    try {
-      await createAuthUser({
-        username: newAdminUsername,
-        password: newAdminPassword,
-        is_admin: true
-      });
-      setNewAdminUsername('');
-      setNewAdminPassword('');
-      setShowAddAdmin(false);
-      loadAdmins();
-    } catch (error) {
-      setAdminError(error.response?.data?.error || 'Failed to add admin');
-    } finally {
-      setAdminLoading(false);
-    }
-  };
-
-  const handleRemoveAdmin = async (adminId, adminUsername) => {
-    if (adminId === user.id) {
-      setAdminError("You can't remove yourself");
-      return;
-    }
-    if (!confirm(`Remove admin privileges from ${adminUsername}?`)) return;
-    try {
-      await updateAuthUser(adminId, { is_admin: false });
-      loadAdmins();
-    } catch (error) {
-      setAdminError(error.response?.data?.error || 'Failed to remove admin');
-    }
-  };
-
-  const handleDeleteUser = async (adminId, adminUsername) => {
-    if (adminId === user.id) {
-      setAdminError("You can't delete yourself");
-      return;
-    }
-    if (!confirm(`Delete user ${adminUsername}? This cannot be undone.`)) return;
-    try {
-      await deleteAuthUser(adminId);
-      loadAdmins();
-    } catch (error) {
-      setAdminError(error.response?.data?.error || 'Failed to delete user');
-    }
   };
 
   const navItems = [
@@ -100,12 +35,6 @@ function Layout({ children }) {
     return () => clearInterval(interval);
   }, []);
 
-  // Load admins when dropdown opens (if user is admin)
-  useEffect(() => {
-    if (isDropdownOpen && user?.is_admin) {
-      loadAdmins();
-    }
-  }, [isDropdownOpen, user?.is_admin]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -292,87 +221,6 @@ function Layout({ children }) {
                           <div className="text-gray-400">Monthly Active</div>
                           <div className="text-white font-semibold">{stats.activeMonthlyUsers || 0} users</div>
                         </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Admins Section (admin only) */}
-                  {user?.is_admin && (
-                    <div className="px-4 py-3 border-t border-dark-700">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="text-xs text-gray-400 font-semibold">Admins</div>
-                        <button
-                          onClick={() => {
-                            setShowAddAdmin(!showAddAdmin);
-                            setAdminError('');
-                          }}
-                          className="text-primary-400 hover:text-primary-300 transition-colors"
-                          title="Add admin"
-                        >
-                          {showAddAdmin ? <X className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-                        </button>
-                      </div>
-
-                      {adminError && (
-                        <div className="text-xs text-red-400 mb-2">{adminError}</div>
-                      )}
-
-                      {showAddAdmin && (
-                        <form onSubmit={handleAddAdmin} className="mb-3 space-y-2">
-                          <input
-                            type="text"
-                            placeholder="Username"
-                            value={newAdminUsername}
-                            onChange={(e) => setNewAdminUsername(e.target.value)}
-                            className="w-full px-2 py-1 text-xs bg-dark-700 border border-dark-600 rounded text-white placeholder-gray-500 focus:outline-none focus:border-primary-500"
-                            required
-                            minLength={3}
-                          />
-                          <input
-                            type="password"
-                            placeholder="Password (min 8 chars)"
-                            value={newAdminPassword}
-                            onChange={(e) => setNewAdminPassword(e.target.value)}
-                            className="w-full px-2 py-1 text-xs bg-dark-700 border border-dark-600 rounded text-white placeholder-gray-500 focus:outline-none focus:border-primary-500"
-                            required
-                            minLength={8}
-                          />
-                          <button
-                            type="submit"
-                            disabled={adminLoading}
-                            className="w-full px-2 py-1 text-xs bg-primary-600 hover:bg-primary-700 text-white rounded disabled:opacity-50"
-                          >
-                            {adminLoading ? 'Adding...' : 'Add Admin'}
-                          </button>
-                        </form>
-                      )}
-
-                      <div className="space-y-1">
-                        {admins.filter(a => a.is_admin).map((admin) => (
-                          <div
-                            key={admin.id}
-                            className="flex items-center justify-between py-1"
-                          >
-                            <div className="flex items-center gap-2">
-                              <div className="w-5 h-5 bg-primary-600 rounded-full flex items-center justify-center text-white text-xs font-semibold">
-                                {admin.username.charAt(0).toUpperCase()}
-                              </div>
-                              <span className="text-xs text-white">
-                                {admin.username}
-                                {admin.id === user.id && <span className="text-gray-500 ml-1">(you)</span>}
-                              </span>
-                            </div>
-                            {admin.id !== user.id && (
-                              <button
-                                onClick={() => handleDeleteUser(admin.id, admin.username)}
-                                className="text-gray-500 hover:text-red-400 transition-colors"
-                                title="Delete user"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            )}
-                          </div>
-                        ))}
                       </div>
                     </div>
                   )}

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Plus, Save, Trash2, RefreshCw, Check, X, Server, AlertCircle, Film, Tv, Headphones, Globe, Users as UsersIcon, Database, Download, Upload, Archive, Clock, Play, Pause, Calendar } from 'lucide-react';
-import api, { getSettings, updateSetting, getUserMappings, createUserMapping, deleteUserMapping, getUsersByServer, purgeDatabase, createBackup, getBackups, restoreBackup, deleteBackup, uploadBackup } from '../utils/api';
+import { Plus, Save, Trash2, RefreshCw, Check, X, Server, AlertCircle, Film, Tv, Headphones, Globe, Users as UsersIcon, Database, Download, Upload, Archive, Clock, Play, Pause, Calendar, Shield, UserPlus } from 'lucide-react';
+import api, { getSettings, updateSetting, getUserMappings, createUserMapping, deleteUserMapping, getUsersByServer, purgeDatabase, createBackup, getBackups, restoreBackup, deleteBackup, uploadBackup, getAuthUsers, createAuthUser, deleteAuthUser } from '../utils/api';
 import { useTimezone } from '../contexts/TimezoneContext';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Settings() {
   const { timezone: currentTimezone, setTimezone: updateTimezone } = useTimezone();
+  const { user } = useAuth();
   const [servers, setServers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -16,6 +18,14 @@ export default function Settings() {
   const [settings, setSettings] = useState({ timezone: 'UTC' });
   const [savingSettings, setSavingSettings] = useState(false);
   const [purgingDatabase, setPurgingDatabase] = useState(false);
+
+  // Admin users state
+  const [admins, setAdmins] = useState([]);
+  const [showAddAdmin, setShowAddAdmin] = useState(false);
+  const [newAdminUsername, setNewAdminUsername] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [adminError, setAdminError] = useState('');
+  const [adminLoading, setAdminLoading] = useState(false);
 
   // Backup/restore state
   const [backups, setBackups] = useState([]);
@@ -62,6 +72,7 @@ export default function Settings() {
     loadUsersByServer();
     loadBackups();
     loadJobs();
+    loadAdmins();
   }, []);
 
   const loadSettings = async () => {
@@ -70,6 +81,51 @@ export default function Settings() {
       setSettings(response.data.data);
     } catch (error) {
       console.error('Failed to load settings:', error);
+    }
+  };
+
+  const loadAdmins = async () => {
+    if (!user?.is_admin) return;
+    try {
+      const response = await getAuthUsers();
+      setAdmins(response.data.users || []);
+    } catch (error) {
+      console.error('Error loading admins:', error);
+    }
+  };
+
+  const handleAddAdmin = async (e) => {
+    e.preventDefault();
+    setAdminError('');
+    setAdminLoading(true);
+    try {
+      await createAuthUser({
+        username: newAdminUsername,
+        password: newAdminPassword,
+        is_admin: true
+      });
+      setNewAdminUsername('');
+      setNewAdminPassword('');
+      setShowAddAdmin(false);
+      loadAdmins();
+    } catch (error) {
+      setAdminError(error.response?.data?.error || 'Failed to add admin');
+    } finally {
+      setAdminLoading(false);
+    }
+  };
+
+  const handleDeleteAdmin = async (adminId, adminUsername) => {
+    if (adminId === user.id) {
+      setAdminError("You can't delete yourself");
+      return;
+    }
+    if (!confirm(`Delete user ${adminUsername}? This cannot be undone.`)) return;
+    try {
+      await deleteAuthUser(adminId);
+      loadAdmins();
+    } catch (error) {
+      setAdminError(error.response?.data?.error || 'Failed to delete user');
     }
   };
 
@@ -1361,6 +1417,102 @@ export default function Settings() {
           </div>
         </div>
       </div>
+
+      {/* Admin Users (admin only) */}
+      {user?.is_admin && (
+        <div className="bg-dark-800 rounded-lg p-4 sm:p-6 border border-dark-700 mt-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <div className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-primary-500" />
+              <h2 className="text-xl font-semibold text-gray-100">Admin Users</h2>
+            </div>
+            <button
+              onClick={() => {
+                setShowAddAdmin(!showAddAdmin);
+                setAdminError('');
+              }}
+              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-sm"
+            >
+              {showAddAdmin ? <X className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+              {showAddAdmin ? 'Cancel' : 'Add Admin'}
+            </button>
+          </div>
+
+          {adminError && (
+            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+              {adminError}
+            </div>
+          )}
+
+          {showAddAdmin && (
+            <form onSubmit={handleAddAdmin} className="mb-6 p-4 bg-dark-700 rounded-lg">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Username</label>
+                  <input
+                    type="text"
+                    placeholder="Username"
+                    value={newAdminUsername}
+                    onChange={(e) => setNewAdminUsername(e.target.value)}
+                    className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-500"
+                    required
+                    minLength={3}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Password</label>
+                  <input
+                    type="password"
+                    placeholder="Password (min 8 chars)"
+                    value={newAdminPassword}
+                    onChange={(e) => setNewAdminPassword(e.target.value)}
+                    className="w-full px-3 py-2 bg-dark-800 border border-dark-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-500"
+                    required
+                    minLength={8}
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={adminLoading}
+                className="px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white rounded-lg font-medium transition-colors"
+              >
+                {adminLoading ? 'Adding...' : 'Add Admin'}
+              </button>
+            </form>
+          )}
+
+          <div className="space-y-2">
+            {admins.filter(a => a.is_admin).map((admin) => (
+              <div
+                key={admin.id}
+                className="flex items-center justify-between p-3 bg-dark-700 rounded-lg"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary-600 rounded-full flex items-center justify-center text-white font-semibold">
+                    {admin.username.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <span className="text-white font-medium">{admin.username}</span>
+                    {admin.id === user.id && (
+                      <span className="ml-2 text-xs text-primary-400 bg-primary-500/10 px-2 py-0.5 rounded">You</span>
+                    )}
+                  </div>
+                </div>
+                {admin.id !== user.id && (
+                  <button
+                    onClick={() => handleDeleteAdmin(admin.id, admin.username)}
+                    className="p-2 text-gray-400 hover:text-red-400 hover:bg-dark-600 rounded-lg transition-colors"
+                    title="Delete user"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Scheduled Jobs */}
       <div className="bg-dark-800 rounded-lg p-4 sm:p-6 border border-dark-700 mt-6">
