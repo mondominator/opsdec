@@ -961,59 +961,6 @@ router.get('/stats/dashboard', (req, res) => {
   }
 });
 
-// Get recently added media (if Emby is configured)
-router.get('/media/recent', async (req, res) => {
-  try {
-    if (!embyService) {
-      return res.status(503).json({
-        success: false,
-        error: 'Emby service not configured',
-      });
-    }
-
-    const limit = parseInt(req.query.limit || '20', 10);
-    const recent = await embyService.getRecentlyAdded(limit);
-
-    res.json({ success: true, data: recent });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Test Emby connection
-router.get('/emby/test', async (req, res) => {
-  try {
-    if (!embyService) {
-      return res.status(503).json({
-        success: false,
-        error: 'Emby service not configured',
-      });
-    }
-
-    const result = await embyService.testConnection();
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Get Emby libraries
-router.get('/emby/libraries', async (req, res) => {
-  try {
-    if (!embyService) {
-      return res.status(503).json({
-        success: false,
-        error: 'Emby service not configured',
-      });
-    }
-
-    const libraries = await embyService.getLibraries();
-    res.json({ success: true, data: libraries });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 // Test Audiobookshelf connection
 router.get('/audiobookshelf/test', async (req, res) => {
   try {
