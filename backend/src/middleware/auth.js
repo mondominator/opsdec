@@ -1,9 +1,45 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 import { db } from '../database/init.js';
 
-// JWT secret - in production, this should be set via environment variable
-const JWT_SECRET = process.env.JWT_SECRET || 'opsdec-default-secret-change-in-production';
+// JWT secret - auto-generate and persist if not provided via environment
+function getJwtSecret() {
+  if (process.env.JWT_SECRET) {
+    return process.env.JWT_SECRET;
+  }
+
+  // Auto-generate and persist a secret in the data directory
+  const dataDir = process.env.DATABASE_PATH ? path.dirname(process.env.DATABASE_PATH) : './data';
+  const secretFile = path.join(dataDir, '.jwt_secret');
+
+  try {
+    if (fs.existsSync(secretFile)) {
+      return fs.readFileSync(secretFile, 'utf8').trim();
+    }
+  } catch (err) {
+    // File doesn't exist or can't be read, generate new one
+  }
+
+  // Generate a cryptographically secure random secret
+  const secret = crypto.randomBytes(64).toString('hex');
+
+  try {
+    // Ensure data directory exists
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    fs.writeFileSync(secretFile, secret, { mode: 0o600 });
+    console.log('Generated new JWT secret and saved to', secretFile);
+  } catch (err) {
+    console.warn('Could not persist JWT secret:', err.message);
+  }
+
+  return secret;
+}
+
+const JWT_SECRET = getJwtSecret();
 const ACCESS_TOKEN_EXPIRY = '15m';
 const REFRESH_TOKEN_EXPIRY_DAYS = 7;
 

@@ -2,6 +2,7 @@ import express from 'express';
 import db from '../database/init.js';
 import { embyService, audiobookshelfService, sapphoService, jellyfinService } from '../services/monitor.js';
 import { getJobs, runJob, updateJob } from '../services/jobs.js';
+import { requireAdmin } from '../middleware/auth.js';
 import multer from 'multer';
 
 const router = express.Router();
@@ -1587,8 +1588,8 @@ router.get('/settings', (req, res) => {
   }
 });
 
-// Update a setting
-router.put('/settings/:key', (req, res) => {
+// Update a setting (admin only)
+router.put('/settings/:key', requireAdmin, (req, res) => {
   try {
     const { key } = req.params;
     const { value } = req.body;
@@ -1612,8 +1613,8 @@ router.put('/settings/:key', (req, res) => {
   }
 });
 
-// Purge user data from database (keeps settings and server config)
-router.post('/database/purge', async (req, res) => {
+// Purge user data from database (keeps settings and server config) - admin only
+router.post('/database/purge', requireAdmin, async (req, res) => {
   try {
     const path = await import('path');
     const fs = await import('fs');
@@ -1723,8 +1724,8 @@ router.post('/database/purge', async (req, res) => {
   }
 });
 
-// Create a manual backup of the database
-router.post('/database/backup', async (req, res) => {
+// Create a manual backup of the database - admin only
+router.post('/database/backup', requireAdmin, async (req, res) => {
   try {
     const fs = await import('fs');
     const path = await import('path');
@@ -1757,8 +1758,8 @@ router.post('/database/backup', async (req, res) => {
   }
 });
 
-// Upload a backup file
-router.post('/database/backups/upload', upload.single('backup'), async (req, res) => {
+// Upload a backup file - admin only
+router.post('/database/backups/upload', requireAdmin, upload.single('backup'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'No file uploaded' });
@@ -1824,8 +1825,8 @@ router.post('/database/backups/upload', upload.single('backup'), async (req, res
   }
 });
 
-// Get list of available backups
-router.get('/database/backups', async (req, res) => {
+// Get list of available backups - admin only
+router.get('/database/backups', requireAdmin, async (req, res) => {
   try {
     const fs = await import('fs');
     const path = await import('path');
@@ -1863,8 +1864,8 @@ router.get('/database/backups', async (req, res) => {
   }
 });
 
-// Restore database from a backup
-router.post('/database/restore', async (req, res) => {
+// Restore database from a backup - admin only
+router.post('/database/restore', requireAdmin, async (req, res) => {
   try {
     const { filename } = req.body;
 
@@ -1980,8 +1981,8 @@ router.post('/database/restore', async (req, res) => {
   }
 });
 
-// Download a backup file
-router.get('/database/backups/:filename/download', async (req, res) => {
+// Download a backup file - admin only
+router.get('/database/backups/:filename/download', requireAdmin, async (req, res) => {
   try {
     const { filename } = req.params;
 
@@ -2021,8 +2022,8 @@ router.get('/database/backups/:filename/download', async (req, res) => {
   }
 });
 
-// Delete a backup file
-router.delete('/database/backups/:filename', async (req, res) => {
+// Delete a backup file - admin only
+router.delete('/database/backups/:filename', requireAdmin, async (req, res) => {
   try {
     const { filename } = req.params;
 

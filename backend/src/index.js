@@ -35,7 +35,7 @@ app.use('/api/auth', authRouter);
 // Protected API Routes
 app.use('/api', authenticateToken, apiRouter);
 
-// Image proxy to avoid CORS issues
+// Image proxy to avoid CORS issues - validates URL against configured servers to prevent SSRF
 app.get('/proxy/image', async (req, res) => {
   try {
     const imageUrl = req.query.url;
@@ -43,14 +43,28 @@ app.get('/proxy/image', async (req, res) => {
       return res.status(400).send('Missing url parameter');
     }
 
-    // Check if this URL needs authentication and add auth header if needed
-    const headers = {};
+    // Validate URL format
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(imageUrl);
+    } catch (e) {
+      return res.status(400).send('Invalid URL format');
+    }
 
-    // Check database for servers that require authentication (Audiobookshelf, Sappho)
+    // Only allow http/https protocols
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      return res.status(400).send('Invalid URL protocol');
+    }
+
+    // Check if URL matches a configured server (SSRF protection)
+    const headers = {};
+    let isAllowedUrl = false;
+
     try {
       const servers = db.prepare('SELECT * FROM servers WHERE enabled = 1').all();
       for (const server of servers) {
         if (imageUrl.startsWith(server.url)) {
+          isAllowedUrl = true;
           headers['Authorization'] = `Bearer ${server.api_key}`;
           break;
         }
@@ -59,7 +73,12 @@ app.get('/proxy/image', async (req, res) => {
       console.error('Error checking database for server auth:', dbError.message);
     }
 
-    // Create HTTPS agent that allows self-signed certificates
+    // Block requests to non-configured servers (SSRF protection)
+    if (!isAllowedUrl) {
+      return res.status(403).send('URL not allowed - must match a configured media server');
+    }
+
+    // Create HTTPS agent that allows self-signed certificates (for local media servers)
     const httpsAgent = new https.Agent({
       rejectUnauthorized: false,
     });
