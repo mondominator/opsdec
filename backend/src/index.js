@@ -56,26 +56,45 @@ app.get('/proxy/image', async (req, res) => {
       return res.status(400).send('Invalid URL protocol');
     }
 
-    // Check if URL matches a configured server (SSRF protection)
+    // Whitelist of trusted domains for user avatars (not internal network accessible)
+    const trustedAvatarDomains = [
+      'plex.tv',
+      'gravatar.com',
+      'secure.gravatar.com',
+      'www.gravatar.com',
+      'i.imgur.com',
+      'image.tmdb.org',  // TMDB images
+      'artworks.thetvdb.com',  // TVDB images
+    ];
+
+    // Check if URL matches a configured server or trusted avatar domain (SSRF protection)
     const headers = {};
     let isAllowedUrl = false;
 
-    try {
-      const servers = db.prepare('SELECT * FROM servers WHERE enabled = 1').all();
-      for (const server of servers) {
-        if (imageUrl.startsWith(server.url)) {
-          isAllowedUrl = true;
-          headers['Authorization'] = `Bearer ${server.api_key}`;
-          break;
+    // Check trusted avatar domains first (no auth needed)
+    if (trustedAvatarDomains.some(domain => parsedUrl.hostname === domain || parsedUrl.hostname.endsWith('.' + domain))) {
+      isAllowedUrl = true;
+    }
+
+    // Check configured media servers
+    if (!isAllowedUrl) {
+      try {
+        const servers = db.prepare('SELECT * FROM servers WHERE enabled = 1').all();
+        for (const server of servers) {
+          if (imageUrl.startsWith(server.url)) {
+            isAllowedUrl = true;
+            headers['Authorization'] = `Bearer ${server.api_key}`;
+            break;
+          }
         }
+      } catch (dbError) {
+        console.error('Error checking database for server auth:', dbError.message);
       }
-    } catch (dbError) {
-      console.error('Error checking database for server auth:', dbError.message);
     }
 
     // Block requests to non-configured servers (SSRF protection)
     if (!isAllowedUrl) {
-      return res.status(403).send('URL not allowed - must match a configured media server');
+      return res.status(403).send('URL not allowed - must match a configured media server or trusted domain');
     }
 
     // Create HTTPS agent that allows self-signed certificates (for local media servers)
