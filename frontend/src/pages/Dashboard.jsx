@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getDashboardStats, getActivity, getAccessToken } from '../utils/api';
 import { formatDuration, formatTimeAgo } from '../utils/format';
-import { Users, PlayCircle, TrendingUp, Clock, Activity as ActivityIcon, Film, Tv, Headphones, ChevronDown, MapPin, Book } from 'lucide-react';
+import { Users, PlayCircle, TrendingUp, Clock, Activity as ActivityIcon, Film, Tv, Headphones, ChevronDown, MapPin, Book, Play } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 // Thumbnail component with error handling and placeholder
@@ -537,9 +537,16 @@ function Dashboard() {
                             <div className="text-white text-xs leading-tight truncate" title={item.title}>
                               {item.title}
                             </div>
-                            <div className="text-xs text-gray-500">
-                              {item.unique_users || item.plays} {(item.unique_users || item.plays) === 1 ? 'viewer' : 'viewers'}
-                              {item.plays > (item.unique_users || item.plays) && <span className="text-gray-600"> · {item.plays} plays</span>}
+                            <div className="text-xs text-gray-500 flex items-center gap-1">
+                              <Users className="w-3 h-3" />
+                              <span>{item.unique_users || item.plays}</span>
+                              {item.plays > (item.unique_users || item.plays) && (
+                                <>
+                                  <span className="text-gray-600">·</span>
+                                  <Play className="w-3 h-3 text-gray-600" />
+                                  <span className="text-gray-600">{item.plays}</span>
+                                </>
+                              )}
                             </div>
                           </div>
                           {/* Chevron */}
@@ -626,9 +633,16 @@ function Dashboard() {
                             <div className="text-white text-xs leading-tight truncate" title={item.title}>
                               {item.title}
                             </div>
-                            <div className="text-xs text-gray-500">
-                              {item.unique_users || item.plays} {(item.unique_users || item.plays) === 1 ? 'watcher' : 'watchers'}
-                              {item.plays > (item.unique_users || item.plays) && <span className="text-gray-600"> · {item.plays} plays</span>}
+                            <div className="text-xs text-gray-500 flex items-center gap-1">
+                              <Users className="w-3 h-3" />
+                              <span>{item.unique_users || item.plays}</span>
+                              {item.plays > (item.unique_users || item.plays) && (
+                                <>
+                                  <span className="text-gray-600">·</span>
+                                  <Play className="w-3 h-3 text-gray-600" />
+                                  <span className="text-gray-600">{item.plays}</span>
+                                </>
+                              )}
                             </div>
                           </div>
                           {/* Chevron */}
@@ -715,9 +729,16 @@ function Dashboard() {
                             <div className="text-white text-xs leading-tight truncate" title={item.title}>
                               {item.title}
                             </div>
-                            <div className="text-xs text-gray-500">
-                              {item.unique_users || item.plays} {(item.unique_users || item.plays) === 1 ? 'listener' : 'listeners'}
-                              {item.plays > (item.unique_users || item.plays) && <span className="text-gray-600"> · {item.plays} plays</span>}
+                            <div className="text-xs text-gray-500 flex items-center gap-1">
+                              <Headphones className="w-3 h-3" />
+                              <span>{item.unique_users || item.plays}</span>
+                              {item.plays > (item.unique_users || item.plays) && (
+                                <>
+                                  <span className="text-gray-600">·</span>
+                                  <Play className="w-3 h-3 text-gray-600" />
+                                  <span className="text-gray-600">{item.plays}</span>
+                                </>
+                              )}
                             </div>
                           </div>
                           {/* Chevron */}
