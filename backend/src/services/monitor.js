@@ -886,19 +886,20 @@ function stopInactiveSessions(activeSessionKeys) {
 
   // First, clean up sessions with stale positions (position hasn't changed in 5 minutes)
   // This catches Sappho sessions where the API keeps returning them but playback has actually stopped
+  // Use COALESCE to fall back to started_at if last_position_update is NULL (for sessions that started paused)
   const stalePositionSessions = db.prepare(`
     SELECT session_key, user_id, username, title, progress_percent, duration, server_type,
-           current_time, last_position_update, updated_at, state
+           current_time, last_position_update, started_at, updated_at, state,
+           COALESCE(last_position_update, started_at) as effective_position_time
     FROM sessions
     WHERE state IN ('playing', 'paused')
       AND server_type IN ('sappho')
-      AND last_position_update IS NOT NULL
-      AND (? - last_position_update) > ?
+      AND (? - COALESCE(last_position_update, started_at)) > ?
   `).all(now, STALE_POSITION_TIMEOUT);
 
   for (const session of stalePositionSessions) {
-    const timeSincePositionChange = now - session.last_position_update;
-    console.log(`⚠️  Stale position detected: ${session.username} - ${session.title} (no position change in ${timeSincePositionChange}s)`);
+    const timeSincePositionChange = now - session.effective_position_time;
+    console.log(`⚠️  Stale position detected: ${session.username} - ${session.title} (no position change in ${timeSincePositionChange}s, state=${session.state})`);
 
     // Mark as stopped
     db.prepare(`
