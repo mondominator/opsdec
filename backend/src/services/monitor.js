@@ -560,13 +560,19 @@ async function updateSession(activity, serverType) {
         playbackTime += elapsedSinceLastUpdate;
       }
 
+      // Only update last_position_update if position has actually changed
+      // This helps detect stale sessions where the API keeps returning them
+      // but playback has actually stopped (common with Sappho)
+      const positionChanged = (activity.currentTime || 0) !== existing.current_time;
+      const shouldUpdatePositionTimestamp = activity.state === 'playing' && positionChanged;
+
       db.prepare(`
         UPDATE sessions
         SET state = ?,
             progress_percent = ?,
             current_time = ?,
             playback_time = ?,
-            last_position_update = CASE WHEN ? = 'playing' THEN ? ELSE last_position_update END,
+            last_position_update = CASE WHEN ? = 1 THEN ? ELSE last_position_update END,
             bitrate = ?,
             transcoding = ?,
             video_codec = ?,
@@ -582,7 +588,7 @@ async function updateSession(activity, serverType) {
         activity.progressPercent,
         activity.currentTime || 0,
         playbackTime,
-        activity.state,
+        shouldUpdatePositionTimestamp ? 1 : 0,
         now,
         activity.bitrate || null,
         activity.transcoding ? 1 : 0,
@@ -876,8 +882,98 @@ function stopInactiveSessions(activeSessionKeys) {
   const now = Math.floor(Date.now() / 1000);
   const STALE_SESSION_TIMEOUT = 60; // 60 seconds without updates = stale
   const PAUSED_SESSION_TIMEOUT = 30; // 30 seconds paused = auto-stop
+  const STALE_POSITION_TIMEOUT = 300; // 5 minutes without position change = stale (for audiobooks)
 
-  // First, clean up stale paused sessions (paused for more than 30 seconds)
+  // First, clean up sessions with stale positions (position hasn't changed in 5 minutes)
+  // This catches Sappho sessions where the API keeps returning them but playback has actually stopped
+  const stalePositionSessions = db.prepare(`
+    SELECT session_key, user_id, username, title, progress_percent, duration, server_type,
+           current_time, last_position_update, updated_at, state
+    FROM sessions
+    WHERE state IN ('playing', 'paused')
+      AND server_type IN ('sappho')
+      AND last_position_update IS NOT NULL
+      AND (? - last_position_update) > ?
+  `).all(now, STALE_POSITION_TIMEOUT);
+
+  for (const session of stalePositionSessions) {
+    const timeSincePositionChange = now - session.last_position_update;
+    console.log(`⚠️  Stale position detected: ${session.username} - ${session.title} (no position change in ${timeSincePositionChange}s)`);
+
+    // Mark as stopped
+    db.prepare(`
+      UPDATE sessions
+      SET state = 'stopped',
+          stopped_at = ?,
+          updated_at = ?
+      WHERE session_key = ?
+    `).run(now, now, session.session_key);
+
+    // Get full session data for history
+    const sessionData = db.prepare('SELECT * FROM sessions WHERE session_key = ?').get(session.session_key);
+
+    // Calculate stream duration
+    let streamDuration = sessionData.playback_time || 0;
+    const maxSessionDuration = now - sessionData.started_at;
+    if (streamDuration > maxSessionDuration) {
+      streamDuration = maxSessionDuration;
+    }
+    if (sessionData.duration && streamDuration > sessionData.duration) {
+      streamDuration = sessionData.duration;
+    }
+
+    // Add to history if it meets criteria
+    if (shouldAddToHistory(session.title, session.duration, session.progress_percent, session.user_id, streamDuration, sessionData.media_type)) {
+      try {
+        const existingHistory = db.prepare(`
+          SELECT id FROM history WHERE session_id = ? AND media_id = ?
+        `).get(sessionData.id, sessionData.media_id);
+
+        if (!existingHistory) {
+          db.prepare(`
+            INSERT INTO history (
+              session_id, server_type, user_id, username,
+              media_type, media_id, title, parent_title, grandparent_title,
+              watched_at, duration, percent_complete, thumb, stream_duration,
+              ip_address, city, region, country
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            sessionData.id,
+            sessionData.server_type,
+            sessionData.user_id,
+            sessionData.username,
+            sessionData.media_type,
+            sessionData.media_id,
+            sessionData.title,
+            sessionData.parent_title,
+            sessionData.grandparent_title,
+            now,
+            sessionData.duration,
+            session.progress_percent,
+            sessionData.thumb,
+            streamDuration,
+            sessionData.ip_address,
+            sessionData.city,
+            sessionData.region,
+            sessionData.country
+          );
+
+          db.prepare(`
+            UPDATE users
+            SET total_plays = total_plays + 1,
+                total_duration = total_duration + ?
+            WHERE id = ?
+          `).run(streamDuration, session.user_id);
+
+          console.log(`   📝 Added to history (stale position): ${session.title}`);
+        }
+      } catch (error) {
+        console.error(`   Error adding to history: ${error.message}`);
+      }
+    }
+  }
+
+  // Next, clean up stale paused sessions (paused for more than 30 seconds)
   // Note: Audiobookshelf is excluded because it handles its own history import
   // Sappho, Plex, and Emby sessions are included for proper history tracking
   const stalePausedSessions = db.prepare(`

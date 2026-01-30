@@ -149,6 +149,9 @@ class SapphoService {
         state = 'stopped';
       }
 
+      // Debug logging to help diagnose state issues
+      console.log(`   📊 Sappho session ${session.sessionId}: state=${state} (raw: state=${session.state}, paused=${session.paused}, isPaused=${session.isPaused}), pos=${currentTime}/${duration}`);
+
       return {
         sessionKey: session.sessionId,
         userId: session.userId ? session.userId.toString() : 'unknown',
