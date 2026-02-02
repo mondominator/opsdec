@@ -283,11 +283,11 @@ function UserDetails() {
                 <div key={index} className="flex gap-2.5 p-2 bg-dark-700/30 rounded-lg border border-dark-600 hover:bg-dark-700/50 transition-colors w-[240px]">
                   {/* Thumbnail */}
                   {watch.thumb ? (
-                    <div className="relative overflow-hidden rounded flex-shrink-0">
+                    <div className="relative w-9 h-12 sm:w-10 sm:h-14 bg-dark-600 overflow-hidden rounded flex-shrink-0 flex items-center justify-center">
                       <img
                         src={`/proxy/image?url=${encodeURIComponent(watch.thumb)}`}
                         alt={watch.title}
-                        className={`w-9 h-12 sm:w-10 sm:h-14 ${watch.server_type === 'audiobookshelf' || watch.server_type === 'sappho' ? 'object-contain' : 'object-cover'}`}
+                        className={watch.server_type === 'audiobookshelf' || watch.server_type === 'sappho' ? 'max-w-full max-h-full object-contain' : 'w-full h-full object-cover'}
                       />
                       <div className="absolute bottom-0.5 right-0.5 p-0.5 bg-black/80 rounded">
                         <div className="w-2.5 h-2.5 sm:w-3 sm:h-3">{getMediaIcon(watch.media_type)}</div>

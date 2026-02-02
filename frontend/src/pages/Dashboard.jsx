@@ -25,15 +25,17 @@ function MediaThumbnail({ src, alt, title, serverType, className = "w-full h-ful
     );
   }
 
-  // Use object-contain for audiobooks (typically square covers) to avoid cropping
+  // Use different sizing for audiobooks (typically square covers) to avoid cropping
   const isAudiobook = serverType === 'audiobookshelf' || serverType === 'sappho';
+  // Audiobooks: use max dimensions so flex container can center; others: fill container
+  const sizeClass = isAudiobook ? 'max-w-full max-h-full' : className;
   const objectFit = isAudiobook ? 'object-contain' : 'object-cover';
 
   return (
     <img
       src={imgSrc}
       alt={alt}
-      className={`${className} ${objectFit} rounded`}
+      className={`${sizeClass} ${objectFit} rounded`}
       loading="lazy"
       onError={() => setHasError(true)}
     />
@@ -197,7 +199,7 @@ function Dashboard() {
                 <div className="flex md:hidden p-3 gap-3">
                   {/* Thumbnail */}
                   <div className="flex-shrink-0">
-                    <div className="relative w-16 h-24 bg-dark-700 rounded overflow-hidden">
+                    <div className="relative w-16 h-24 bg-dark-700 rounded overflow-hidden flex items-center justify-center">
                       <MediaThumbnail
                         src={session.thumb}
                         alt={session.title}
@@ -262,7 +264,7 @@ function Dashboard() {
                 <div className="hidden md:flex p-4 gap-4">
                   {/* Thumbnail and Server Label */}
                   <div className="flex-shrink-0">
-                    <div className="relative w-24 h-36 bg-dark-700 rounded-lg mb-3 overflow-hidden">
+                    <div className="relative w-24 h-36 bg-dark-700 rounded-lg mb-3 overflow-hidden flex items-center justify-center">
                       <MediaThumbnail
                         src={session.thumb}
                         alt={session.title}

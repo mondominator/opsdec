@@ -26,15 +26,17 @@ function MediaThumbnail({ src, alt, title, serverType, className = "w-12 h-16" }
     );
   }
 
-  // Use object-contain for audiobooks (typically square covers) to avoid cropping
+  // Use different sizing for audiobooks (typically square covers) to avoid cropping
   const isAudiobook = serverType === 'audiobookshelf' || serverType === 'sappho';
+  // Audiobooks: use max dimensions so flex container can center; others: fill container
+  const sizeClass = isAudiobook ? 'max-w-full max-h-full' : className;
   const objectFit = isAudiobook ? 'object-contain' : 'object-cover';
 
   return (
     <img
       src={imgSrc}
       alt={alt}
-      className={`${className} ${objectFit} rounded`}
+      className={`${sizeClass} ${objectFit} rounded`}
       onError={() => setHasError(true)}
     />
   );
@@ -399,7 +401,7 @@ function History() {
               <div key={item.id} className="card p-4">
                 <div className="flex gap-3 mb-3">
                   {/* Thumbnail */}
-                  <div className="flex-shrink-0">
+                  <div className="flex-shrink-0 w-12 h-16 bg-dark-700 rounded overflow-hidden flex items-center justify-center">
                     <MediaThumbnail
                       src={item.thumb}
                       alt={item.title}
@@ -558,7 +560,7 @@ function History() {
                     <tr key={item.id} className="hover:bg-dark-700/50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-4">
-                          <div className="flex-shrink-0">
+                          <div className="flex-shrink-0 w-12 h-16 bg-dark-700 rounded overflow-hidden flex items-center justify-center">
                             <MediaThumbnail
                               src={item.thumb}
                               alt={item.title}
