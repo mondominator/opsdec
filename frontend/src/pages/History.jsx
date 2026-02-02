@@ -26,11 +26,15 @@ function MediaThumbnail({ src, alt, title, serverType, className = "w-12 h-16" }
     );
   }
 
+  // Use object-contain for audiobooks (typically square covers) to avoid cropping
+  const isAudiobook = serverType === 'audiobookshelf' || serverType === 'sappho';
+  const objectFit = isAudiobook ? 'object-contain' : 'object-cover';
+
   return (
     <img
       src={imgSrc}
       alt={alt}
-      className={`${className} object-cover rounded`}
+      className={`${className} ${objectFit} rounded`}
       onError={() => setHasError(true)}
     />
   );

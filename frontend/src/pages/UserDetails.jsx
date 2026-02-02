@@ -287,7 +287,7 @@ function UserDetails() {
                       <img
                         src={`/proxy/image?url=${encodeURIComponent(watch.thumb)}`}
                         alt={watch.title}
-                        className="w-9 h-12 sm:w-10 sm:h-14 object-cover"
+                        className={`w-9 h-12 sm:w-10 sm:h-14 ${watch.server_type === 'audiobookshelf' || watch.server_type === 'sappho' ? 'object-contain' : 'object-cover'}`}
                       />
                       <div className="absolute bottom-0.5 right-0.5 p-0.5 bg-black/80 rounded">
                         <div className="w-2.5 h-2.5 sm:w-3 sm:h-3">{getMediaIcon(watch.media_type)}</div>
