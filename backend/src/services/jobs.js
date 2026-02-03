@@ -323,7 +323,15 @@ async function repairCoversJob() {
           results.plex.alreadyValid++;
         }
       } else {
-        results.plex.notFound++;
+        // Item not found by ID - try searching by title
+        const found = await plexServiceRef.searchByTitle(entry.title);
+        if (found) {
+          db.prepare(`UPDATE history SET media_id = ?, thumb = ? WHERE id = ?`).run(found.id, found.coverUrl, entry.id);
+          results.plex.coverUpdated++;
+          console.log(`   Repaired by title search: ${entry.title}`);
+        } else {
+          results.plex.notFound++;
+        }
       }
     }
   }
@@ -357,7 +365,15 @@ async function repairCoversJob() {
           results.emby.alreadyValid++;
         }
       } else {
-        results.emby.notFound++;
+        // Item not found by ID - try searching by title
+        const found = await embyServiceRef.searchByTitle(entry.title);
+        if (found) {
+          db.prepare(`UPDATE history SET media_id = ?, thumb = ? WHERE id = ?`).run(found.id, found.coverUrl, entry.id);
+          results.emby.coverUpdated++;
+          console.log(`   Repaired by title search: ${entry.title}`);
+        } else {
+          results.emby.notFound++;
+        }
       }
     }
   }
@@ -391,7 +407,15 @@ async function repairCoversJob() {
           results.jellyfin.alreadyValid++;
         }
       } else {
-        results.jellyfin.notFound++;
+        // Item not found by ID - try searching by title
+        const found = await jellyfinServiceRef.searchByTitle(entry.title);
+        if (found) {
+          db.prepare(`UPDATE history SET media_id = ?, thumb = ? WHERE id = ?`).run(found.id, found.coverUrl, entry.id);
+          results.jellyfin.coverUpdated++;
+          console.log(`   Repaired by title search: ${entry.title}`);
+        } else {
+          results.jellyfin.notFound++;
+        }
       }
     }
   }

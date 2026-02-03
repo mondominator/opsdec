@@ -121,6 +121,43 @@ class JellyfinService {
     }
   }
 
+  async searchByTitle(title, mediaType = null) {
+    try {
+      const response = await this.client.get('/Search/Hints', {
+        params: {
+          SearchTerm: title,
+          Limit: 10
+        }
+      });
+
+      const results = response.data.SearchHints || [];
+
+      // Find exact or close title match
+      for (const item of results) {
+        // Skip if mediaType specified and doesn't match
+        if (mediaType && item.Type?.toLowerCase() !== mediaType) continue;
+
+        const itemTitle = item.Name || '';
+        if (itemTitle.toLowerCase() === title.toLowerCase()) {
+          // For episodes, use series image; for movies/other use item image
+          const coverUrl = item.Type?.toLowerCase() === 'episode' && item.SeriesId
+            ? `${this.baseUrl}/Items/${item.SeriesId}/Images/Primary?api_key=${this.apiKey}`
+            : `${this.baseUrl}/Items/${item.ItemId || item.Id}/Images/Primary?api_key=${this.apiKey}`;
+
+          return {
+            id: item.ItemId || item.Id,
+            title: itemTitle,
+            coverUrl
+          };
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('Error searching Jellyfin by title:', error.message);
+      return null;
+    }
+  }
+
   async getFirstUserId() {
     const users = await this.getUsers();
     return users.length > 0 ? users[0].id : null;

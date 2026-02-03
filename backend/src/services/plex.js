@@ -269,6 +269,40 @@ class PlexService {
     }
   }
 
+  async searchByTitle(title, mediaType = null) {
+    try {
+      const response = await this.client.get('/search', {
+        params: { query: title }
+      });
+
+      const results = response.data.MediaContainer.Metadata || [];
+
+      // Find exact or close title match
+      for (const item of results) {
+        // Skip if mediaType specified and doesn't match
+        if (mediaType && item.type !== mediaType) continue;
+
+        const itemTitle = item.title || '';
+        if (itemTitle.toLowerCase() === title.toLowerCase()) {
+          // For episodes, use series thumb; for movies/other use item thumb
+          const thumbPath = item.type === 'episode' && item.grandparentThumb
+            ? item.grandparentThumb
+            : item.thumb;
+
+          return {
+            id: item.ratingKey,
+            title: itemTitle,
+            coverUrl: thumbPath ? `${this.baseUrl}${thumbPath}?X-Plex-Token=${this.token}` : null
+          };
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('Error searching Plex by title:', error.message);
+      return null;
+    }
+  }
+
   /**
    * WebSocket connection for real-time notifications
    */
