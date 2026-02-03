@@ -303,6 +303,8 @@ async function repairCoversJob() {
       WHERE server_type = 'plex'
     `).all();
     console.log(`   Found ${plexHistory.length} Plex history entries`);
+    const plexMissingThumbs = plexHistory.filter(e => !e.thumb).length;
+    console.log(`   ${plexMissingThumbs} entries have no thumb URL`);
 
     results.plex.total = plexHistory.length;
 
@@ -310,9 +312,13 @@ async function repairCoversJob() {
       const itemInfo = await plexServiceRef.getItemInfo(entry.media_id);
 
       if (itemInfo.exists) {
-        if (itemInfo.coverUrl && itemInfo.coverUrl !== entry.thumb) {
+        // Update if: no thumb, or URL changed, or server has a cover when we don't
+        if (itemInfo.coverUrl && (!entry.thumb || itemInfo.coverUrl !== entry.thumb)) {
           db.prepare(`UPDATE history SET thumb = ? WHERE id = ?`).run(itemInfo.coverUrl, entry.id);
           results.plex.coverUpdated++;
+          console.log(`   Updated cover for: ${entry.title}`);
+        } else if (!itemInfo.coverUrl && !entry.thumb) {
+          results.plex.alreadyValid++; // Both have no cover
         } else {
           results.plex.alreadyValid++;
         }
@@ -331,6 +337,8 @@ async function repairCoversJob() {
       WHERE server_type = 'emby'
     `).all();
     console.log(`   Found ${embyHistory.length} Emby history entries`);
+    const embyMissingThumbs = embyHistory.filter(e => !e.thumb).length;
+    console.log(`   ${embyMissingThumbs} entries have no thumb URL`);
 
     results.emby.total = embyHistory.length;
 
@@ -338,9 +346,13 @@ async function repairCoversJob() {
       const itemInfo = await embyServiceRef.getItemInfo(entry.media_id);
 
       if (itemInfo.exists) {
-        if (itemInfo.coverUrl && itemInfo.coverUrl !== entry.thumb) {
+        // Update if: no thumb, or URL changed, or server has a cover when we don't
+        if (itemInfo.coverUrl && (!entry.thumb || itemInfo.coverUrl !== entry.thumb)) {
           db.prepare(`UPDATE history SET thumb = ? WHERE id = ?`).run(itemInfo.coverUrl, entry.id);
           results.emby.coverUpdated++;
+          console.log(`   Updated cover for: ${entry.title}`);
+        } else if (!itemInfo.coverUrl && !entry.thumb) {
+          results.emby.alreadyValid++; // Both have no cover
         } else {
           results.emby.alreadyValid++;
         }
@@ -359,6 +371,8 @@ async function repairCoversJob() {
       WHERE server_type = 'jellyfin'
     `).all();
     console.log(`   Found ${jellyfinHistory.length} Jellyfin history entries`);
+    const jellyfinMissingThumbs = jellyfinHistory.filter(e => !e.thumb).length;
+    console.log(`   ${jellyfinMissingThumbs} entries have no thumb URL`);
 
     results.jellyfin.total = jellyfinHistory.length;
 
@@ -366,9 +380,13 @@ async function repairCoversJob() {
       const itemInfo = await jellyfinServiceRef.getItemInfo(entry.media_id);
 
       if (itemInfo.exists) {
-        if (itemInfo.coverUrl && itemInfo.coverUrl !== entry.thumb) {
+        // Update if: no thumb, or URL changed, or server has a cover when we don't
+        if (itemInfo.coverUrl && (!entry.thumb || itemInfo.coverUrl !== entry.thumb)) {
           db.prepare(`UPDATE history SET thumb = ? WHERE id = ?`).run(itemInfo.coverUrl, entry.id);
           results.jellyfin.coverUpdated++;
+          console.log(`   Updated cover for: ${entry.title}`);
+        } else if (!itemInfo.coverUrl && !entry.thumb) {
+          results.jellyfin.alreadyValid++; // Both have no cover
         } else {
           results.jellyfin.alreadyValid++;
         }
