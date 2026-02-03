@@ -69,6 +69,12 @@ export function initializeJobs() {
         VALUES (?, ?, ?, ?, 1)
       `).run(jobId, jobDef.name, jobDef.description, jobDef.cronSchedule);
       console.log(`   Created job: ${jobDef.name}`);
+    } else {
+      // Update description if it changed
+      if (existing.description !== jobDef.description) {
+        db.prepare('UPDATE scheduled_jobs SET description = ? WHERE id = ?').run(jobDef.description, jobId);
+        console.log(`   Updated job description: ${jobDef.name}`);
+      }
     }
 
     // Get job settings from database (user may have changed schedule/enabled)
@@ -245,8 +251,17 @@ async function repairCoversJob() {
     jellyfin: { coverUpdated: 0, notFound: 0, alreadyValid: 0, total: 0 }
   };
 
+  // Log which services are available
+  console.log('   Services available:', {
+    audiobookshelf: !!audiobookshelfServiceRef,
+    plex: !!plexServiceRef,
+    emby: !!embyServiceRef,
+    jellyfin: !!jellyfinServiceRef
+  });
+
   // Process Audiobookshelf entries (with search by title fallback)
   if (audiobookshelfServiceRef) {
+    console.log('   Processing Audiobookshelf history...');
     const absHistory = db.prepare(`
       SELECT id, title, media_id, thumb
       FROM history
@@ -281,11 +296,13 @@ async function repairCoversJob() {
 
   // Process Plex entries
   if (plexServiceRef) {
+    console.log('   Processing Plex history...');
     const plexHistory = db.prepare(`
       SELECT id, title, media_id, thumb
       FROM history
       WHERE server_type = 'plex'
     `).all();
+    console.log(`   Found ${plexHistory.length} Plex history entries`);
 
     results.plex.total = plexHistory.length;
 
@@ -307,11 +324,13 @@ async function repairCoversJob() {
 
   // Process Emby entries
   if (embyServiceRef) {
+    console.log('   Processing Emby history...');
     const embyHistory = db.prepare(`
       SELECT id, title, media_id, thumb
       FROM history
       WHERE server_type = 'emby'
     `).all();
+    console.log(`   Found ${embyHistory.length} Emby history entries`);
 
     results.emby.total = embyHistory.length;
 
@@ -333,11 +352,13 @@ async function repairCoversJob() {
 
   // Process Jellyfin entries
   if (jellyfinServiceRef) {
+    console.log('   Processing Jellyfin history...');
     const jellyfinHistory = db.prepare(`
       SELECT id, title, media_id, thumb
       FROM history
       WHERE server_type = 'jellyfin'
     `).all();
+    console.log(`   Found ${jellyfinHistory.length} Jellyfin history entries`);
 
     results.jellyfin.total = jellyfinHistory.length;
 
