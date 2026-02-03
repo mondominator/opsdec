@@ -242,6 +242,33 @@ class PlexService {
     }
   }
 
+  async getItemInfo(ratingKey) {
+    try {
+      const response = await this.client.get(`/library/metadata/${ratingKey}`);
+      const item = response.data.MediaContainer.Metadata?.[0];
+      if (!item) {
+        return { exists: false, coverUrl: null };
+      }
+
+      // For episodes, use series thumb; for movies/other use item thumb
+      const thumbPath = item.type === 'episode' && item.grandparentThumb
+        ? item.grandparentThumb
+        : item.thumb;
+
+      return {
+        exists: true,
+        coverUrl: thumbPath ? `${this.baseUrl}${thumbPath}?X-Plex-Token=${this.token}` : null
+      };
+    } catch (error) {
+      // 404 means item doesn't exist
+      if (error.response?.status === 404) {
+        return { exists: false, coverUrl: null };
+      }
+      console.error(`Error fetching Plex item ${ratingKey}:`, error.message);
+      return { exists: false, coverUrl: null };
+    }
+  }
+
   /**
    * WebSocket connection for real-time notifications
    */

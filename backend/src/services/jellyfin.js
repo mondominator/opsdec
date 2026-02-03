@@ -97,6 +97,30 @@ class JellyfinService {
     }
   }
 
+  async getItemInfo(itemId) {
+    try {
+      const item = await this.getItem(itemId);
+      if (!item) {
+        return { exists: false, coverUrl: null };
+      }
+
+      // For episodes, use series image; for movies/other use item image
+      const coverUrl = item.Type?.toLowerCase() === 'episode' && (item.SeriesId || item.SeriesPrimaryImageTag)
+        ? `${this.baseUrl}/Items/${item.SeriesId || item.ParentId}/Images/Primary?api_key=${this.apiKey}`
+        : item.ImageTags?.Primary
+        ? `${this.baseUrl}/Items/${item.Id}/Images/Primary?api_key=${this.apiKey}`
+        : null;
+
+      return { exists: true, coverUrl };
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return { exists: false, coverUrl: null };
+      }
+      console.error(`Error fetching Jellyfin item info ${itemId}:`, error.message);
+      return { exists: false, coverUrl: null };
+    }
+  }
+
   async getFirstUserId() {
     const users = await this.getUsers();
     return users.length > 0 ? users[0].id : null;

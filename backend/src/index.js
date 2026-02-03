@@ -10,8 +10,8 @@ import { dirname, join } from 'path';
 import { existsSync } from 'fs';
 import { parse as parseUrl } from 'url';
 import { initDatabase, db } from './database/init.js';
-import { startActivityMonitor, audiobookshelfService } from './services/monitor.js';
-import { initializeJobs, setAudiobookshelfService } from './services/jobs.js';
+import { startActivityMonitor, audiobookshelfService, plexService, embyService, jellyfinService } from './services/monitor.js';
+import { initializeJobs, setAudiobookshelfService, setPlexService, setEmbyService, setJellyfinService } from './services/jobs.js';
 import apiRouter from './routes/api.js';
 import authRouter from './routes/auth.js';
 import { authenticateToken, isSetupRequired, verifyToken } from './middleware/auth.js';
@@ -197,9 +197,18 @@ server.listen(PORT, () => {
   startActivityMonitor();
 
   // Initialize scheduled jobs
-  // Set the audiobookshelf service reference for repair-covers job
+  // Set service references for repair-covers job
   if (audiobookshelfService) {
     setAudiobookshelfService(audiobookshelfService);
+  }
+  if (plexService) {
+    setPlexService(plexService);
+  }
+  if (embyService) {
+    setEmbyService(embyService);
+  }
+  if (jellyfinService) {
+    setJellyfinService(jellyfinService);
   }
   initializeJobs();
 });

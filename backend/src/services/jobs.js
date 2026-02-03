@@ -5,9 +5,9 @@ import { db } from '../database/init.js';
 const jobDefinitions = {
   'repair-covers': {
     name: 'Repair Covers',
-    description: 'Search for books by title to fix stale cover URLs for moved/reimported items',
+    description: 'Fix stale cover URLs for moved/reimported items across all media servers',
     cronSchedule: '*/30 * * * *', // Every 30 minutes
-    handler: null // Will be set when audiobookshelfService is available
+    handler: null // Will be set when at least one service is available
   },
   'merge-duplicates': {
     name: 'Merge Duplicates',
@@ -23,12 +23,37 @@ const runningJobs = new Set();
 // Cron job instances
 const cronJobs = {};
 
-// Service reference for jobs that need it
+// Service references for jobs that need them
 let audiobookshelfServiceRef = null;
+let plexServiceRef = null;
+let embyServiceRef = null;
+let jellyfinServiceRef = null;
 
 export function setAudiobookshelfService(service) {
   audiobookshelfServiceRef = service;
-  jobDefinitions['repair-covers'].handler = repairCoversJob;
+  updateRepairCoversHandler();
+}
+
+export function setPlexService(service) {
+  plexServiceRef = service;
+  updateRepairCoversHandler();
+}
+
+export function setEmbyService(service) {
+  embyServiceRef = service;
+  updateRepairCoversHandler();
+}
+
+export function setJellyfinService(service) {
+  jellyfinServiceRef = service;
+  updateRepairCoversHandler();
+}
+
+function updateRepairCoversHandler() {
+  // Enable repair-covers job if at least one service is configured
+  if (audiobookshelfServiceRef || plexServiceRef || embyServiceRef || jellyfinServiceRef) {
+    jobDefinitions['repair-covers'].handler = repairCoversJob;
+  }
 }
 
 // Initialize jobs - create entries in database and start cron schedules
@@ -213,58 +238,137 @@ function getNextCronRun(cronSchedule) {
 // Job handlers
 
 async function repairCoversJob() {
-  if (!audiobookshelfServiceRef) {
-    throw new Error('Audiobookshelf service not configured');
-  }
+  const results = {
+    audiobookshelf: { repaired: 0, coverUpdated: 0, notFound: 0, alreadyValid: 0, total: 0 },
+    plex: { coverUpdated: 0, notFound: 0, alreadyValid: 0, total: 0 },
+    emby: { coverUpdated: 0, notFound: 0, alreadyValid: 0, total: 0 },
+    jellyfin: { coverUpdated: 0, notFound: 0, alreadyValid: 0, total: 0 }
+  };
 
-  // Get all Audiobookshelf history entries
-  const absHistory = db.prepare(`
-    SELECT id, title, media_id, thumb
-    FROM history
-    WHERE server_type = 'audiobookshelf'
-  `).all();
+  // Process Audiobookshelf entries (with search by title fallback)
+  if (audiobookshelfServiceRef) {
+    const absHistory = db.prepare(`
+      SELECT id, title, media_id, thumb
+      FROM history
+      WHERE server_type = 'audiobookshelf'
+    `).all();
 
-  let repaired = 0;
-  let coverUpdated = 0;
-  let notFound = 0;
-  let alreadyValid = 0;
+    results.audiobookshelf.total = absHistory.length;
 
-  for (const entry of absHistory) {
-    // Check if current item exists and get its info
-    const itemInfo = await audiobookshelfServiceRef.getItemInfo(entry.media_id);
+    for (const entry of absHistory) {
+      const itemInfo = await audiobookshelfServiceRef.getItemInfo(entry.media_id);
 
-    if (itemInfo.exists) {
-      // Item exists - check if cover URL changed
-      if (itemInfo.coverUrl && itemInfo.coverUrl !== entry.thumb) {
-        // Cover URL is different, update it
-        db.prepare(`
-          UPDATE history
-          SET thumb = ?
-          WHERE id = ?
-        `).run(itemInfo.coverUrl, entry.id);
-        coverUpdated++;
-      } else {
-        alreadyValid++;
+      if (itemInfo.exists) {
+        if (itemInfo.coverUrl && itemInfo.coverUrl !== entry.thumb) {
+          db.prepare(`UPDATE history SET thumb = ? WHERE id = ?`).run(itemInfo.coverUrl, entry.id);
+          results.audiobookshelf.coverUpdated++;
+        } else {
+          results.audiobookshelf.alreadyValid++;
+        }
+        continue;
       }
-      continue;
-    }
 
-    // Item doesn't exist, search by title
-    const found = await audiobookshelfServiceRef.searchByTitle(entry.title);
-    if (found) {
-      // Update the history entry with new media_id and thumb
-      db.prepare(`
-        UPDATE history
-        SET media_id = ?, thumb = ?
-        WHERE id = ?
-      `).run(found.id, found.coverUrl, entry.id);
-      repaired++;
-    } else {
-      notFound++;
+      // Item doesn't exist, search by title (Audiobookshelf only)
+      const found = await audiobookshelfServiceRef.searchByTitle(entry.title);
+      if (found) {
+        db.prepare(`UPDATE history SET media_id = ?, thumb = ? WHERE id = ?`).run(found.id, found.coverUrl, entry.id);
+        results.audiobookshelf.repaired++;
+      } else {
+        results.audiobookshelf.notFound++;
+      }
     }
   }
 
-  return { repaired, coverUpdated, notFound, alreadyValid, total: absHistory.length };
+  // Process Plex entries
+  if (plexServiceRef) {
+    const plexHistory = db.prepare(`
+      SELECT id, title, media_id, thumb
+      FROM history
+      WHERE server_type = 'plex'
+    `).all();
+
+    results.plex.total = plexHistory.length;
+
+    for (const entry of plexHistory) {
+      const itemInfo = await plexServiceRef.getItemInfo(entry.media_id);
+
+      if (itemInfo.exists) {
+        if (itemInfo.coverUrl && itemInfo.coverUrl !== entry.thumb) {
+          db.prepare(`UPDATE history SET thumb = ? WHERE id = ?`).run(itemInfo.coverUrl, entry.id);
+          results.plex.coverUpdated++;
+        } else {
+          results.plex.alreadyValid++;
+        }
+      } else {
+        results.plex.notFound++;
+      }
+    }
+  }
+
+  // Process Emby entries
+  if (embyServiceRef) {
+    const embyHistory = db.prepare(`
+      SELECT id, title, media_id, thumb
+      FROM history
+      WHERE server_type = 'emby'
+    `).all();
+
+    results.emby.total = embyHistory.length;
+
+    for (const entry of embyHistory) {
+      const itemInfo = await embyServiceRef.getItemInfo(entry.media_id);
+
+      if (itemInfo.exists) {
+        if (itemInfo.coverUrl && itemInfo.coverUrl !== entry.thumb) {
+          db.prepare(`UPDATE history SET thumb = ? WHERE id = ?`).run(itemInfo.coverUrl, entry.id);
+          results.emby.coverUpdated++;
+        } else {
+          results.emby.alreadyValid++;
+        }
+      } else {
+        results.emby.notFound++;
+      }
+    }
+  }
+
+  // Process Jellyfin entries
+  if (jellyfinServiceRef) {
+    const jellyfinHistory = db.prepare(`
+      SELECT id, title, media_id, thumb
+      FROM history
+      WHERE server_type = 'jellyfin'
+    `).all();
+
+    results.jellyfin.total = jellyfinHistory.length;
+
+    for (const entry of jellyfinHistory) {
+      const itemInfo = await jellyfinServiceRef.getItemInfo(entry.media_id);
+
+      if (itemInfo.exists) {
+        if (itemInfo.coverUrl && itemInfo.coverUrl !== entry.thumb) {
+          db.prepare(`UPDATE history SET thumb = ? WHERE id = ?`).run(itemInfo.coverUrl, entry.id);
+          results.jellyfin.coverUpdated++;
+        } else {
+          results.jellyfin.alreadyValid++;
+        }
+      } else {
+        results.jellyfin.notFound++;
+      }
+    }
+  }
+
+  // Calculate totals
+  const totalProcessed = results.audiobookshelf.total + results.plex.total + results.emby.total + results.jellyfin.total;
+  const totalCoverUpdated = results.audiobookshelf.coverUpdated + results.plex.coverUpdated + results.emby.coverUpdated + results.jellyfin.coverUpdated;
+  const totalNotFound = results.audiobookshelf.notFound + results.plex.notFound + results.emby.notFound + results.jellyfin.notFound;
+
+  return {
+    total: totalProcessed,
+    coverUpdated: totalCoverUpdated,
+    notFound: totalNotFound,
+    repaired: results.audiobookshelf.repaired, // Only audiobookshelf supports title search
+    byServer: results
+  };
 }
 
 function mergeDuplicatesJob() {
