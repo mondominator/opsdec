@@ -825,8 +825,8 @@ router.get('/stats/dashboard', (req, res) => {
       LIMIT 10
     `).all();
 
-    // TV Shows: Hybrid score = (unique_users * 10) + unique_episodes + recency_bonus
-    // This balances popularity (many viewers) with engagement (many episodes watched)
+    // TV Shows: Users first, then engagement (episodes + recency) as tiebreaker
+    // This ensures shows with more viewers always rank higher
     const mostWatchedEpisodes = db.prepare(`
       SELECT
         h.grandparent_title as title,
@@ -841,19 +841,16 @@ router.get('/stats/dashboard', (req, res) => {
           WHEN h.watched_at > strftime('%s', 'now', '-7 days') THEN 3
           WHEN h.watched_at > strftime('%s', 'now', '-30 days') THEN 2
           ELSE 1
-        END) as recency_score,
-        (COUNT(DISTINCT COALESCE(um.primary_username, h.username)) * 10)
-          + COUNT(DISTINCT h.title)
-          + SUM(CASE
-              WHEN h.watched_at > strftime('%s', 'now', '-7 days') THEN 3
-              WHEN h.watched_at > strftime('%s', 'now', '-30 days') THEN 2
-              ELSE 1
-            END) as hybrid_score
+        END) as recency_score
       FROM history h
       LEFT JOIN user_mappings um ON h.username = um.mapped_username AND h.server_type = um.server_type
       WHERE h.media_type = 'episode' AND h.grandparent_title IS NOT NULL
       GROUP BY h.grandparent_title
-      ORDER BY hybrid_score DESC
+      ORDER BY unique_users DESC, (COUNT(DISTINCT h.title) + SUM(CASE
+          WHEN h.watched_at > strftime('%s', 'now', '-7 days') THEN 3
+          WHEN h.watched_at > strftime('%s', 'now', '-30 days') THEN 2
+          ELSE 1
+        END)) DESC
       LIMIT 10
     `).all();
 
