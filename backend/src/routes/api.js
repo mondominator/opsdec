@@ -616,7 +616,12 @@ router.put('/users/:userId/history-enabled', (req, res) => {
 router.get('/stats/dashboard', (req, res) => {
   try {
     const totalPlays = db.prepare('SELECT COUNT(*) as count FROM history').get();
-    const totalUsers = db.prepare('SELECT COUNT(*) as count FROM users').get();
+    // Count unique primary users (considering user mappings)
+    const totalUsers = db.prepare(`
+      SELECT COUNT(DISTINCT COALESCE(um.primary_username, u.username)) as count
+      FROM users u
+      LEFT JOIN user_mappings um ON u.username = um.mapped_username AND u.server_type = um.server_type
+    `).get();
     const totalDuration = db.prepare('SELECT SUM(total_duration) as total FROM users').get();
     const activeSessions = db.prepare(`
       SELECT COUNT(*) as count FROM sessions
@@ -672,10 +677,12 @@ router.get('/stats/dashboard', (req, res) => {
     `).get();
     const dailyAverage = oneDayTotal.count;
 
-    // Average active monthly users (unique users in last 30 days)
+    // Average active monthly users (unique primary users in last 30 days, considering user mappings)
     const activeMonthlyUsers = db.prepare(`
-      SELECT COUNT(DISTINCT user_id) as count FROM history
-      WHERE watched_at > strftime('%s', 'now', '-30 days')
+      SELECT COUNT(DISTINCT COALESCE(um.primary_username, h.username)) as count
+      FROM history h
+      LEFT JOIN user_mappings um ON h.username = um.mapped_username AND h.server_type = um.server_type
+      WHERE h.watched_at > strftime('%s', 'now', '-30 days')
     `).get();
 
     // Peak day of week (0 = Sunday, 6 = Saturday)
@@ -793,68 +800,72 @@ router.get('/stats/dashboard', (req, res) => {
       });
 
     // Most watched media - split by type
-    // Primary: unique users, Secondary: recency bonus (recent watches boost score)
+    // Primary: unique users (considering user mappings), Secondary: recency bonus (recent watches boost score)
+    // Uses LEFT JOIN with user_mappings to count mapped users as one unique user
     const mostWatchedMovies = db.prepare(`
       SELECT
-        title,
-        MAX(parent_title) as parent_title,
-        media_type,
-        MAX(thumb) as thumb,
-        MAX(media_id) as media_id,
-        COUNT(DISTINCT username) as unique_users,
+        h.title,
+        MAX(h.parent_title) as parent_title,
+        h.media_type,
+        MAX(h.thumb) as thumb,
+        MAX(h.media_id) as media_id,
+        COUNT(DISTINCT COALESCE(um.primary_username, h.username)) as unique_users,
         COUNT(*) as plays,
-        MAX(watched_at) as last_watched,
+        MAX(h.watched_at) as last_watched,
         SUM(CASE
-          WHEN watched_at > strftime('%s', 'now', '-7 days') THEN 3
-          WHEN watched_at > strftime('%s', 'now', '-30 days') THEN 2
+          WHEN h.watched_at > strftime('%s', 'now', '-7 days') THEN 3
+          WHEN h.watched_at > strftime('%s', 'now', '-30 days') THEN 2
           ELSE 1
         END) as recency_score
-      FROM history
-      WHERE media_type = 'movie'
-      GROUP BY title
+      FROM history h
+      LEFT JOIN user_mappings um ON h.username = um.mapped_username AND h.server_type = um.server_type
+      WHERE h.media_type = 'movie'
+      GROUP BY h.title
       ORDER BY unique_users DESC, plays DESC, recency_score DESC
       LIMIT 10
     `).all();
 
     const mostWatchedEpisodes = db.prepare(`
       SELECT
-        grandparent_title as title,
-        grandparent_title as media_id,
-        media_type,
-        MAX(thumb) as thumb,
-        COUNT(DISTINCT username) as unique_users,
+        h.grandparent_title as title,
+        h.grandparent_title as media_id,
+        h.media_type,
+        MAX(h.thumb) as thumb,
+        COUNT(DISTINCT COALESCE(um.primary_username, h.username)) as unique_users,
         COUNT(*) as plays,
-        MAX(watched_at) as last_watched,
+        MAX(h.watched_at) as last_watched,
         SUM(CASE
-          WHEN watched_at > strftime('%s', 'now', '-7 days') THEN 3
-          WHEN watched_at > strftime('%s', 'now', '-30 days') THEN 2
+          WHEN h.watched_at > strftime('%s', 'now', '-7 days') THEN 3
+          WHEN h.watched_at > strftime('%s', 'now', '-30 days') THEN 2
           ELSE 1
         END) as recency_score
-      FROM history
-      WHERE media_type = 'episode' AND grandparent_title IS NOT NULL
-      GROUP BY grandparent_title
+      FROM history h
+      LEFT JOIN user_mappings um ON h.username = um.mapped_username AND h.server_type = um.server_type
+      WHERE h.media_type = 'episode' AND h.grandparent_title IS NOT NULL
+      GROUP BY h.grandparent_title
       ORDER BY unique_users DESC, plays DESC, recency_score DESC
       LIMIT 10
     `).all();
 
     const mostWatchedAudiobooks = db.prepare(`
       SELECT
-        title,
-        MAX(parent_title) as parent_title,
-        media_type,
-        MAX(thumb) as thumb,
-        MAX(media_id) as media_id,
-        COUNT(DISTINCT username) as unique_users,
+        h.title,
+        MAX(h.parent_title) as parent_title,
+        h.media_type,
+        MAX(h.thumb) as thumb,
+        MAX(h.media_id) as media_id,
+        COUNT(DISTINCT COALESCE(um.primary_username, h.username)) as unique_users,
         COUNT(*) as plays,
-        MAX(watched_at) as last_watched,
+        MAX(h.watched_at) as last_watched,
         SUM(CASE
-          WHEN watched_at > strftime('%s', 'now', '-7 days') THEN 3
-          WHEN watched_at > strftime('%s', 'now', '-30 days') THEN 2
+          WHEN h.watched_at > strftime('%s', 'now', '-7 days') THEN 3
+          WHEN h.watched_at > strftime('%s', 'now', '-30 days') THEN 2
           ELSE 1
         END) as recency_score
-      FROM history
-      WHERE media_type IN ('audiobook', 'track', 'book')
-      GROUP BY title
+      FROM history h
+      LEFT JOIN user_mappings um ON h.username = um.mapped_username AND h.server_type = um.server_type
+      WHERE h.media_type IN ('audiobook', 'track', 'book')
+      GROUP BY h.title
       ORDER BY unique_users DESC, plays DESC, recency_score DESC
       LIMIT 10
     `).all();
