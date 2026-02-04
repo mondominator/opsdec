@@ -793,8 +793,7 @@ router.get('/stats/dashboard', (req, res) => {
       });
 
     // Most watched media - split by type
-    // Weighted scoring: last 7 days = 3x, last 30 days = 2x, older = 1x
-    // Primary sort by unique users (weighted), secondary by total plays
+    // Primary: unique users, Secondary: recency bonus (recent watches boost score)
     const mostWatchedMovies = db.prepare(`
       SELECT
         title,
@@ -804,15 +803,16 @@ router.get('/stats/dashboard', (req, res) => {
         MAX(media_id) as media_id,
         COUNT(DISTINCT username) as unique_users,
         COUNT(*) as plays,
+        MAX(watched_at) as last_watched,
         SUM(CASE
           WHEN watched_at > strftime('%s', 'now', '-7 days') THEN 3
           WHEN watched_at > strftime('%s', 'now', '-30 days') THEN 2
           ELSE 1
-        END) as weighted_score
+        END) as recency_score
       FROM history
       WHERE media_type = 'movie'
       GROUP BY title
-      ORDER BY weighted_score DESC, unique_users DESC, plays DESC
+      ORDER BY unique_users DESC, recency_score DESC, plays DESC
       LIMIT 10
     `).all();
 
@@ -824,15 +824,16 @@ router.get('/stats/dashboard', (req, res) => {
         MAX(thumb) as thumb,
         COUNT(DISTINCT username) as unique_users,
         COUNT(*) as plays,
+        MAX(watched_at) as last_watched,
         SUM(CASE
           WHEN watched_at > strftime('%s', 'now', '-7 days') THEN 3
           WHEN watched_at > strftime('%s', 'now', '-30 days') THEN 2
           ELSE 1
-        END) as weighted_score
+        END) as recency_score
       FROM history
       WHERE media_type = 'episode' AND grandparent_title IS NOT NULL
       GROUP BY grandparent_title
-      ORDER BY weighted_score DESC, unique_users DESC, plays DESC
+      ORDER BY unique_users DESC, recency_score DESC, plays DESC
       LIMIT 10
     `).all();
 
@@ -845,15 +846,16 @@ router.get('/stats/dashboard', (req, res) => {
         MAX(media_id) as media_id,
         COUNT(DISTINCT username) as unique_users,
         COUNT(*) as plays,
+        MAX(watched_at) as last_watched,
         SUM(CASE
           WHEN watched_at > strftime('%s', 'now', '-7 days') THEN 3
           WHEN watched_at > strftime('%s', 'now', '-30 days') THEN 2
           ELSE 1
-        END) as weighted_score
+        END) as recency_score
       FROM history
       WHERE media_type IN ('audiobook', 'track', 'book')
       GROUP BY title
-      ORDER BY weighted_score DESC, unique_users DESC, plays DESC
+      ORDER BY unique_users DESC, recency_score DESC, plays DESC
       LIMIT 10
     `).all();
 
