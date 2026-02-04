@@ -854,8 +854,8 @@ router.get('/stats/dashboard', (req, res) => {
       LIMIT 10
     `).all();
 
-    // Audiobooks: Hybrid score = (unique_users * 10) + (completions * 5) + total_hours + recency
-    // Balances popularity, quality (completions), and engagement (listen time)
+    // Audiobooks: Users first, then engagement (completions + hours + recency) as tiebreaker
+    // This ensures books with more listeners always rank higher
     const mostWatchedAudiobooks = db.prepare(`
       SELECT
         h.title,
@@ -872,20 +872,19 @@ router.get('/stats/dashboard', (req, res) => {
           WHEN h.watched_at > strftime('%s', 'now', '-7 days') THEN 3
           WHEN h.watched_at > strftime('%s', 'now', '-30 days') THEN 2
           ELSE 1
-        END) as recency_score,
-        (COUNT(DISTINCT COALESCE(um.primary_username, h.username)) * 10)
-          + (SUM(CASE WHEN h.percent_complete >= 80 THEN 1 ELSE 0 END) * 5)
+        END) as recency_score
+      FROM history h
+      LEFT JOIN user_mappings um ON h.username = um.mapped_username AND h.server_type = um.server_type
+      WHERE h.media_type IN ('audiobook', 'track', 'book')
+      GROUP BY h.title
+      ORDER BY unique_users DESC,
+        (SUM(CASE WHEN h.percent_complete >= 80 THEN 1 ELSE 0 END) * 5
           + CAST(COALESCE(SUM(h.stream_duration), 0) / 3600.0 AS INTEGER)
           + SUM(CASE
               WHEN h.watched_at > strftime('%s', 'now', '-7 days') THEN 3
               WHEN h.watched_at > strftime('%s', 'now', '-30 days') THEN 2
               ELSE 1
-            END) as hybrid_score
-      FROM history h
-      LEFT JOIN user_mappings um ON h.username = um.mapped_username AND h.server_type = um.server_type
-      WHERE h.media_type IN ('audiobook', 'track', 'book')
-      GROUP BY h.title
-      ORDER BY hybrid_score DESC
+            END)) DESC
       LIMIT 10
     `).all();
 
