@@ -812,7 +812,7 @@ router.get('/stats/dashboard', (req, res) => {
       FROM history
       WHERE media_type = 'movie'
       GROUP BY title
-      ORDER BY unique_users DESC, recency_score DESC, plays DESC
+      ORDER BY unique_users DESC, plays DESC, recency_score DESC
       LIMIT 10
     `).all();
 
@@ -833,7 +833,7 @@ router.get('/stats/dashboard', (req, res) => {
       FROM history
       WHERE media_type = 'episode' AND grandparent_title IS NOT NULL
       GROUP BY grandparent_title
-      ORDER BY unique_users DESC, recency_score DESC, plays DESC
+      ORDER BY unique_users DESC, plays DESC, recency_score DESC
       LIMIT 10
     `).all();
 
@@ -855,7 +855,7 @@ router.get('/stats/dashboard', (req, res) => {
       FROM history
       WHERE media_type IN ('audiobook', 'track', 'book')
       GROUP BY title
-      ORDER BY unique_users DESC, recency_score DESC, plays DESC
+      ORDER BY unique_users DESC, plays DESC, recency_score DESC
       LIMIT 10
     `).all();
 
