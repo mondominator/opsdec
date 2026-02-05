@@ -3,8 +3,12 @@ import axios from 'axios';
 
 const AuthContext = createContext(null);
 
+// Storage keys for backwards compatibility during transition
 const TOKEN_STORAGE_KEY = 'opsdec_access_token';
 const REFRESH_TOKEN_STORAGE_KEY = 'opsdec_refresh_token';
+
+// Configure axios to send cookies with requests
+axios.defaults.withCredentials = true;
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -12,64 +16,10 @@ export function AuthProvider({ children }) {
   const [setupRequired, setSetupRequired] = useState(false);
   const initialized = useRef(false);
 
-  // Get stored tokens
-  const getStoredTokens = () => {
-    return {
-      accessToken: localStorage.getItem(TOKEN_STORAGE_KEY),
-      refreshToken: localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY)
-    };
-  };
-
-  // Store tokens
-  const storeTokens = (accessToken, refreshToken) => {
-    if (accessToken) {
-      localStorage.setItem(TOKEN_STORAGE_KEY, accessToken);
-    }
-    if (refreshToken) {
-      localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, refreshToken);
-    }
-  };
-
-  // Clear tokens
-  const clearTokens = () => {
+  // Clear any legacy localStorage tokens (migration cleanup)
+  const clearLegacyTokens = () => {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
-  };
-
-  // Get a valid access token (refreshing if needed)
-  const getAccessToken = async () => {
-    const { accessToken, refreshToken } = getStoredTokens();
-
-    if (!accessToken || !refreshToken) {
-      return null;
-    }
-
-    // Try to use existing token first
-    try {
-      // Check if token is expired by decoding it
-      const payload = JSON.parse(atob(accessToken.split('.')[1]));
-      const expiresAt = payload.exp * 1000;
-
-      // If token expires in more than 1 minute, use it
-      if (expiresAt > Date.now() + 60000) {
-        return accessToken;
-      }
-    } catch (e) {
-      // Token is malformed, try to refresh
-    }
-
-    // Token is expired or about to expire, try to refresh
-    try {
-      const response = await axios.post('/api/auth/refresh', { refreshToken });
-      const newAccessToken = response.data.accessToken;
-      storeTokens(newAccessToken, null);
-      return newAccessToken;
-    } catch (error) {
-      // Refresh failed, clear tokens
-      clearTokens();
-      setUser(null);
-      return null;
-    }
   };
 
   // Check if setup is required (no users exist)
@@ -83,62 +33,56 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Login
+  // Login - cookies are set automatically by the server
   const login = async (username, password) => {
     const response = await axios.post('/api/auth/login', { username, password });
-    const { user: userData, accessToken, refreshToken } = response.data;
+    const { user: userData } = response.data;
 
-    storeTokens(accessToken, refreshToken);
+    // Clear any legacy localStorage tokens
+    clearLegacyTokens();
     setUser(userData);
     setSetupRequired(false);
 
     return userData;
   };
 
-  // Register (for first user setup)
+  // Register (for first user setup) - cookies are set automatically by the server
   const register = async (username, password, email) => {
     const response = await axios.post('/api/auth/register', { username, password, email });
-    const { user: userData, accessToken, refreshToken } = response.data;
+    const { user: userData } = response.data;
 
-    storeTokens(accessToken, refreshToken);
+    // Clear any legacy localStorage tokens
+    clearLegacyTokens();
     setUser(userData);
     setSetupRequired(false);
 
     return userData;
   };
 
-  // Logout
+  // Logout - server clears the cookies
   const logout = async () => {
     try {
-      const { refreshToken } = getStoredTokens();
-      if (refreshToken) {
-        await axios.post('/api/auth/logout', { refreshToken });
-      }
+      await axios.post('/api/auth/logout');
     } catch (error) {
       console.error('Error during logout:', error);
     } finally {
-      clearTokens();
+      // Clear any legacy localStorage tokens
+      clearLegacyTokens();
       setUser(null);
     }
   };
 
-  // Fetch current user info
+  // Fetch current user info - cookies sent automatically
   const fetchUser = async () => {
     try {
-      const token = await getAccessToken();
-      if (!token) {
-        return null;
-      }
-
-      const response = await axios.get('/api/auth/me', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
+      const response = await axios.get('/api/auth/me');
       setUser(response.data.user);
       return response.data.user;
     } catch (error) {
-      console.error('Error fetching user:', error);
-      clearTokens();
+      // 401 is expected if not logged in
+      if (error.response?.status !== 401) {
+        console.error('Error fetching user:', error);
+      }
       setUser(null);
       return null;
     }
@@ -160,12 +104,8 @@ export function AuthProvider({ children }) {
           return;
         }
 
-        // Try to restore session from stored tokens
-        const { accessToken, refreshToken } = getStoredTokens();
-
-        if (accessToken && refreshToken) {
-          await fetchUser();
-        }
+        // Try to restore session from HTTP-only cookies (sent automatically)
+        await fetchUser();
       } catch (error) {
         console.error('Auth initialization error:', error);
       } finally {
@@ -183,7 +123,6 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
-    getAccessToken,
     fetchUser,
     checkSetupRequired
   };

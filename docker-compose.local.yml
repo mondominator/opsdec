@@ -1,0 +1,32 @@
+services:
+  opsdec:
+    build: .
+    container_name: opsdec
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PORT=3001
+      - NODE_ENV=production
+      - JWT_SECRET=local-dev-secret-change-in-production
+      - API_KEY_ENCRYPTION_KEY=
+      - TZ=UTC
+      - PUID=1000
+      - PGID=1000
+      - EMBY_URL=http://your-emby-server:8096
+      - EMBY_API_KEY=your_emby_api_key_here
+      - PLEX_URL=http://your-plex-server:32400
+      - PLEX_TOKEN=your_plex_token_here
+      - AUDIOBOOKSHELF_URL=http://your-audiobookshelf-server:13378
+      - AUDIOBOOKSHELF_API_KEY=your_audiobookshelf_token_here
+      - SAPPHO_URL=http://your-sappho-server:3000
+      - SAPPHO_API_KEY=your_sappho_api_key_here
+      - POLL_INTERVAL=30
+    networks:
+      - opsdec
+
+networks:
+  opsdec:
+    name: opsdec
