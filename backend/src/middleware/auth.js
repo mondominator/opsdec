@@ -42,6 +42,8 @@ function getJwtSecret() {
 const JWT_SECRET = getJwtSecret();
 const ACCESS_TOKEN_EXPIRY = '15m';
 const REFRESH_TOKEN_EXPIRY_DAYS = 7;
+const WS_TOKEN_EXPIRY = '30s'; // Short-lived token for WebSocket connections
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 /**
  * Generate an access token for a user
@@ -141,6 +143,69 @@ export function cleanupExpiredTokens() {
 }
 
 /**
+ * Set HTTP-only authentication cookies
+ * @param {Response} res - Express response object
+ * @param {string} accessToken - JWT access token
+ * @param {string|null} refreshToken - Refresh token (null to skip setting)
+ */
+export function setAuthCookies(res, accessToken, refreshToken) {
+  const cookieOptions = {
+    httpOnly: true,
+    secure: IS_PRODUCTION,
+    sameSite: 'strict',
+    path: '/',
+  };
+
+  if (accessToken) {
+    res.cookie('opsdec_access_token', accessToken, {
+      ...cookieOptions,
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+  }
+
+  if (refreshToken) {
+    res.cookie('opsdec_refresh_token', refreshToken, {
+      ...cookieOptions,
+      maxAge: REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000, // 7 days
+    });
+  }
+}
+
+/**
+ * Clear authentication cookies
+ * @param {Response} res - Express response object
+ */
+export function clearAuthCookies(res) {
+  const cookieOptions = {
+    httpOnly: true,
+    secure: IS_PRODUCTION,
+    sameSite: 'strict',
+    path: '/',
+  };
+
+  res.clearCookie('opsdec_access_token', cookieOptions);
+  res.clearCookie('opsdec_refresh_token', cookieOptions);
+}
+
+/**
+ * Generate a short-lived token for WebSocket authentication
+ * Since JavaScript cannot access HTTP-only cookies, this provides
+ * a secure way to authenticate WebSocket connections
+ */
+export function generateWsToken(user) {
+  return jwt.sign(
+    {
+      id: user.id,
+      username: user.username,
+      is_admin: user.is_admin,
+      type: 'ws' // Mark as WebSocket token
+    },
+    JWT_SECRET,
+    { expiresIn: WS_TOKEN_EXPIRY }
+  );
+}
+
+/**
  * Check if setup is required (no users exist)
  */
 export function isSetupRequired() {
@@ -150,10 +215,16 @@ export function isSetupRequired() {
 
 /**
  * Middleware to authenticate JWT access tokens
+ * Supports both HTTP-only cookies and Authorization header
  */
 export function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+  // Try to get token from cookie first, then from Authorization header
+  let token = req.cookies?.opsdec_access_token;
+
+  if (!token) {
+    const authHeader = req.headers['authorization'];
+    token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+  }
 
   if (!token) {
     return res.status(401).json({ error: 'Access token required' });

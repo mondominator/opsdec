@@ -3,6 +3,7 @@ import db from '../database/init.js';
 import { embyService, audiobookshelfService, sapphoService, jellyfinService } from '../services/monitor.js';
 import { getJobs, runJob, updateJob } from '../services/jobs.js';
 import { requireAdmin } from '../middleware/auth.js';
+import { encrypt, decrypt, maskApiKey } from '../utils/crypto.js';
 import multer from 'multer';
 
 const router = express.Router();
@@ -1101,6 +1102,12 @@ router.get('/servers', (req, res) => {
   try {
     const dbServers = db.prepare('SELECT * FROM servers ORDER BY created_at ASC').all();
 
+    // Mask API keys for security - never expose actual keys
+    const maskedDbServers = dbServers.map(server => ({
+      ...server,
+      api_key: '***' // Always mask API keys
+    }));
+
     // Add environment variable servers if they exist and aren't in the database
     const envServers = [];
 
@@ -1158,7 +1165,7 @@ router.get('/servers', (req, res) => {
       }
     }
 
-    const allServers = [...envServers, ...dbServers];
+    const allServers = [...envServers, ...maskedDbServers];
     res.json({ success: true, data: allServers });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -1238,6 +1245,9 @@ router.post('/servers/:id/test', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Server not found' });
     }
 
+    // Decrypt API key if it's from the database (env vars are already plaintext)
+    const apiKey = id.startsWith('env-') ? server.api_key : decrypt(server.api_key);
+
     // Dynamically import and test the appropriate service
     let ServiceClass;
     if (server.type === 'emby') {
@@ -1259,7 +1269,7 @@ router.post('/servers/:id/test', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid server type' });
     }
 
-    const service = new ServiceClass(server.url, server.api_key);
+    const service = new ServiceClass(server.url, apiKey);
     const result = await service.testConnection();
 
     res.json({ success: true, data: result });
@@ -1283,13 +1293,17 @@ router.post('/servers', (req, res) => {
     const id = `${type}-${Date.now()}`;
     const now = Math.floor(Date.now() / 1000);
 
+    // Encrypt the API key before storing
+    const encryptedApiKey = encrypt(api_key);
+
     db.prepare(`
       INSERT INTO servers (id, type, name, url, api_key, enabled, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, type, name, url, api_key, enabled !== false ? 1 : 0, now, now);
+    `).run(id, type, name, url, encryptedApiKey, enabled !== false ? 1 : 0, now, now);
 
     const server = db.prepare('SELECT * FROM servers WHERE id = ?').get(id);
-    res.json({ success: true, data: server });
+    // Return with masked API key
+    res.json({ success: true, data: { ...server, api_key: '***' } });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -1308,6 +1322,9 @@ router.put('/servers/:id', (req, res) => {
 
     const now = Math.floor(Date.now() / 1000);
 
+    // Only encrypt new API key if provided, otherwise keep existing
+    const newApiKey = api_key ? encrypt(api_key) : existing.api_key;
+
     db.prepare(`
       UPDATE servers
       SET type = ?, name = ?, url = ?, api_key = ?, enabled = ?, updated_at = ?
@@ -1316,14 +1333,15 @@ router.put('/servers/:id', (req, res) => {
       type || existing.type,
       name || existing.name,
       url || existing.url,
-      api_key || existing.api_key,
+      newApiKey,
       enabled !== undefined ? (enabled ? 1 : 0) : existing.enabled,
       now,
       id
     );
 
     const server = db.prepare('SELECT * FROM servers WHERE id = ?').get(id);
-    res.json({ success: true, data: server });
+    // Return with masked API key
+    res.json({ success: true, data: { ...server, api_key: '***' } });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

@@ -5,6 +5,7 @@ const REFRESH_TOKEN_STORAGE_KEY = 'opsdec_refresh_token';
 
 const api = axios.create({
   baseURL: '/api',
+  withCredentials: true, // Enable sending cookies with requests
 });
 
 // Flag to prevent multiple refresh attempts
@@ -88,7 +89,8 @@ api.interceptors.response.use(
 
       try {
         // Use axios directly to avoid interceptor loop
-        const response = await axios.post('/api/auth/refresh', { refreshToken });
+        // Include withCredentials to send cookies
+        const response = await axios.post('/api/auth/refresh', { refreshToken }, { withCredentials: true });
         const newToken = response.data.accessToken;
 
         localStorage.setItem(TOKEN_STORAGE_KEY, newToken);
@@ -117,9 +119,22 @@ api.interceptors.response.use(
   }
 );
 
-// Helper to get access token for WebSocket
+// Helper to get access token for WebSocket (fallback to localStorage for backwards compatibility)
 export const getAccessToken = () => {
   return localStorage.getItem(TOKEN_STORAGE_KEY);
+};
+
+// Fetch a short-lived token for WebSocket authentication
+// This is needed because JavaScript cannot access HTTP-only cookies
+export const getWsToken = async () => {
+  try {
+    const response = await api.post('/auth/ws-token');
+    return response.data.wsToken;
+  } catch (error) {
+    console.error('Failed to get WebSocket token:', error);
+    // Fallback to localStorage token for backwards compatibility
+    return localStorage.getItem(TOKEN_STORAGE_KEY);
+  }
 };
 
 export const getActivity = () => api.get('/activity');

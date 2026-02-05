@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { WebSocketServer } from 'ws';
 import http from 'http';
@@ -15,6 +17,7 @@ import { initializeJobs, setAudiobookshelfService, setPlexService, setEmbyServic
 import apiRouter from './routes/api.js';
 import authRouter from './routes/auth.js';
 import { authenticateToken, isSetupRequired, verifyToken } from './middleware/auth.js';
+import { decrypt } from './utils/crypto.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -25,9 +28,38 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
-// Middleware
-app.use(cors());
+// Trust proxy for correct client IP detection behind reverse proxies
+// This is needed for rate limiting to work correctly
+app.set('trust proxy', 1);
+
+// Security Middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"], // Tailwind requires inline styles
+      imgSrc: ["'self'", "data:", "blob:", "https:"], // Allow external images for avatars/covers
+      connectSrc: ["'self'", "ws:", "wss:"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false, // Required for loading external images
+  crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow image proxy to work
+}));
+
+// CORS configuration with credentials support
+app.use(cors({
+  origin: IS_PRODUCTION ? true : ['http://localhost:3000', 'http://localhost:3001'],
+  credentials: true,
+}));
+
+// Body parsing and cookies
 app.use(express.json());
+app.use(cookieParser());
 
 // Auth Routes (unprotected)
 app.use('/api/auth', authRouter);
@@ -83,7 +115,9 @@ app.get('/proxy/image', async (req, res) => {
         for (const server of servers) {
           if (imageUrl.startsWith(server.url)) {
             isAllowedUrl = true;
-            headers['Authorization'] = `Bearer ${server.api_key}`;
+            // Decrypt API key before using for authorization
+            const apiKey = decrypt(server.api_key);
+            headers['Authorization'] = `Bearer ${apiKey}`;
             break;
           }
         }

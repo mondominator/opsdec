@@ -1,5 +1,6 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
+import rateLimit from 'express-rate-limit';
 import { db } from '../database/init.js';
 import {
   generateAccessToken,
@@ -11,11 +12,25 @@ import {
   isSetupRequired,
   authenticateToken,
   requireAdmin,
-  cleanupExpiredTokens
+  cleanupExpiredTokens,
+  setAuthCookies,
+  clearAuthCookies,
+  generateWsToken
 } from '../middleware/auth.js';
 
 const router = express.Router();
 const SALT_ROUNDS = 12;
+
+// Rate limiting for auth endpoints to prevent brute force attacks
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts per window
+  message: { error: 'Too many authentication attempts. Please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Use default key generator which handles IPv6 properly
+  // X-Forwarded-For is automatically used when trust proxy is set
+});
 
 /**
  * GET /auth/setup-required
@@ -36,7 +51,7 @@ router.get('/setup-required', (req, res) => {
  * Create a new user account
  * First user automatically becomes admin
  */
-router.post('/register', async (req, res) => {
+router.post('/register', authLimiter, async (req, res) => {
   try {
     const { username, password, email } = req.body;
 
@@ -116,6 +131,9 @@ router.post('/register', async (req, res) => {
     const refreshToken = generateRefreshToken();
     storeRefreshToken(user.id, refreshToken);
 
+    // Set HTTP-only cookies
+    setAuthCookies(res, accessToken, refreshToken);
+
     console.log(`User ${username} registered${setupRequired ? ' as admin' : ''}`);
 
     res.status(201).json({
@@ -125,6 +143,7 @@ router.post('/register', async (req, res) => {
         email: email || null,
         is_admin: user.is_admin
       },
+      // Also return tokens in response for backwards compatibility
       accessToken,
       refreshToken
     });
@@ -138,7 +157,7 @@ router.post('/register', async (req, res) => {
  * POST /auth/login
  * Authenticate user and return tokens
  */
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -175,6 +194,9 @@ router.post('/login', async (req, res) => {
     const refreshToken = generateRefreshToken();
     storeRefreshToken(user.id, refreshToken);
 
+    // Set HTTP-only cookies
+    setAuthCookies(res, accessToken, refreshToken);
+
     // Clean up old expired tokens periodically
     cleanupExpiredTokens();
 
@@ -187,6 +209,7 @@ router.post('/login', async (req, res) => {
         email: user.email,
         is_admin: user.is_admin
       },
+      // Also return tokens in response for backwards compatibility
       accessToken,
       refreshToken
     });
@@ -199,10 +222,12 @@ router.post('/login', async (req, res) => {
 /**
  * POST /auth/refresh
  * Get a new access token using refresh token
+ * Supports both cookie and request body for refresh token
  */
 router.post('/refresh', (req, res) => {
   try {
-    const { refreshToken } = req.body;
+    // Try to get refresh token from cookie first, then from request body
+    const refreshToken = req.cookies?.opsdec_refresh_token || req.body.refreshToken;
 
     if (!refreshToken) {
       return res.status(400).json({ error: 'Refresh token required' });
@@ -210,11 +235,15 @@ router.post('/refresh', (req, res) => {
 
     const user = validateRefreshToken(refreshToken);
     if (!user) {
+      clearAuthCookies(res);
       return res.status(401).json({ error: 'Invalid or expired refresh token' });
     }
 
     // Generate new access token
     const accessToken = generateAccessToken(user);
+
+    // Update the access token cookie
+    setAuthCookies(res, accessToken, null);
 
     res.json({ accessToken });
   } catch (error) {
@@ -225,15 +254,19 @@ router.post('/refresh', (req, res) => {
 
 /**
  * POST /auth/logout
- * Invalidate refresh token
+ * Invalidate refresh token and clear cookies
  */
 router.post('/logout', (req, res) => {
   try {
-    const { refreshToken } = req.body;
+    // Try to get refresh token from cookie first, then from request body
+    const refreshToken = req.cookies?.opsdec_refresh_token || req.body.refreshToken;
 
     if (refreshToken) {
       invalidateRefreshToken(refreshToken);
     }
+
+    // Clear HTTP-only cookies
+    clearAuthCookies(res);
 
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
@@ -261,6 +294,22 @@ router.get('/me', authenticateToken, (req, res) => {
   } catch (error) {
     console.error('Error getting user info:', error);
     res.status(500).json({ error: 'Failed to get user info' });
+  }
+});
+
+/**
+ * POST /auth/ws-token
+ * Get a short-lived token for WebSocket authentication
+ * Since JavaScript cannot access HTTP-only cookies, this endpoint
+ * provides a short-lived token specifically for WebSocket connections
+ */
+router.post('/ws-token', authenticateToken, (req, res) => {
+  try {
+    const wsToken = generateWsToken(req.user);
+    res.json({ wsToken });
+  } catch (error) {
+    console.error('Error generating WebSocket token:', error);
+    res.status(500).json({ error: 'Failed to generate WebSocket token' });
   }
 });
 

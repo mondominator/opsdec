@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDashboardStats, getActivity, getAccessToken } from '../utils/api';
+import { getDashboardStats, getActivity, getWsToken } from '../utils/api';
 import { formatDuration, formatTimeAgo } from '../utils/format';
 import { Users, PlayCircle, TrendingUp, Clock, Activity as ActivityIcon, Film, Tv, Headphones, ChevronDown, MapPin, Book, Play } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -79,14 +79,14 @@ function Dashboard() {
   const reconnectTimeoutRef = useRef(null);
 
   // WebSocket connection with authentication
-  const connectWebSocket = useCallback(() => {
-    const token = getAccessToken();
-    if (!token) return;
-
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws?token=${encodeURIComponent(token)}`;
-
+  const connectWebSocket = useCallback(async () => {
     try {
+      const token = await getWsToken();
+      if (!token) return;
+
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws?token=${encodeURIComponent(token)}`;
+
       wsRef.current = new WebSocket(wsUrl);
 
       wsRef.current.onopen = () => {

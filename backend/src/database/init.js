@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import { mkdirSync, existsSync } from 'fs';
 import { dirname } from 'path';
+import { encrypt, isEncrypted, isEncryptionEnabled } from '../utils/crypto.js';
 
 const dbPath = process.env.DB_PATH || '/app/data/opsdec.db';
 
@@ -501,6 +502,28 @@ export function initDatabase() {
     }
   } catch (error) {
     console.error('Settings initialization error:', error.message);
+  }
+
+  // Migrate plaintext API keys to encrypted format (if encryption is enabled)
+  try {
+    if (isEncryptionEnabled()) {
+      const servers = db.prepare('SELECT id, api_key FROM servers WHERE api_key IS NOT NULL').all();
+      let migratedCount = 0;
+
+      for (const server of servers) {
+        if (server.api_key && !isEncrypted(server.api_key)) {
+          const encryptedKey = encrypt(server.api_key);
+          db.prepare('UPDATE servers SET api_key = ? WHERE id = ?').run(encryptedKey, server.id);
+          migratedCount++;
+        }
+      }
+
+      if (migratedCount > 0) {
+        console.log(`🔐 Encrypted ${migratedCount} API key(s)`);
+      }
+    }
+  } catch (error) {
+    console.error('API key encryption migration error:', error.message);
   }
 
   console.log('✅ Database initialized successfully');

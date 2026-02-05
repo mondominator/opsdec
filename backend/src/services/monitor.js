@@ -7,6 +7,7 @@ import JellyfinService from './jellyfin.js';
 import db from '../database/init.js';
 import { broadcast } from '../index.js';
 import geolocation from './geolocation.js';
+import { decrypt } from '../utils/crypto.js';
 
 let embyService = null;
 let plexService = null;
@@ -97,30 +98,33 @@ export function initServices() {
 
     for (const server of dbServers) {
       try {
+        // Decrypt the API key before creating the service
+        const apiKey = decrypt(server.api_key);
+
         let service;
         if (server.type === 'emby') {
-          service = new EmbyService(server.url, server.api_key);
+          service = new EmbyService(server.url, apiKey);
           embyService = service;
           services.push({ name: server.name, service, type: 'emby', id: server.id });
           console.log(`✅ ${server.name} (Emby) initialized from database`);
         } else if (server.type === 'plex') {
-          service = new PlexService(server.url, server.api_key);
+          service = new PlexService(server.url, apiKey);
           plexService = service;
           services.push({ name: server.name, service, type: 'plex', id: server.id });
           console.log(`✅ ${server.name} (Plex) initialized from database`);
         } else if (server.type === 'audiobookshelf') {
-          service = new AudiobookshelfService(server.url, server.api_key);
+          service = new AudiobookshelfService(server.url, apiKey);
           service.setDatabase(db); // Pass database reference for cleanup operations
           audiobookshelfService = service;
           services.push({ name: server.name, service, type: 'audiobookshelf', id: server.id });
           console.log(`✅ ${server.name} (Audiobookshelf) initialized from database`);
         } else if (server.type === 'sappho') {
-          service = new SapphoService(server.url, server.api_key);
+          service = new SapphoService(server.url, apiKey);
           sapphoService = service;
           services.push({ name: server.name, service, type: 'sappho', id: server.id });
           console.log(`✅ ${server.name} (Sappho) initialized from database`);
         } else if (server.type === 'jellyfin') {
-          service = new JellyfinService(server.url, server.api_key);
+          service = new JellyfinService(server.url, apiKey);
           jellyfinService = service;
           services.push({ name: server.name, service, type: 'jellyfin', id: server.id });
           console.log(`✅ ${server.name} (Jellyfin) initialized from database`);

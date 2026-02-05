@@ -19,6 +19,13 @@ services:
       # Generate one with: openssl rand -hex 32
       - JWT_SECRET=change-this-to-a-secure-random-string
 
+      # API Key Encryption (Optional but recommended)
+      # Encrypts media server API keys at rest in the database
+      # Generate with: openssl rand -hex 32
+      # Note: If you set this after already having servers configured,
+      # existing plaintext keys will be automatically encrypted on restart
+      - API_KEY_ENCRYPTION_KEY=
+
       # Timezone Configuration
       # Set your timezone for correct peak hour statistics
       # Examples: America/New_York, Europe/London, Asia/Tokyo
