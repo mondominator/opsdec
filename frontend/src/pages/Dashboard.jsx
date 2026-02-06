@@ -605,7 +605,7 @@ function Dashboard() {
 
           {/* Popular TV Shows */}
           {stats.mostWatchedEpisodes?.length > 0 && (
-            <div className="card flex-1 min-w-0">
+            <div className="card flex-[1.3] min-w-0">
               <div className="card-header">
                 <h3 className="card-title text-center">Popular Shows</h3>
               </div>
@@ -701,7 +701,7 @@ function Dashboard() {
 
           {/* Popular Books */}
           {stats.mostWatchedAudiobooks?.length > 0 && (
-            <div className="card flex-1 min-w-0">
+            <div className="card flex-[1.3] min-w-0">
               <div className="card-header">
                 <h3 className="card-title text-center">Popular Books</h3>
               </div>
