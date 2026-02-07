@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
+import api from '../utils/api';
 import axios from 'axios';
 
 const AuthContext = createContext(null);
@@ -35,7 +36,7 @@ export function AuthProvider({ children }) {
 
   // Login - cookies are set automatically by the server
   const login = async (username, password) => {
-    const response = await axios.post('/api/auth/login', { username, password });
+    const response = await api.post('/auth/login', { username, password });
     const { user: userData } = response.data;
 
     // Clear any legacy localStorage tokens
@@ -48,7 +49,7 @@ export function AuthProvider({ children }) {
 
   // Register (for first user setup) - cookies are set automatically by the server
   const register = async (username, password, email) => {
-    const response = await axios.post('/api/auth/register', { username, password, email });
+    const response = await api.post('/auth/register', { username, password, email });
     const { user: userData } = response.data;
 
     // Clear any legacy localStorage tokens
@@ -62,7 +63,7 @@ export function AuthProvider({ children }) {
   // Logout - server clears the cookies
   const logout = async () => {
     try {
-      await axios.post('/api/auth/logout');
+      await api.post('/auth/logout');
     } catch (error) {
       console.error('Error during logout:', error);
     } finally {
@@ -72,10 +73,10 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Fetch current user info - cookies sent automatically
+  // Fetch current user info - uses api instance which has token refresh interceptor
   const fetchUser = async () => {
     try {
-      const response = await axios.get('/api/auth/me');
+      const response = await api.get('/auth/me');
       setUser(response.data.user);
       return response.data.user;
     } catch (error) {

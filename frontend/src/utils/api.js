@@ -48,74 +48,61 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // Don't redirect if we're on login or setup pages
+    // Don't try to refresh if we're on login or setup pages
     const currentPath = window.location.pathname;
     if (currentPath === '/login' || currentPath === '/setup') {
       return Promise.reject(error);
     }
 
-    // Check if we have tokens - if not, no point in trying to refresh
-    const accessToken = localStorage.getItem(TOKEN_STORAGE_KEY);
-    const refreshToken = localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
-
-    if (!accessToken && !refreshToken) {
-      // No tokens, just reject - let the auth context handle redirect
+    // Don't try to refresh on endpoints that don't need it
+    if (originalRequest.url?.includes('/auth/refresh')) {
       return Promise.reject(error);
     }
 
-    // If token is expired, try to refresh
-    if (error.response.data?.code === 'TOKEN_EXPIRED' || refreshToken) {
-      if (isRefreshing) {
-        // Queue the request while refresh is in progress
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        }).then(token => {
-          originalRequest.headers.Authorization = `Bearer ${token}`;
-          return api(originalRequest);
-        }).catch(err => {
-          return Promise.reject(err);
-        });
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      if (!refreshToken) {
-        isRefreshing = false;
-        localStorage.removeItem(TOKEN_STORAGE_KEY);
-        window.location.href = '/login';
-        return Promise.reject(error);
-      }
-
-      try {
-        // Use axios directly to avoid interceptor loop
-        // Include withCredentials to send cookies
-        const response = await axios.post('/api/auth/refresh', { refreshToken }, { withCredentials: true });
-        const newToken = response.data.accessToken;
-
-        localStorage.setItem(TOKEN_STORAGE_KEY, newToken);
-
-        // Update header for the original request
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
-
-        processQueue(null, newToken);
-
+    // Try to refresh the token - the refresh token is in an HTTP-only cookie
+    // so we can't check for it client-side, just attempt the refresh
+    if (isRefreshing) {
+      // Queue the request while refresh is in progress
+      return new Promise((resolve, reject) => {
+        failedQueue.push({ resolve, reject });
+      }).then(() => {
+        // Cookie is updated by the server, just retry the request
         return api(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError, null);
-
-        // Clear tokens and redirect to login
-        localStorage.removeItem(TOKEN_STORAGE_KEY);
-        localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
-        window.location.href = '/login';
-
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
-      }
+      }).catch(err => {
+        return Promise.reject(err);
+      });
     }
 
-    return Promise.reject(error);
+    originalRequest._retry = true;
+    isRefreshing = true;
+
+    try {
+      // Use axios directly to avoid interceptor loop
+      // Include withCredentials to send refresh token cookie
+      // Also send localStorage token as fallback for backwards compatibility
+      const refreshToken = localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
+      await axios.post('/api/auth/refresh', refreshToken ? { refreshToken } : {}, { withCredentials: true });
+
+      processQueue(null);
+
+      // Retry the original request - new access token cookie is set by server
+      return api(originalRequest);
+    } catch (refreshError) {
+      processQueue(refreshError, null);
+
+      // Clear any legacy tokens
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+      localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
+
+      // Only redirect if not already on login page
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+
+      return Promise.reject(refreshError);
+    } finally {
+      isRefreshing = false;
+    }
   }
 );
 
