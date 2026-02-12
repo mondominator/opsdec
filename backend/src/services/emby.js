@@ -109,7 +109,12 @@ class EmbyService {
         ? `${this.baseUrl}/Items/${item.Id}/Images/Primary?api_key=${this.apiKey}`
         : null;
 
-      return { exists: true, coverUrl };
+      return {
+        exists: true,
+        title: item.Name || null,
+        grandparentTitle: item.SeriesName || null,
+        coverUrl
+      };
     } catch (error) {
       if (error.response?.status === 404) {
         return { exists: false, coverUrl: null };

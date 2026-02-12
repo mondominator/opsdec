@@ -257,6 +257,8 @@ class PlexService {
 
       return {
         exists: true,
+        title: item.title || null,
+        grandparentTitle: item.grandparentTitle || null,
         coverUrl: thumbPath ? `${this.baseUrl}${thumbPath}?X-Plex-Token=${this.token}` : null
       };
     } catch (error) {

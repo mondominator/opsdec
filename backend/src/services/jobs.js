@@ -243,6 +243,21 @@ function getNextCronRun(cronSchedule) {
 
 // Job handlers
 
+// Check if item title from server matches what's in history
+function titleMatchesHistory(itemInfo, entry) {
+  const serverTitle = (itemInfo.title || '').toLowerCase();
+  const serverSeries = (itemInfo.grandparentTitle || '').toLowerCase();
+  const historyTitle = (entry.title || '').toLowerCase();
+  const historySeries = (entry.grandparent_title || '').toLowerCase();
+
+  // For episodes: series name should match
+  if (serverSeries && historySeries) {
+    return serverSeries === historySeries;
+  }
+  // For movies/audiobooks: title should match
+  return serverTitle === historyTitle;
+}
+
 async function repairCoversJob() {
   const results = {
     audiobookshelf: { repaired: 0, coverUpdated: 0, notFound: 0, alreadyValid: 0, total: 0 },
@@ -263,7 +278,7 @@ async function repairCoversJob() {
   if (audiobookshelfServiceRef) {
     console.log('   Processing Audiobookshelf history...');
     const absHistory = db.prepare(`
-      SELECT id, title, media_id, thumb
+      SELECT id, title, grandparent_title, media_id, thumb
       FROM history
       WHERE server_type = 'audiobookshelf'
     `).all();
@@ -273,7 +288,7 @@ async function repairCoversJob() {
     for (const entry of absHistory) {
       const itemInfo = await audiobookshelfServiceRef.getItemInfo(entry.media_id);
 
-      if (itemInfo.exists) {
+      if (itemInfo.exists && titleMatchesHistory(itemInfo, entry)) {
         if (itemInfo.coverUrl && itemInfo.coverUrl !== entry.thumb) {
           db.prepare(`UPDATE history SET thumb = ? WHERE id = ?`).run(itemInfo.coverUrl, entry.id);
           results.audiobookshelf.coverUpdated++;
@@ -283,7 +298,10 @@ async function repairCoversJob() {
         continue;
       }
 
-      // Item doesn't exist, search by title (Audiobookshelf only)
+      // Item doesn't exist or title mismatch - search by title
+      if (itemInfo.exists) {
+        console.log(`   Title mismatch for media_id ${entry.media_id}: expected "${entry.title}", server has "${itemInfo.title}"`);
+      }
       const found = await audiobookshelfServiceRef.searchByTitle(entry.title);
       if (found) {
         db.prepare(`UPDATE history SET media_id = ?, thumb = ? WHERE id = ?`).run(found.id, found.coverUrl, entry.id);
@@ -298,7 +316,7 @@ async function repairCoversJob() {
   if (plexServiceRef) {
     console.log('   Processing Plex history...');
     const plexHistory = db.prepare(`
-      SELECT id, title, media_id, thumb
+      SELECT id, title, grandparent_title, media_id, thumb
       FROM history
       WHERE server_type = 'plex'
     `).all();
@@ -311,7 +329,7 @@ async function repairCoversJob() {
     for (const entry of plexHistory) {
       const itemInfo = await plexServiceRef.getItemInfo(entry.media_id);
 
-      if (itemInfo.exists) {
+      if (itemInfo.exists && titleMatchesHistory(itemInfo, entry)) {
         // Update if: no thumb, or URL changed, or server has a cover when we don't
         if (itemInfo.coverUrl && (!entry.thumb || itemInfo.coverUrl !== entry.thumb)) {
           db.prepare(`UPDATE history SET thumb = ? WHERE id = ?`).run(itemInfo.coverUrl, entry.id);
@@ -323,7 +341,10 @@ async function repairCoversJob() {
           results.plex.alreadyValid++;
         }
       } else {
-        // Item not found by ID - try searching by title
+        // Item not found by ID or title mismatch (ID reused by different media) - try searching by title
+        if (itemInfo.exists) {
+          console.log(`   Title mismatch for media_id ${entry.media_id}: expected "${entry.grandparent_title || entry.title}", server has "${itemInfo.grandparentTitle || itemInfo.title}"`);
+        }
         const found = await plexServiceRef.searchByTitle(entry.title);
         if (found) {
           db.prepare(`UPDATE history SET media_id = ?, thumb = ? WHERE id = ?`).run(found.id, found.coverUrl, entry.id);
@@ -340,7 +361,7 @@ async function repairCoversJob() {
   if (embyServiceRef) {
     console.log('   Processing Emby history...');
     const embyHistory = db.prepare(`
-      SELECT id, title, media_id, thumb
+      SELECT id, title, grandparent_title, media_id, thumb
       FROM history
       WHERE server_type = 'emby'
     `).all();
@@ -353,7 +374,7 @@ async function repairCoversJob() {
     for (const entry of embyHistory) {
       const itemInfo = await embyServiceRef.getItemInfo(entry.media_id);
 
-      if (itemInfo.exists) {
+      if (itemInfo.exists && titleMatchesHistory(itemInfo, entry)) {
         // Update if: no thumb, or URL changed, or server has a cover when we don't
         if (itemInfo.coverUrl && (!entry.thumb || itemInfo.coverUrl !== entry.thumb)) {
           db.prepare(`UPDATE history SET thumb = ? WHERE id = ?`).run(itemInfo.coverUrl, entry.id);
@@ -365,7 +386,10 @@ async function repairCoversJob() {
           results.emby.alreadyValid++;
         }
       } else {
-        // Item not found by ID - try searching by title
+        // Item not found by ID or title mismatch (ID reused by different media) - try searching by title
+        if (itemInfo.exists) {
+          console.log(`   Title mismatch for media_id ${entry.media_id}: expected "${entry.grandparent_title || entry.title}", server has "${itemInfo.grandparentTitle || itemInfo.title}"`);
+        }
         const found = await embyServiceRef.searchByTitle(entry.title);
         if (found) {
           db.prepare(`UPDATE history SET media_id = ?, thumb = ? WHERE id = ?`).run(found.id, found.coverUrl, entry.id);
@@ -382,7 +406,7 @@ async function repairCoversJob() {
   if (jellyfinServiceRef) {
     console.log('   Processing Jellyfin history...');
     const jellyfinHistory = db.prepare(`
-      SELECT id, title, media_id, thumb
+      SELECT id, title, grandparent_title, media_id, thumb
       FROM history
       WHERE server_type = 'jellyfin'
     `).all();
@@ -395,7 +419,7 @@ async function repairCoversJob() {
     for (const entry of jellyfinHistory) {
       const itemInfo = await jellyfinServiceRef.getItemInfo(entry.media_id);
 
-      if (itemInfo.exists) {
+      if (itemInfo.exists && titleMatchesHistory(itemInfo, entry)) {
         // Update if: no thumb, or URL changed, or server has a cover when we don't
         if (itemInfo.coverUrl && (!entry.thumb || itemInfo.coverUrl !== entry.thumb)) {
           db.prepare(`UPDATE history SET thumb = ? WHERE id = ?`).run(itemInfo.coverUrl, entry.id);
@@ -407,7 +431,10 @@ async function repairCoversJob() {
           results.jellyfin.alreadyValid++;
         }
       } else {
-        // Item not found by ID - try searching by title
+        // Item not found by ID or title mismatch (ID reused by different media) - try searching by title
+        if (itemInfo.exists) {
+          console.log(`   Title mismatch for media_id ${entry.media_id}: expected "${entry.grandparent_title || entry.title}", server has "${itemInfo.grandparentTitle || itemInfo.title}"`);
+        }
         const found = await jellyfinServiceRef.searchByTitle(entry.title);
         if (found) {
           db.prepare(`UPDATE history SET media_id = ?, thumb = ? WHERE id = ?`).run(found.id, found.coverUrl, entry.id);
