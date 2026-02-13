@@ -174,42 +174,38 @@ function Dashboard() {
     );
   }
 
-  // Build paired columns — each column pairs a media section with a community section
-  const columns = [
-    [
-      stats.mostWatchedMovies?.length > 0 && {
-        type: 'media', items: stats.mostWatchedMovies, category: 'movies',
-        icon: Film, label: 'Popular Movies', accent: 'border-blue-400', iconColor: 'text-blue-400/70',
-      },
-      stats.topWatchers?.length > 0 && {
-        type: 'user', users: stats.topWatchers,
-        icon: Film, label: 'Top Watchers', accent: 'border-emerald-400', iconColor: 'text-emerald-400/70',
-      },
-    ].filter(Boolean),
-    [
-      stats.mostWatchedEpisodes?.length > 0 && {
-        type: 'media', items: stats.mostWatchedEpisodes, category: 'shows',
-        icon: Tv, label: 'Popular Shows', accent: 'border-violet-400', iconColor: 'text-violet-400/70',
-      },
-      stats.topListeners?.length > 0 && {
-        type: 'user', users: stats.topListeners,
-        icon: Headphones, label: 'Top Listeners', accent: 'border-rose-400', iconColor: 'text-rose-400/70',
-      },
-    ].filter(Boolean),
-    [
-      stats.mostWatchedAudiobooks?.length > 0 && {
-        type: 'media', items: stats.mostWatchedAudiobooks, category: 'books',
-        icon: Book, label: 'Popular Books', accent: 'border-amber-400', iconColor: 'text-amber-400/70', bookMode: true,
-      },
-      stats.topLocations?.length > 0 && {
-        type: 'location', locations: stats.topLocations,
-        icon: MapPin, label: 'Top Locations', accent: 'border-sky-400', iconColor: 'text-sky-400/70',
-      },
-    ].filter(Boolean),
-  ].filter(col => col.length > 0);
+  // Flat sections with col-span for varied widths
+  // Row 1: Shows (wide) | Movies (narrow) | Watchers (narrow)
+  // Row 2: Books (wide)  | Listeners (narrow) | Locations (narrow)
+  const sections = [
+    stats.mostWatchedEpisodes?.length > 0 && {
+      type: 'media', items: stats.mostWatchedEpisodes, category: 'shows', count: 5, span: '',
+      icon: Tv, label: 'Popular Shows', accent: 'border-violet-400', iconColor: 'text-violet-400/70',
+    },
+    stats.mostWatchedMovies?.length > 0 && {
+      type: 'media', items: stats.mostWatchedMovies, category: 'movies', count: 5, span: '',
+      icon: Film, label: 'Popular Movies', accent: 'border-blue-400', iconColor: 'text-blue-400/70',
+    },
+    stats.topWatchers?.length > 0 && {
+      type: 'user', users: stats.topWatchers, count: 5, span: '',
+      icon: Film, label: 'Top Watchers', accent: 'border-emerald-400', iconColor: 'text-emerald-400/70',
+    },
+    stats.mostWatchedAudiobooks?.length > 0 && {
+      type: 'media', items: stats.mostWatchedAudiobooks, category: 'books', count: 5, span: '',
+      icon: Book, label: 'Popular Books', accent: 'border-amber-400', iconColor: 'text-amber-400/70', bookMode: true,
+    },
+    stats.topListeners?.length > 0 && {
+      type: 'user', users: stats.topListeners, count: 5, span: '',
+      icon: Headphones, label: 'Top Listeners', accent: 'border-rose-400', iconColor: 'text-rose-400/70',
+    },
+    stats.topLocations?.length > 0 && {
+      type: 'location', locations: stats.topLocations, count: 5, span: '',
+      icon: MapPin, label: 'Top Locations', accent: 'border-sky-400', iconColor: 'text-sky-400/70',
+    },
+  ].filter(Boolean);
 
   const renderMediaRows = (section) =>
-    section.items.slice(0, 5).map((item, index) => {
+    section.items.slice(0, section.count).map((item, index) => {
       const isExpanded = expandedItems[`${section.category}-${index}`];
       return (
         <div key={index}>
@@ -272,7 +268,7 @@ function Dashboard() {
     });
 
   const renderUserRows = (section) =>
-    section.users.slice(0, 5).map((user, index) => (
+    section.users.slice(0, section.count).map((user, index) => (
       <div
         key={user.username}
         onClick={() => user.user_id && navigate(`/users/${user.user_id}`)}
@@ -298,7 +294,7 @@ function Dashboard() {
     ));
 
   const renderLocationRows = (section) =>
-    section.locations.slice(0, 5).map((location, index) => {
+    section.locations.slice(0, section.count).map((location, index) => {
       const locationKey = `location-${location.city}-${location.region}`;
       const isExpanded = expandedItems[locationKey];
       return (
@@ -345,7 +341,7 @@ function Dashboard() {
   const renderSection = (section) => {
     const Icon = section.icon;
     return (
-      <div key={section.label} className="bg-dark-800 rounded-lg overflow-hidden">
+      <div key={section.label} className={`bg-dark-800 rounded-lg overflow-hidden ${section.span}`}>
         <div className={`flex items-center gap-2 px-3 py-1.5 border-l-2 ${section.accent} bg-dark-700/30`}>
           <Icon className={`w-3 h-3 ${section.iconColor}`} />
           <span className="text-[11px] font-medium tracking-wider uppercase text-gray-500">{section.label}</span>
@@ -581,14 +577,10 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Data columns — paired media + community sections */}
-      {columns.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-          {columns.map((column, i) => (
-            <div key={i} className="space-y-2">
-              {column.map(renderSection)}
-            </div>
-          ))}
+      {/* Data grid — wide + narrow sections */}
+      {sections.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+          {sections.map(renderSection)}
         </div>
       )}
     </div>
