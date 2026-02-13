@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
-import { Home, History, Users, Settings, Menu, ChevronDown, LogOut, Shield } from 'lucide-react';
+import { Home, History, Users, Settings, Menu, ChevronDown, LogOut, Shield, Play, Film, Headphones, TrendingUp } from 'lucide-react';
 import { getDashboardStats, getServerHealth } from '../utils/api';
 import { formatDuration } from '../utils/format';
 import { useAuth } from '../contexts/AuthContext';
@@ -101,26 +101,53 @@ function Layout({ children }) {
               </h1>
             </Link>
 
-            {/* Server Health Status - Touching on mobile, spaced on desktop */}
+            {/* Stats Strip + Server Health */}
+            {stats && (
+              <div className="hidden md:flex items-center gap-x-5">
+                <div className="flex items-center gap-1.5">
+                  <Play className="w-3 h-3 text-gray-500" />
+                  <span className="text-[11px] text-gray-400">Today</span>
+                  <span className="text-xs font-bold text-white">{stats.dailyAverage ?? 0}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Film className="w-3 h-3 text-gray-500" />
+                  <span className="text-[11px] text-gray-400">Watch</span>
+                  <span className="text-xs font-bold text-white">{formatDuration(stats.watchDuration)}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Headphones className="w-3 h-3 text-gray-500" />
+                  <span className="text-[11px] text-gray-400">Listen</span>
+                  <span className="text-xs font-bold text-white">{formatDuration(stats.listenDuration)}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Users className="w-3 h-3 text-gray-500" />
+                  <span className="text-[11px] text-gray-400">Users</span>
+                  <span className="text-xs font-bold text-white">{stats.activeMonthlyUsers ?? 0}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <TrendingUp className="w-3 h-3 text-gray-500" />
+                  <span className="text-[11px] text-gray-400">Avg/day</span>
+                  <span className="text-xs font-bold text-white">{stats.weeklyAverage ?? 0}</span>
+                </div>
+                {serverHealth.length > 0 && (
+                  <div className="flex items-center gap-2 ml-1 pl-4 border-l border-dark-700">
+                    {serverHealth.map((server) => (
+                      <div key={server.id} className="flex items-center gap-1" title={`${server.name}: ${server.healthy ? 'Healthy' : server.enabled ? 'Unreachable' : 'Disabled'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${server.healthy ? 'bg-green-500' : server.enabled ? 'bg-yellow-500' : 'bg-gray-600'}`} />
+                        {getServerIcon(server.type)}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {/* Mobile: just server health dots */}
             {serverHealth.length > 0 && (
-              <div className="flex items-center -space-x-px md:space-x-2">
+              <div className="flex md:hidden items-center gap-2">
                 {serverHealth.map((server) => (
-                  <div
-                    key={server.id}
-                    className="flex items-center space-x-1 px-2 py-1 rounded bg-dark-800 border border-dark-700 md:border-0"
-                    title={`${server.name}: ${server.healthy ? 'Healthy' : 'Inactive'}`}
-                  >
-                    <div className={`flex items-center ${
-                      server.type === 'emby' ? 'text-green-400' :
-                      server.type === 'plex' ? 'text-yellow-400' :
-                      server.type === 'jellyfin' ? 'text-purple-400' :
-                      server.type === 'audiobookshelf' ? 'text-amber-600' :
-                      server.type === 'sappho' ? 'text-blue-400' :
-                      'text-gray-400'
-                    }`}>
-                      {getServerIcon(server.type)}
-                    </div>
-                    <div className={`w-2 h-2 rounded-full ${server.healthy ? 'bg-green-500' : 'bg-gray-600'}`} />
+                  <div key={server.id} className="flex items-center gap-1" title={`${server.name}: ${server.healthy ? 'Healthy' : 'Inactive'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${server.healthy ? 'bg-green-500' : server.enabled ? 'bg-yellow-500' : 'bg-gray-600'}`} />
+                    {getServerIcon(server.type)}
                   </div>
                 ))}
               </div>
