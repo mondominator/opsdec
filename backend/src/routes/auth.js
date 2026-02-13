@@ -91,7 +91,7 @@ router.post('/register', authLimiter, async (req, res) => {
         if (!adminUser || !adminUser.is_admin) {
           return res.status(403).json({ error: 'Only administrators can create new users' });
         }
-      } catch (error) {
+      } catch {
         return res.status(401).json({ error: 'Invalid authorization' });
       }
     }

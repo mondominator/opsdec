@@ -35,23 +35,29 @@ npm run build
 npm start
 ```
 
-### Docker Commands
+### Container Commands
+
+This project uses **Podman** (aliased as `docker`/`docker-compose` on this system). All `docker` and `docker-compose` commands work via podman aliases.
 
 ```bash
-# Build and start Docker container
-docker-compose up -d
+# Build image from source (required after code changes)
+podman build --no-cache -t opsdec:local .
 
-# Rebuild without cache (required after source code changes)
-docker-compose build --no-cache && docker-compose up -d
+# Run the container locally for testing
+podman run -d --name opsdec -p 3001:3001 -v ./data:/app/data -e JWT_SECRET=your-secret -e NODE_ENV=production opsdec:local
 
 # View logs
-docker logs opsdec --follow
+podman logs opsdec --follow
 
-# Stop container
+# Stop and remove container
+podman stop opsdec && podman rm opsdec
+
+# Using docker-compose (works via podman alias)
+docker-compose up -d
 docker-compose down
 ```
 
-**Important:** Docker only mounts the `./data` volume, not source code. After code changes, you MUST rebuild the Docker image with `--no-cache` flag to ensure changes are included.
+**Important:** Docker/Podman only mounts the `./data` volume, not source code. After code changes, you MUST rebuild the image with `--no-cache` flag to ensure changes are included.
 
 ## Architecture
 
@@ -176,6 +182,29 @@ Frontend connects via `useEffect` hook in components, listens for messages, upda
 - `frontend/src/pages/Dashboard.jsx` - Main dashboard with live activity cards
 - `frontend/src/pages/History.jsx` - Watch history with filtering/pagination/search
 - `frontend/src/pages/Settings.jsx` - Server management, history filter settings, user mappings
+
+## Verification Checklist
+
+Before completing work, run these checks:
+
+```bash
+# Run all tests (backend + frontend)
+npm test
+
+# Lint check — must pass with 0 errors, 0 warnings
+npm run lint
+
+# Security audit — check for high/critical vulnerabilities
+npm run audit:check
+```
+
+All three must pass cleanly before committing. Fix any lint errors or test failures before marking work as done.
+
+### Fixing Lint Issues
+- `npm run lint:fix` auto-fixes formatting issues
+- Unused imports: remove them, don't prefix with `_` (except intentional re-render triggers like `useTimezone()`)
+- Unused catch parameters: use bare `catch {` instead of `catch (error) {}`
+- Unreachable code: remove dead code after unconditional returns
 
 ## Common Pitfalls
 

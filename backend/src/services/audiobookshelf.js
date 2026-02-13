@@ -12,7 +12,7 @@ class AudiobookshelfService {
     try {
       const url = new URL(this.baseUrl);
       hostname = url.hostname;
-    } catch (e) {
+    } catch {
       console.error('Invalid Audiobookshelf URL:', this.baseUrl);
       hostname = 'localhost';
     }
@@ -74,7 +74,7 @@ class AudiobookshelfService {
         // Try /ping endpoint which should return server info
         const pingResponse = await this.client.get('/ping', { timeout: 5000 });
         version = pingResponse.data.version || 'Unknown';
-      } catch (pingError) {
+      } catch {
         // Fallback to /api/authorize
         try {
           const authorizeResponse = await this.client.get('/api/authorize', { timeout: 5000 });
@@ -174,7 +174,7 @@ class AudiobookshelfService {
     try {
       await this.client.get(`/api/items/${libraryItemId}`);
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -189,7 +189,7 @@ class AudiobookshelfService {
         title: response.data.media?.metadata?.title,
         coverUrl: `${this.baseUrl}/api/items/${libraryItemId}/cover`
       };
-    } catch (error) {
+    } catch {
       return { exists: false };
     }
   }
@@ -270,7 +270,7 @@ class AudiobookshelfService {
           console.log(`Found ${activeSessions.length} users with active playback`);
           return activeSessions;
         }
-      } catch (userError) {
+      } catch {
         console.log('Failed to check users for active sessions, falling back to open sessions');
       }
 
@@ -375,7 +375,7 @@ class AudiobookshelfService {
 
       // For each user, pick the MOST RECENTLY UPDATED session with an active player
       const activeSessions = [];
-      for (const [userId, userSessions] of sessionsByUser) {
+      for (const [, userSessions] of sessionsByUser) {
         // Sort to prioritize:
         // 1. Sessions with playMethod set (active player) first
         // 2. Then by most recent updatedAt
@@ -455,7 +455,7 @@ class AudiobookshelfService {
           bitrate = firstAudioFile.bitRate || null;
           channels = firstAudioFile.channels || null;
         }
-      } catch (itemError) {
+      } catch {
         // If we can't fetch item details, just continue without audio info
         console.log(`Could not fetch audio details for ${session.libraryItemId}`);
       }

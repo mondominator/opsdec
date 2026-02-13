@@ -1,9 +1,9 @@
 import express from 'express';
 import db from '../database/init.js';
-import { embyService, audiobookshelfService, sapphoService, jellyfinService } from '../services/monitor.js';
+import { audiobookshelfService, sapphoService, jellyfinService } from '../services/monitor.js';
 import { getJobs, runJob, updateJob } from '../services/jobs.js';
 import { requireAdmin } from '../middleware/auth.js';
-import { encrypt, decrypt, maskApiKey } from '../utils/crypto.js';
+import { encrypt, decrypt } from '../utils/crypto.js';
 import multer from 'multer';
 
 const router = express.Router();
@@ -155,7 +155,7 @@ router.delete('/history/:id', (req, res) => {
       }
     }
 
-    const result = db.prepare('DELETE FROM history WHERE id = ?').run(id);
+    db.prepare('DELETE FROM history WHERE id = ?').run(id);
 
     res.json({ success: true, message: 'History item deleted' });
   } catch (error) {
@@ -630,9 +630,6 @@ router.get('/stats/dashboard', (req, res) => {
     `).get();
 
     // Calculate watch duration (movies + episodes) and listen duration (tracks + audiobooks + books + music)
-    const watchTypes = ['movie', 'episode'];
-    const listenTypes = ['track', 'audiobook', 'book', 'music'];
-
     const watchDurationResult = db.prepare(`
       SELECT SUM(h.stream_duration) as total
       FROM history h
@@ -1660,7 +1657,7 @@ router.put('/settings/:key', requireAdmin, (req, res) => {
     const { key } = req.params;
     const { value } = req.body;
 
-    if (!value) {
+    if (value === undefined || value === null) {
       return res.status(400).json({ success: false, error: 'Value is required' });
     }
 
@@ -1674,6 +1671,22 @@ router.put('/settings/:key', requireAdmin, (req, res) => {
     `).run(key, value);
 
     res.json({ success: true, message: 'Setting updated' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Test Telegram bot connection (admin only)
+router.post('/telegram/test', requireAdmin, async (req, res) => {
+  try {
+    const telegram = (await import('../services/telegram.js')).default;
+    const { botToken, chatId } = req.body;
+    const result = await telegram.testConnection(botToken, chatId);
+    if (result.success) {
+      res.json({ success: true, botName: result.botName });
+    } else {
+      res.status(400).json({ success: false, error: result.error });
+    }
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -1832,7 +1845,6 @@ router.post('/database/backups/upload', requireAdmin, upload.single('backup'), a
     }
 
     const fs = await import('fs');
-    const path = await import('path');
 
     // Validate that the uploaded file is a valid SQLite database
     const Database = (await import('better-sqlite3')).default;
@@ -1964,6 +1976,7 @@ router.post('/database/restore', requireAdmin, async (req, res) => {
     console.log('Validating backup file...');
 
     let backupDb;
+    let backupContents;
     try {
       backupDb = new Database(backupPath, { readonly: true });
 
@@ -1983,7 +1996,7 @@ router.post('/database/restore', requireAdmin, async (req, res) => {
       }
 
       // Check server configuration exists and get detailed counts
-      const backupContents = {
+      backupContents = {
         servers: backupDb.prepare('SELECT COUNT(*) as count FROM servers').get().count,
         settings: backupDb.prepare('SELECT COUNT(*) as count FROM settings').get().count,
         users: backupDb.prepare('SELECT COUNT(*) as count FROM users').get().count,

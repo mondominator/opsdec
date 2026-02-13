@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Plus, Save, Trash2, RefreshCw, Check, X, Server, AlertCircle, Film, Tv, Headphones, Globe, Users as UsersIcon, Database, Download, Upload, Archive, Clock, Play, Pause, Calendar, Shield, UserPlus } from 'lucide-react';
+import { Plus, Save, Trash2, RefreshCw, Check, X, Server, AlertCircle, Users as UsersIcon, Database, Download, Upload, Archive, Clock, Play, Pause, Calendar, Shield, UserPlus, Bell, Send, Eye, EyeOff } from 'lucide-react';
 import api, { getSettings, updateSetting, getUserMappings, createUserMapping, deleteUserMapping, getUsersByServer, purgeDatabase, createBackup, getBackups, restoreBackup, deleteBackup, uploadBackup, getAuthUsers, createAuthUser, deleteAuthUser } from '../utils/api';
 import { useTimezone } from '../contexts/TimezoneContext';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Settings() {
-  const { timezone: currentTimezone, setTimezone: updateTimezone } = useTimezone();
+  const { setTimezone: updateTimezone } = useTimezone();
   const { user } = useAuth();
   const [servers, setServers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,6 +18,11 @@ export default function Settings() {
   const [settings, setSettings] = useState({ timezone: 'UTC' });
   const [savingSettings, setSavingSettings] = useState(false);
   const [purgingDatabase, setPurgingDatabase] = useState(false);
+
+  // Telegram notification state
+  const [telegramTesting, setTelegramTesting] = useState(false);
+  const [telegramTestResult, setTelegramTestResult] = useState(null);
+  const [showBotToken, setShowBotToken] = useState(false);
 
   // Admin users state
   const [admins, setAdmins] = useState([]);
@@ -1066,7 +1071,7 @@ export default function Settings() {
                 <label className="block text-sm font-medium text-gray-300 mb-3">
                   Preferred Avatar
                 </label>
-                <p className="text-xs text-gray-500 mb-3">Choose which server's avatar to display for this user</p>
+                <p className="text-xs text-gray-500 mb-3">Choose which server&apos;s avatar to display for this user</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                   {/* Plex Avatar Option */}
                   <label className="flex items-center gap-3 p-3 bg-dark-700 border border-dark-600 rounded-lg cursor-pointer hover:border-primary-500 transition-colors">
@@ -1417,6 +1422,155 @@ export default function Settings() {
           </div>
         </div>
       </div>
+
+      {/* Telegram Notifications */}
+      {user?.is_admin && (
+        <div className="bg-dark-800 rounded-lg p-4 sm:p-6 border border-dark-700 mt-6">
+          <div className="flex items-center gap-2 mb-6">
+            <Bell className="w-5 h-5 text-primary-500" />
+            <h2 className="text-xl font-semibold text-gray-100">Notifications</h2>
+          </div>
+
+          <div className="space-y-4">
+            {/* Enable/Disable Toggle */}
+            <div className="flex items-center gap-3 p-4 bg-dark-750 rounded-lg">
+              <input
+                type="checkbox"
+                id="telegram_enabled"
+                checked={settings.telegram_enabled === 'true'}
+                onChange={async (e) => {
+                  const val = e.target.checked ? 'true' : 'false';
+                  try {
+                    await updateSetting('telegram_enabled', val);
+                    setSettings({ ...settings, telegram_enabled: val });
+                  } catch (error) {
+                    console.error('Failed to update telegram_enabled:', error);
+                  }
+                }}
+                className="w-5 h-5 text-primary-500 bg-dark-700 border-dark-600 rounded focus:ring-primary-500 focus:ring-2 cursor-pointer"
+              />
+              <label htmlFor="telegram_enabled" className="text-base text-gray-300 cursor-pointer flex-1">
+                Enable Telegram notifications
+              </label>
+            </div>
+
+            {/* Bot Token */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Bot Token</label>
+              <div className="relative">
+                <input
+                  type={showBotToken ? 'text' : 'password'}
+                  value={settings.telegram_bot_token || ''}
+                  onChange={(e) => setSettings({ ...settings, telegram_bot_token: e.target.value })}
+                  onBlur={async (e) => {
+                    try {
+                      await updateSetting('telegram_bot_token', e.target.value);
+                    } catch (error) {
+                      console.error('Failed to update telegram_bot_token:', error);
+                    }
+                  }}
+                  className="w-full px-4 py-2 bg-dark-700 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 pr-10"
+                  placeholder="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowBotToken(!showBotToken)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
+                >
+                  {showBotToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">Get a token from <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-primary-400 hover:underline">@BotFather</a></p>
+            </div>
+
+            {/* Chat ID */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Chat ID</label>
+              <input
+                type="text"
+                value={settings.telegram_chat_id || ''}
+                onChange={(e) => setSettings({ ...settings, telegram_chat_id: e.target.value })}
+                onBlur={async (e) => {
+                  try {
+                    await updateSetting('telegram_chat_id', e.target.value);
+                  } catch (error) {
+                    console.error('Failed to update telegram_chat_id:', error);
+                  }
+                }}
+                className="w-full px-4 py-2 bg-dark-700 border border-dark-600 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="-1001234567890"
+              />
+              <p className="mt-1 text-xs text-gray-500">Your chat or group ID. Use <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" className="text-primary-400 hover:underline">@userinfobot</a> to find it.</p>
+            </div>
+
+            {/* Per-event Toggles */}
+            <div className="border-t border-dark-600 pt-4 mt-4">
+              <p className="text-sm font-medium text-gray-300 mb-3">Notify on</p>
+              <div className="space-y-3">
+                {[
+                  { key: 'telegram_notify_playback_start', label: 'Playback started' },
+                  { key: 'telegram_notify_playback_complete', label: 'Playback completed' },
+                  { key: 'telegram_notify_new_user', label: 'New user detected' },
+                ].map(({ key, label }) => (
+                  <div key={key} className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id={key}
+                      checked={settings[key] !== 'false'}
+                      onChange={async (e) => {
+                        const val = e.target.checked ? 'true' : 'false';
+                        try {
+                          await updateSetting(key, val);
+                          setSettings({ ...settings, [key]: val });
+                        } catch (error) {
+                          console.error(`Failed to update ${key}:`, error);
+                        }
+                      }}
+                      className="w-4 h-4 text-primary-500 bg-dark-700 border-dark-600 rounded focus:ring-primary-500 focus:ring-2 cursor-pointer"
+                    />
+                    <label htmlFor={key} className="text-sm text-gray-300 cursor-pointer">{label}</label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Test Connection Button */}
+            <div className="border-t border-dark-600 pt-4 mt-4">
+              <button
+                onClick={async () => {
+                  setTelegramTesting(true);
+                  setTelegramTestResult(null);
+                  try {
+                    const response = await api.post('/telegram/test', {
+                      botToken: settings.telegram_bot_token,
+                      chatId: settings.telegram_chat_id,
+                    });
+                    setTelegramTestResult({ success: true, message: `Connected to bot: ${response.data.botName}` });
+                  } catch (error) {
+                    setTelegramTestResult({ success: false, message: error.response?.data?.error || error.message });
+                  } finally {
+                    setTelegramTesting(false);
+                  }
+                }}
+                disabled={telegramTesting || !settings.telegram_bot_token || !settings.telegram_chat_id}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                {telegramTesting ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                {telegramTesting ? 'Testing...' : 'Test Connection'}
+              </button>
+              {telegramTestResult && (
+                <p className={`mt-2 text-sm ${telegramTestResult.success ? 'text-green-400' : 'text-red-400'}`}>
+                  {telegramTestResult.message}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Admin Users (admin only) */}
       {user?.is_admin && (

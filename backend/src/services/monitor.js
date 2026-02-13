@@ -8,13 +8,13 @@ import db from '../database/init.js';
 import { broadcast } from '../index.js';
 import geolocation from './geolocation.js';
 import { decrypt } from '../utils/crypto.js';
+import telegram from './telegram.js';
 
 let embyService = null;
 let plexService = null;
 let audiobookshelfService = null;
 let sapphoService = null;
 let jellyfinService = null;
-let lastActiveSessions = new Map();
 let cronJob = null;
 
 // Helper function to get history filter settings
@@ -487,6 +487,7 @@ async function updateSession(activity, serverType) {
             `).run(streamDuration, existing.user_id);
 
             console.log(`📝 Added to history: ${existing.title} (${existing.progress_percent}%)`);
+            telegram.notifyPlaybackCompleted({ username: existing.username, title: existing.title, progressPercent: existing.progress_percent, serverType: existing.server_type });
           } else {
             console.log(`   Skipped history: Duplicate detected for ${existing.title}`);
           }
@@ -663,6 +664,7 @@ async function updateSession(activity, serverType) {
     );
 
     console.log(`📺 New session started: ${activity.username} watching ${activity.title} (${serverType})`);
+    telegram.notifyPlaybackStarted({ username: activity.username, title: activity.title, serverType, mediaType: activity.mediaType });
   }
 
   // Update user stats
@@ -686,6 +688,7 @@ function updateUserStats(userId, username, serverType, userThumb = null) {
       INSERT INTO users (id, server_type, username, last_seen, thumb)
       VALUES (?, ?, ?, ?, ?)
     `).run(userId, serverType, username, now, userThumb);
+    telegram.notifyNewUser(username, serverType);
   }
 }
 
@@ -748,7 +751,7 @@ async function importAudiobookshelfHistory(service, serverType) {
           // This is actually a podcast, skip it
           continue;
         }
-      } catch (e) {
+      } catch {
         // If we can't verify, continue with import
       }
 
@@ -884,7 +887,6 @@ async function importAudiobookshelfHistory(service, serverType) {
 
 function stopInactiveSessions(activeSessionKeys) {
   const now = Math.floor(Date.now() / 1000);
-  const STALE_SESSION_TIMEOUT = 60; // 60 seconds without updates = stale
   const PAUSED_SESSION_TIMEOUT = 30; // 30 seconds paused = auto-stop
   const STALE_POSITION_TIMEOUT = 300; // 5 minutes without position change = stale (for audiobooks)
 
@@ -971,6 +973,7 @@ function stopInactiveSessions(activeSessionKeys) {
           `).run(streamDuration, session.user_id);
 
           console.log(`   📝 Added to history (stale position): ${session.title}`);
+          telegram.notifyPlaybackCompleted({ username: session.username, title: session.title, progressPercent: session.progress_percent, serverType: sessionData.server_type });
         }
       } catch (error) {
         console.error(`   Error adding to history: ${error.message}`);
@@ -1068,6 +1071,7 @@ function stopInactiveSessions(activeSessionKeys) {
           `).run(streamDuration, session.user_id);
 
           console.log(`   📝 Added to history: ${session.title}`);
+          telegram.notifyPlaybackCompleted({ username: session.username, title: session.title, progressPercent: session.progress_percent, serverType: sessionData.server_type });
         }
       } catch (error) {
         console.error(`   Error adding to history: ${error.message}`);
@@ -1185,6 +1189,7 @@ function stopInactiveSessions(activeSessionKeys) {
             `).run(streamDuration, session.user_id);
 
             console.log(`📝 Added to history: ${session.title} (${session.progress_percent}%)`);
+            telegram.notifyPlaybackCompleted({ username: session.username, title: session.title, progressPercent: session.progress_percent, serverType: sessionData.server_type });
           } else {
             console.log(`   Skipped history: Duplicate detected for ${session.title}`);
           }
@@ -1231,7 +1236,6 @@ async function checkActivity(services) {
       data: currentSessions,
     });
 
-    lastActiveSessions = activeSessionKeys;
   } catch (error) {
     console.error('Error checking activity:', error.message);
   }
@@ -1240,7 +1244,7 @@ async function checkActivity(services) {
 // Separate function to import Audiobookshelf history on its own schedule
 async function checkAudiobookshelfHistory(services) {
   try {
-    for (const { name, service, type } of services) {
+    for (const { service, type } of services) {
       if (type === 'audiobookshelf' && service.getListeningSessions) {
         try {
           await importAudiobookshelfHistory(service, type);
@@ -1442,6 +1446,7 @@ export function startActivityMonitor() {
                     `).run(streamDuration, dbSession.user_id);
 
                     console.log(`   ✅ Added to history via WebSocket: ${dbSession.title} (${dbSession.progress_percent}%)`);
+                    telegram.notifyPlaybackCompleted({ username: dbSession.username, title: dbSession.title, progressPercent: dbSession.progress_percent, serverType: dbSession.server_type });
                   }
                 } catch (historyError) {
                   console.error(`   ❌ Error adding to history: ${historyError.message}`);
@@ -1548,7 +1553,6 @@ export function restartMonitoring() {
   audiobookshelfService = null;
   sapphoService = null;
   jellyfinService = null;
-  lastActiveSessions = new Map();
 
   // Restart monitoring
   startActivityMonitor();

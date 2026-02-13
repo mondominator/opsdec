@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getHistory, deleteHistoryItem } from '../utils/api';
 import { formatTimestamp, formatMediaType, formatDuration } from '../utils/format';
-import { History as HistoryIcon, PlayCircle, Search, Filter, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Book } from 'lucide-react';
+import { History as HistoryIcon, Search, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Book } from 'lucide-react';
 import { useTimezone } from '../contexts/TimezoneContext';
 
 // Thumbnail component with error handling - shows placeholder on load failure
@@ -61,7 +61,7 @@ const getServerIcon = (serverType) => {
 
 function History() {
   const navigate = useNavigate();
-  const { timezone } = useTimezone(); // This will cause re-render when timezone changes
+  const { timezone: _timezone } = useTimezone(); // Destructured to trigger re-render on timezone change
   const [allHistory, setAllHistory] = useState([]);
   const [filteredHistory, setFilteredHistory] = useState([]);
   const [pagination, setPagination] = useState({ limit: 50, offset: 0, total: 0 });
@@ -73,8 +73,6 @@ function History() {
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [sortField, setSortField] = useState('watched_at');
   const [sortDirection, setSortDirection] = useState('desc');
-  const [mediaColumnWidth, setMediaColumnWidth] = useState(448); // Default to max-w-md (28rem = 448px)
-
   useEffect(() => {
     loadHistory();
   }, []);

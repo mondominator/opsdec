@@ -1,9 +1,8 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getDashboardStats, getActivity, getWsToken } from '../utils/api';
-import { formatDuration, formatTimeAgo } from '../utils/format';
-import { Users, PlayCircle, TrendingUp, Clock, Activity as ActivityIcon, Film, Tv, Headphones, ChevronDown, MapPin, Book, Play } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { formatDuration } from '../utils/format';
+import { Users, Headphones, ChevronDown, Book, Play } from 'lucide-react';
 
 // Thumbnail component with error handling and placeholder
 function MediaThumbnail({ src, alt, title, serverType, className = "w-full h-full", iconSize = "w-8 h-8" }) {
@@ -189,7 +188,7 @@ function Dashboard() {
               Currently Streaming ({activity.length})
             </h3>
           </div>
-          <div className="space-y-4 md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-4 md:space-y-0">
+          <div className="space-y-4 md:grid md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 md:gap-4 md:space-y-0">
             {activity.map((session) => (
               <div
                 key={session.id}
@@ -426,10 +425,10 @@ function Dashboard() {
 
       {/* Top Users and Popular - Grid layout */}
       {(stats.topWatchers?.length > 0 || stats.topListeners?.length > 0 || stats.mostWatchedMovies?.length > 0 || stats.mostWatchedEpisodes?.length > 0 || stats.mostWatchedAudiobooks?.length > 0 || stats.topLocations?.length > 0) && (
-        <div className="flex flex-col md:flex-row md:items-start gap-3 w-full">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           {/* Top Watchers */}
           {stats.topWatchers?.length > 0 && (
-            <div className="card flex-1 min-w-0">
+            <div className="card">
               <div className="card-header">
                 <h3 className="card-title text-center">Top Watchers</h3>
               </div>
@@ -469,7 +468,7 @@ function Dashboard() {
           )}
           {/* Top Listeners */}
           {stats.topListeners?.length > 0 && (
-            <div className="card flex-1 min-w-0">
+            <div className="card">
               <div className="card-header">
                 <h3 className="card-title text-center">Top Listeners</h3>
               </div>
@@ -509,7 +508,7 @@ function Dashboard() {
           )}
           {/* Popular Movies */}
           {stats.mostWatchedMovies?.length > 0 && (
-            <div className="card flex-1 min-w-0">
+            <div className="card">
               <div className="card-header">
                 <h3 className="card-title text-center">Popular Movies</h3>
               </div>
@@ -605,7 +604,7 @@ function Dashboard() {
 
           {/* Popular TV Shows */}
           {stats.mostWatchedEpisodes?.length > 0 && (
-            <div className="card flex-[1.3] min-w-0">
+            <div className="card">
               <div className="card-header">
                 <h3 className="card-title text-center">Popular Shows</h3>
               </div>
@@ -701,7 +700,7 @@ function Dashboard() {
 
           {/* Popular Books */}
           {stats.mostWatchedAudiobooks?.length > 0 && (
-            <div className="card flex-[1.3] min-w-0">
+            <div className="card">
               <div className="card-header">
                 <h3 className="card-title text-center">Popular Books</h3>
               </div>
@@ -797,7 +796,7 @@ function Dashboard() {
 
           {/* Top Locations */}
           {stats.topLocations?.length > 0 && (
-            <div className="card flex-1 min-w-0">
+            <div className="card">
               <div className="card-header">
                 <h3 className="card-title text-center">Top Locations</h3>
               </div>

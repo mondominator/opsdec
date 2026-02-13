@@ -18,7 +18,7 @@ function getJwtSecret() {
     if (fs.existsSync(secretFile)) {
       return fs.readFileSync(secretFile, 'utf8').trim();
     }
-  } catch (err) {
+  } catch {
     // File doesn't exist or can't be read, generate new one
   }
 
@@ -43,7 +43,9 @@ const JWT_SECRET = getJwtSecret();
 const ACCESS_TOKEN_EXPIRY = '15m';
 const REFRESH_TOKEN_EXPIRY_DAYS = 7;
 const WS_TOKEN_EXPIRY = '30s'; // Short-lived token for WebSocket connections
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+// Only set secure cookies when explicitly enabled or when behind HTTPS proxy
+// Many self-hosted deployments run production over plain HTTP
+const SECURE_COOKIES = process.env.SECURE_COOKIES === 'true';
 
 /**
  * Generate an access token for a user
@@ -151,7 +153,7 @@ export function cleanupExpiredTokens() {
 export function setAuthCookies(res, accessToken, refreshToken) {
   const cookieOptions = {
     httpOnly: true,
-    secure: IS_PRODUCTION,
+    secure: SECURE_COOKIES,
     sameSite: 'strict',
     path: '/',
   };
@@ -178,7 +180,7 @@ export function setAuthCookies(res, accessToken, refreshToken) {
 export function clearAuthCookies(res) {
   const cookieOptions = {
     httpOnly: true,
-    secure: IS_PRODUCTION,
+    secure: SECURE_COOKIES,
     sameSite: 'strict',
     path: '/',
   };
@@ -284,7 +286,7 @@ export function verifyToken(token) {
       username: user.username,
       is_admin: user.is_admin
     };
-  } catch (error) {
+  } catch {
     return null;
   }
 }

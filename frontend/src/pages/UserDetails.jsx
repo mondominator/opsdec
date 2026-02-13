@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getUserStats } from '../utils/api';
 import { formatTimeAgo, formatDuration } from '../utils/format';
-import { ArrowLeft, Film, Tv, Headphones, Music, Book, Server, Clock, Play, Activity, Link2, MapPin, ChevronDown, ChevronUp, Globe } from 'lucide-react';
+import { ArrowLeft, Film, Tv, Headphones, Music, Book, Server, Clock, Activity, Link2, MapPin, ChevronDown, ChevronUp, Globe } from 'lucide-react';
 
 function UserDetails() {
   const { userId } = useParams();

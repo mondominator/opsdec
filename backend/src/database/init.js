@@ -485,12 +485,22 @@ export function initDatabase() {
 
   // Initialize default history filter settings if they don't exist
   try {
-    const settingsKeys = ['history_min_duration', 'history_min_percent', 'history_exclusion_patterns', 'history_group_successive'];
+    const settingsKeys = [
+      'history_min_duration', 'history_min_percent', 'history_exclusion_patterns', 'history_group_successive',
+      'telegram_enabled', 'telegram_bot_token', 'telegram_chat_id',
+      'telegram_notify_playback_start', 'telegram_notify_playback_complete', 'telegram_notify_new_user'
+    ];
     const defaults = {
       history_min_duration: '30',
       history_min_percent: '10',
       history_exclusion_patterns: 'theme,preview,trailer',
-      history_group_successive: '1'
+      history_group_successive: '1',
+      telegram_enabled: 'false',
+      telegram_bot_token: '',
+      telegram_chat_id: '',
+      telegram_notify_playback_start: 'true',
+      telegram_notify_playback_complete: 'true',
+      telegram_notify_new_user: 'true'
     };
 
     for (const key of settingsKeys) {

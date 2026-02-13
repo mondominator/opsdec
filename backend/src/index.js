@@ -16,7 +16,7 @@ import { startActivityMonitor, audiobookshelfService, plexService, embyService, 
 import { initializeJobs, setAudiobookshelfService, setPlexService, setEmbyService, setJellyfinService } from './services/jobs.js';
 import apiRouter from './routes/api.js';
 import authRouter from './routes/auth.js';
-import { authenticateToken, isSetupRequired, verifyToken } from './middleware/auth.js';
+import { authenticateToken, verifyToken } from './middleware/auth.js';
 import { decrypt } from './utils/crypto.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -37,7 +37,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'"], // Tailwind requires inline styles
       imgSrc: ["'self'", "data:", "blob:", "https:"], // Allow external images for avatars/covers
       connectSrc: ["'self'", "ws:", "wss:"],
@@ -45,6 +45,7 @@ app.use(helmet({
       objectSrc: ["'none'"],
       mediaSrc: ["'self'"],
       frameSrc: ["'none'"],
+      upgradeInsecureRequests: null, // Don't force HTTPS — breaks local/HTTP deployments
     },
   },
   crossOriginEmbedderPolicy: false, // Required for loading external images
@@ -79,7 +80,7 @@ app.get('/proxy/image', async (req, res) => {
     let parsedUrl;
     try {
       parsedUrl = new URL(imageUrl);
-    } catch (e) {
+    } catch {
       return res.status(400).send('Invalid URL format');
     }
 

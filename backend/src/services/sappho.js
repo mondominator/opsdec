@@ -12,7 +12,7 @@ class SapphoService {
     try {
       const url = new URL(this.baseUrl);
       hostname = url.hostname;
-    } catch (e) {
+    } catch {
       console.error('Invalid Sappho URL:', this.baseUrl);
       hostname = 'localhost';
     }
@@ -60,18 +60,13 @@ class SapphoService {
   }
 
   async getLibraries() {
-    try {
-      // Sappho doesn't have a libraries endpoint, but we can return a default library
-      return [{
-        id: 'sappho-default',
-        name: 'Audiobooks',
-        type: 'audiobook',
-        itemCount: 0,
-      }];
-    } catch (error) {
-      console.error('Error fetching Sappho libraries:', error.message);
-      return [];
-    }
+    // Sappho doesn't have a libraries endpoint, return a default library
+    return [{
+      id: 'sappho-default',
+      name: 'Audiobooks',
+      type: 'audiobook',
+      itemCount: 0,
+    }];
   }
 
   /**

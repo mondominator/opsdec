@@ -90,7 +90,7 @@ function Layout({ children }) {
     <div className="min-h-screen bg-dark-900">
       {/* Header */}
       <header className="bg-dark-850 border-b border-dark-700 sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-1">
+        <div className="mx-auto px-4 py-1 max-w-[1600px]">
           <div className="flex items-center justify-between">
             {/* Logo - Icon only on mobile, icon + text on desktop */}
             <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
@@ -243,13 +243,13 @@ function Layout({ children }) {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-6 py-8">
+      <main className="mx-auto px-6 py-8 max-w-[1600px]">
         {children}
       </main>
 
       {/* Footer */}
       <footer className="bg-dark-850 border-t border-dark-700 mt-auto">
-        <div className="container mx-auto px-6 py-4">
+        <div className="mx-auto px-6 py-4 max-w-[1600px]">
           <p className="text-center text-gray-500 text-sm">
             OpsDec v0.1.0 - Media Server Monitoring
           </p>
