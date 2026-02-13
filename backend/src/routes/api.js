@@ -1320,7 +1320,7 @@ router.put('/servers/:id', (req, res) => {
     const now = Math.floor(Date.now() / 1000);
 
     // Only encrypt new API key if provided, otherwise keep existing
-    const newApiKey = api_key ? encrypt(api_key) : existing.api_key;
+    const newApiKey = (api_key && api_key !== '***') ? encrypt(api_key) : existing.api_key;
 
     db.prepare(`
       UPDATE servers

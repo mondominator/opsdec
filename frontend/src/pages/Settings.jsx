@@ -303,7 +303,7 @@ export default function Settings() {
       type: server.type,
       name: server.name,
       url: server.url,
-      api_key: server.api_key,
+      api_key: '',
       enabled: server.enabled === 1
     });
   };
@@ -767,8 +767,8 @@ export default function Settings() {
                   value={formData.api_key}
                   onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
                   className="w-full px-4 py-3 bg-dark-700 border border-dark-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm"
-                  placeholder={formData.type === 'plex' ? 'Your Plex token' : 'Your API key'}
-                  required
+                  placeholder={editingServer ? 'Leave blank to keep existing' : (formData.type === 'plex' ? 'Your Plex token' : 'Your API key')}
+                  required={!editingServer}
                 />
               </div>
             </div>

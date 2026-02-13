@@ -4,10 +4,8 @@ import { getDashboardStats, getActivity, getWsToken } from '../utils/api';
 import { formatDuration } from '../utils/format';
 import { Users, Headphones, ChevronDown, Book, Play, MapPin, Film, Tv } from 'lucide-react';
 
-// Thumbnail component with error handling and placeholder
 function MediaThumbnail({ src, alt, title, serverType, className = "w-full h-full", iconSize = "w-8 h-8" }) {
   const [hasError, setHasError] = useState(false);
-
   const imgSrc = src ? `/proxy/image?url=${encodeURIComponent(src)}` : null;
 
   if (hasError || !src) {
@@ -41,6 +39,7 @@ function MediaThumbnail({ src, alt, title, serverType, className = "w-full h-ful
 
 function Dashboard() {
   const navigate = useNavigate();
+
   const getServerIcon = (serverType, size = 'w-5 h-5') => {
     switch (serverType) {
       case 'emby':
@@ -57,6 +56,7 @@ function Dashboard() {
         return null;
     }
   };
+
   const formatResolution = (resolution) => {
     if (!resolution) return null;
     const height = parseInt(resolution.split('x')[1]);
@@ -67,6 +67,7 @@ function Dashboard() {
     if (height >= 480) return '480p';
     return resolution;
   };
+
   const [stats, setStats] = useState(null);
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -173,9 +174,194 @@ function Dashboard() {
     );
   }
 
+  // Build paired columns — each column pairs a media section with a community section
+  const columns = [
+    [
+      stats.mostWatchedMovies?.length > 0 && {
+        type: 'media', items: stats.mostWatchedMovies, category: 'movies',
+        icon: Film, label: 'Popular Movies', accent: 'border-blue-400', iconColor: 'text-blue-400/70',
+      },
+      stats.topWatchers?.length > 0 && {
+        type: 'user', users: stats.topWatchers,
+        icon: Film, label: 'Top Watchers', accent: 'border-emerald-400', iconColor: 'text-emerald-400/70',
+      },
+    ].filter(Boolean),
+    [
+      stats.mostWatchedEpisodes?.length > 0 && {
+        type: 'media', items: stats.mostWatchedEpisodes, category: 'shows',
+        icon: Tv, label: 'Popular Shows', accent: 'border-violet-400', iconColor: 'text-violet-400/70',
+      },
+      stats.topListeners?.length > 0 && {
+        type: 'user', users: stats.topListeners,
+        icon: Headphones, label: 'Top Listeners', accent: 'border-rose-400', iconColor: 'text-rose-400/70',
+      },
+    ].filter(Boolean),
+    [
+      stats.mostWatchedAudiobooks?.length > 0 && {
+        type: 'media', items: stats.mostWatchedAudiobooks, category: 'books',
+        icon: Book, label: 'Popular Books', accent: 'border-amber-400', iconColor: 'text-amber-400/70', bookMode: true,
+      },
+      stats.topLocations?.length > 0 && {
+        type: 'location', locations: stats.topLocations,
+        icon: MapPin, label: 'Top Locations', accent: 'border-sky-400', iconColor: 'text-sky-400/70',
+      },
+    ].filter(Boolean),
+  ].filter(col => col.length > 0);
+
+  const renderMediaRows = (section) =>
+    section.items.slice(0, 5).map((item, index) => {
+      const isExpanded = expandedItems[`${section.category}-${index}`];
+      return (
+        <div key={index}>
+          <div
+            className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-white/[0.03] transition-colors cursor-pointer"
+            onClick={() => toggleExpanded(section.category, index)}
+          >
+            <span className="flex-shrink-0 w-4 text-center text-gray-600 text-[11px] font-mono">{index + 1}</span>
+            <div className="flex-shrink-0 w-7 h-10 rounded overflow-hidden bg-dark-700">
+              <MediaThumbnail
+                src={item.thumb}
+                alt={item.title}
+                title={item.title}
+                serverType={section.bookMode ? 'audiobookshelf' : item.server_type}
+                className="w-full h-full"
+                iconSize="w-3 h-3"
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-white text-[13px] truncate" title={item.title}>{item.title}</div>
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px] text-gray-500 flex-shrink-0">
+              <span className="flex items-center gap-0.5">
+                <Users className="w-2.5 h-2.5" />
+                {item.unique_users || item.plays}
+              </span>
+              {item.plays > (item.unique_users || item.plays) && (
+                <span className="flex items-center gap-0.5">
+                  <Play className="w-2.5 h-2.5" />
+                  {item.plays}
+                </span>
+              )}
+            </div>
+            <ChevronDown className={`flex-shrink-0 w-3 h-3 text-gray-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+          </div>
+          {isExpanded && item.users?.length > 0 && (
+            <div className="px-3 py-1 bg-dark-900/30">
+              <div className="space-y-0.5 pl-6">
+                {item.users.map((user, ui) => (
+                  <div
+                    key={ui}
+                    onClick={(e) => { e.stopPropagation(); user.user_id && navigate(`/users/${user.user_id}`); }}
+                    className="flex items-center gap-1.5 cursor-pointer hover:bg-white/[0.03] px-1.5 py-0.5 rounded transition-colors"
+                  >
+                    {user.thumb ? (
+                      <img src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`} alt={user.username} className="w-4 h-4 rounded-full object-cover" />
+                    ) : (
+                      <div className="w-4 h-4 rounded-full bg-primary-600 flex items-center justify-center">
+                        <span className="text-[9px] text-white font-semibold">{user.username.charAt(0).toUpperCase()}</span>
+                      </div>
+                    )}
+                    <span className="text-[11px] text-white truncate">{user.username}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    });
+
+  const renderUserRows = (section) =>
+    section.users.slice(0, 5).map((user, index) => (
+      <div
+        key={user.username}
+        onClick={() => user.user_id && navigate(`/users/${user.user_id}`)}
+        className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-white/[0.03] transition-colors cursor-pointer"
+      >
+        <span className="flex-shrink-0 w-4 text-center text-gray-600 text-[11px] font-mono">{index + 1}</span>
+        {user.thumb ? (
+          <img
+            src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`}
+            alt={user.username}
+            className="flex-shrink-0 w-6 h-6 rounded-full object-cover"
+          />
+        ) : (
+          <div className="flex-shrink-0 w-6 h-6 bg-primary-600 rounded-full flex items-center justify-center text-white text-[10px] font-medium">
+            {user.username.charAt(0).toUpperCase()}
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <span className="text-white text-[13px] truncate block">{user.username}</span>
+        </div>
+        <span className="text-[11px] text-gray-500 flex-shrink-0">{formatDuration(user.total_duration)}</span>
+      </div>
+    ));
+
+  const renderLocationRows = (section) =>
+    section.locations.slice(0, 5).map((location, index) => {
+      const locationKey = `location-${location.city}-${location.region}`;
+      const isExpanded = expandedItems[locationKey];
+      return (
+        <div key={index}>
+          <div
+            className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-white/[0.03] transition-colors cursor-pointer"
+            onClick={() => setExpandedItems(prev => ({ ...prev, [locationKey]: !prev[locationKey] }))}
+          >
+            <span className="flex-shrink-0 w-4 text-center text-gray-600 text-[11px] font-mono">{index + 1}</span>
+            <div className="flex-1 min-w-0">
+              <span className="text-white text-[13px] truncate block">
+                {location.city === 'Local Network'
+                  ? 'Local Network'
+                  : `${location.city}${location.region ? `, ${location.region}` : ''}`}
+              </span>
+            </div>
+            <span className="text-[11px] text-gray-500 flex-shrink-0">
+              {location.streams} {location.streams === 1 ? 'stream' : 'streams'}
+            </span>
+            <ChevronDown className={`flex-shrink-0 w-3 h-3 text-gray-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+          </div>
+          {isExpanded && location.users?.length > 0 && (
+            <div className="px-3 py-1 bg-dark-900/30">
+              <div className="space-y-0.5 pl-6">
+                {location.users.map((user, ui) => (
+                  <div key={ui} className="flex items-center gap-1.5 px-1.5 py-0.5">
+                    {user.thumb ? (
+                      <img src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`} alt={user.username} className="w-4 h-4 rounded-full object-cover" />
+                    ) : (
+                      <div className="w-4 h-4 rounded-full bg-primary-600 flex items-center justify-center">
+                        <span className="text-[9px] text-white font-semibold">{user.username.charAt(0).toUpperCase()}</span>
+                      </div>
+                    )}
+                    <span className="text-[11px] text-white truncate">{user.username}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    });
+
+  const renderSection = (section) => {
+    const Icon = section.icon;
+    return (
+      <div key={section.label} className="bg-dark-800 rounded-lg overflow-hidden">
+        <div className={`flex items-center gap-2 px-3 py-1.5 border-l-2 ${section.accent} bg-dark-700/30`}>
+          <Icon className={`w-3 h-3 ${section.iconColor}`} />
+          <span className="text-[11px] font-medium tracking-wider uppercase text-gray-500">{section.label}</span>
+        </div>
+        <div className="py-0.5">
+          {section.type === 'media' && renderMediaRows(section)}
+          {section.type === 'user' && renderUserRows(section)}
+          {section.type === 'location' && renderLocationRows(section)}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-3">
-      {/* Active Streams — pushes content down when present */}
+      {/* Active Streams */}
       {activity.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -183,7 +369,7 @@ function Dashboard() {
               Currently Streaming ({activity.length})
             </h3>
           </div>
-          <div className="space-y-3 md:grid md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 md:gap-3 md:space-y-0">
+          <div className="space-y-3 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-3 md:space-y-0">
             {activity.map((session) => (
               <div
                 key={session.id}
@@ -395,373 +581,14 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Popular Media — 3 column compact lists */}
-      {(stats.mostWatchedMovies?.length > 0 || stats.mostWatchedEpisodes?.length > 0 || stats.mostWatchedAudiobooks?.length > 0) && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {/* Popular Movies */}
-          {stats.mostWatchedMovies?.length > 0 && (
-            <div className="card">
-              <div className="flex items-center gap-2 px-3 py-2">
-                <Film className="w-3.5 h-3.5 text-gray-500" />
-                <span className="text-xs font-semibold text-white">Popular Movies</span>
-              </div>
-              <div className="pb-1">
-                {stats.mostWatchedMovies.slice(0, 5).map((item, index) => {
-                  const isExpanded = expandedItems[`movies-${index}`];
-                  return (
-                    <div key={index}>
-                      <div
-                        className="flex items-center gap-2 px-3 py-1 hover:bg-dark-700 transition-colors cursor-pointer"
-                        onClick={() => toggleExpanded('movies', index)}
-                      >
-                        <div className="flex-shrink-0 w-3.5 text-center text-gray-600 text-[10px]">
-                          {index + 1}
-                        </div>
-                        <div className="flex-shrink-0 w-6 h-9 rounded overflow-hidden bg-dark-700">
-                          <MediaThumbnail
-                            src={item.thumb}
-                            alt={item.title}
-                            title={item.title}
-                            serverType={item.server_type}
-                            className="w-full h-full"
-                            iconSize="w-3 h-3"
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-white text-xs truncate" title={item.title}>{item.title}</div>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[10px] text-gray-500 flex-shrink-0">
-                          <span className="flex items-center gap-0.5">
-                            <Users className="w-2.5 h-2.5" />
-                            {item.unique_users || item.plays}
-                          </span>
-                          {item.plays > (item.unique_users || item.plays) && (
-                            <span className="flex items-center gap-0.5">
-                              <Play className="w-2.5 h-2.5" />
-                              {item.plays}
-                            </span>
-                          )}
-                        </div>
-                        <ChevronDown className={`flex-shrink-0 w-3 h-3 text-gray-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                      </div>
-                      {isExpanded && item.users && item.users.length > 0 && (
-                        <div className="px-3 py-1.5 bg-dark-800 border-t border-dark-600">
-                          <div className="space-y-0.5">
-                            {item.users.map((user, userIndex) => (
-                              <div
-                                key={userIndex}
-                                onClick={(e) => { e.stopPropagation(); user.user_id && navigate(`/users/${user.user_id}`); }}
-                                className="flex items-center gap-1.5 cursor-pointer hover:bg-dark-700 px-1 py-0.5 rounded transition-colors"
-                              >
-                                {user.thumb ? (
-                                  <img src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`} alt={user.username} className="w-4 h-4 rounded-full object-cover" />
-                                ) : (
-                                  <div className="w-4 h-4 rounded-full bg-primary-600 flex items-center justify-center">
-                                    <span className="text-[9px] text-white font-semibold">{user.username.charAt(0).toUpperCase()}</span>
-                                  </div>
-                                )}
-                                <span className="text-[11px] text-white truncate">{user.username}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+      {/* Data columns — paired media + community sections */}
+      {columns.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+          {columns.map((column, i) => (
+            <div key={i} className="space-y-2">
+              {column.map(renderSection)}
             </div>
-          )}
-
-          {/* Popular Shows */}
-          {stats.mostWatchedEpisodes?.length > 0 && (
-            <div className="card">
-              <div className="flex items-center gap-2 px-3 py-2">
-                <Tv className="w-3.5 h-3.5 text-gray-500" />
-                <span className="text-xs font-semibold text-white">Popular Shows</span>
-              </div>
-              <div className="pb-1">
-                {stats.mostWatchedEpisodes.slice(0, 5).map((item, index) => {
-                  const isExpanded = expandedItems[`shows-${index}`];
-                  return (
-                    <div key={index}>
-                      <div
-                        className="flex items-center gap-2 px-3 py-1 hover:bg-dark-700 transition-colors cursor-pointer"
-                        onClick={() => toggleExpanded('shows', index)}
-                      >
-                        <div className="flex-shrink-0 w-3.5 text-center text-gray-600 text-[10px]">
-                          {index + 1}
-                        </div>
-                        <div className="flex-shrink-0 w-6 h-9 rounded overflow-hidden bg-dark-700">
-                          <MediaThumbnail
-                            src={item.thumb}
-                            alt={item.title}
-                            title={item.title}
-                            serverType={item.server_type}
-                            className="w-full h-full"
-                            iconSize="w-3 h-3"
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-white text-xs truncate" title={item.title}>{item.title}</div>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[10px] text-gray-500 flex-shrink-0">
-                          <span className="flex items-center gap-0.5">
-                            <Users className="w-2.5 h-2.5" />
-                            {item.unique_users || item.plays}
-                          </span>
-                          {item.plays > (item.unique_users || item.plays) && (
-                            <span className="flex items-center gap-0.5">
-                              <Play className="w-2.5 h-2.5" />
-                              {item.plays}
-                            </span>
-                          )}
-                        </div>
-                        <ChevronDown className={`flex-shrink-0 w-3 h-3 text-gray-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                      </div>
-                      {isExpanded && item.users && item.users.length > 0 && (
-                        <div className="px-3 py-1.5 bg-dark-800 border-t border-dark-600">
-                          <div className="space-y-0.5">
-                            {item.users.map((user, userIndex) => (
-                              <div
-                                key={userIndex}
-                                onClick={(e) => { e.stopPropagation(); user.user_id && navigate(`/users/${user.user_id}`); }}
-                                className="flex items-center gap-1.5 cursor-pointer hover:bg-dark-700 px-1 py-0.5 rounded transition-colors"
-                              >
-                                {user.thumb ? (
-                                  <img src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`} alt={user.username} className="w-4 h-4 rounded-full object-cover" />
-                                ) : (
-                                  <div className="w-4 h-4 rounded-full bg-primary-600 flex items-center justify-center">
-                                    <span className="text-[9px] text-white font-semibold">{user.username.charAt(0).toUpperCase()}</span>
-                                  </div>
-                                )}
-                                <span className="text-[11px] text-white truncate">{user.username}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Popular Books */}
-          {stats.mostWatchedAudiobooks?.length > 0 && (
-            <div className="card">
-              <div className="flex items-center gap-2 px-3 py-2">
-                <Book className="w-3.5 h-3.5 text-gray-500" />
-                <span className="text-xs font-semibold text-white">Popular Books</span>
-              </div>
-              <div className="pb-1">
-                {stats.mostWatchedAudiobooks.slice(0, 5).map((item, index) => {
-                  const isExpanded = expandedItems[`books-${index}`];
-                  return (
-                    <div key={index}>
-                      <div
-                        className="flex items-center gap-2 px-3 py-1 hover:bg-dark-700 transition-colors cursor-pointer"
-                        onClick={() => toggleExpanded('books', index)}
-                      >
-                        <div className="flex-shrink-0 w-3.5 text-center text-gray-600 text-[10px]">
-                          {index + 1}
-                        </div>
-                        <div className="flex-shrink-0 w-6 h-9 rounded overflow-hidden bg-dark-700 flex items-center justify-center">
-                          <MediaThumbnail
-                            src={item.thumb}
-                            alt={item.title}
-                            title={item.title}
-                            serverType="audiobookshelf"
-                            className="w-full h-full"
-                            iconSize="w-3 h-3"
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-white text-xs truncate" title={item.title}>{item.title}</div>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[10px] text-gray-500 flex-shrink-0">
-                          <span className="flex items-center gap-0.5">
-                            <Headphones className="w-2.5 h-2.5" />
-                            {item.unique_users || item.plays}
-                          </span>
-                          {item.plays > (item.unique_users || item.plays) && (
-                            <span className="flex items-center gap-0.5">
-                              <Play className="w-2.5 h-2.5" />
-                              {item.plays}
-                            </span>
-                          )}
-                        </div>
-                        <ChevronDown className={`flex-shrink-0 w-3 h-3 text-gray-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                      </div>
-                      {isExpanded && item.users && item.users.length > 0 && (
-                        <div className="px-3 py-1.5 bg-dark-800 border-t border-dark-600">
-                          <div className="space-y-0.5">
-                            {item.users.map((user, userIndex) => (
-                              <div
-                                key={userIndex}
-                                onClick={(e) => { e.stopPropagation(); user.user_id && navigate(`/users/${user.user_id}`); }}
-                                className="flex items-center gap-1.5 cursor-pointer hover:bg-dark-700 px-1 py-0.5 rounded transition-colors"
-                              >
-                                {user.thumb ? (
-                                  <img src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`} alt={user.username} className="w-4 h-4 rounded-full object-cover" />
-                                ) : (
-                                  <div className="w-4 h-4 rounded-full bg-primary-600 flex items-center justify-center">
-                                    <span className="text-[9px] text-white font-semibold">{user.username.charAt(0).toUpperCase()}</span>
-                                  </div>
-                                )}
-                                <span className="text-[11px] text-white truncate">{user.username}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Top Watchers / Top Listeners / Top Locations */}
-      {(stats.topWatchers?.length > 0 || stats.topListeners?.length > 0 || stats.topLocations?.length > 0) && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {stats.topWatchers?.length > 0 && (
-            <div className="card">
-              <div className="flex items-center gap-2 px-3 py-2">
-                <Film className="w-3.5 h-3.5 text-gray-500" />
-                <span className="text-xs font-semibold text-white">Top Watchers</span>
-              </div>
-              <div className="pb-1">
-                {stats.topWatchers.slice(0, 5).map((user, index) => (
-                  <div
-                    key={user.username}
-                    onClick={() => user.user_id && navigate(`/users/${user.user_id}`)}
-                    className="flex items-center gap-2 px-3 py-1 hover:bg-dark-700 transition-colors cursor-pointer"
-                  >
-                    <div className="flex-shrink-0 w-3.5 text-center text-gray-600 text-[10px]">
-                      {index + 1}
-                    </div>
-                    {user.thumb ? (
-                      <img
-                        src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`}
-                        alt={user.username}
-                        className="flex-shrink-0 w-5 h-5 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex-shrink-0 w-5 h-5 bg-primary-600 rounded-full flex items-center justify-center text-white text-[9px] font-medium">
-                        {user.username.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <span className="text-white text-xs truncate block">{user.username}</span>
-                    </div>
-                    <span className="text-[10px] text-gray-500 flex-shrink-0">
-                      {formatDuration(user.total_duration)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {stats.topListeners?.length > 0 && (
-            <div className="card">
-              <div className="flex items-center gap-2 px-3 py-2">
-                <Headphones className="w-3.5 h-3.5 text-gray-500" />
-                <span className="text-xs font-semibold text-white">Top Listeners</span>
-              </div>
-              <div className="pb-1">
-                {stats.topListeners.slice(0, 5).map((user, index) => (
-                  <div
-                    key={user.username}
-                    onClick={() => user.user_id && navigate(`/users/${user.user_id}`)}
-                    className="flex items-center gap-2 px-3 py-1 hover:bg-dark-700 transition-colors cursor-pointer"
-                  >
-                    <div className="flex-shrink-0 w-3.5 text-center text-gray-600 text-[10px]">
-                      {index + 1}
-                    </div>
-                    {user.thumb ? (
-                      <img
-                        src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`}
-                        alt={user.username}
-                        className="flex-shrink-0 w-5 h-5 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex-shrink-0 w-5 h-5 bg-primary-600 rounded-full flex items-center justify-center text-white text-[9px] font-medium">
-                        {user.username.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <span className="text-white text-xs truncate block">{user.username}</span>
-                    </div>
-                    <span className="text-[10px] text-gray-500 flex-shrink-0">
-                      {formatDuration(user.total_duration)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {stats.topLocations?.length > 0 && (
-            <div className="card">
-              <div className="flex items-center gap-2 px-3 py-2">
-                <MapPin className="w-3.5 h-3.5 text-gray-500" />
-                <span className="text-xs font-semibold text-white">Top Locations</span>
-              </div>
-              <div className="pb-1">
-                {stats.topLocations.slice(0, 5).map((location, index) => {
-                  const locationKey = `location-${location.city}-${location.region}`;
-                  const isExpanded = expandedItems[locationKey];
-                  return (
-                    <div key={index}>
-                      <div
-                        className="flex items-center gap-2 px-3 py-1 hover:bg-dark-700 transition-colors cursor-pointer"
-                        onClick={() => setExpandedItems(prev => ({ ...prev, [locationKey]: !prev[locationKey] }))}
-                      >
-                        <div className="flex-shrink-0 w-3.5 text-center text-gray-600 text-[10px]">
-                          {index + 1}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <span className="text-white text-xs truncate block">
-                            {location.city === 'Local Network'
-                              ? 'Local Network'
-                              : `${location.city}${location.region ? `, ${location.region}` : ''}`
-                            }
-                          </span>
-                        </div>
-                        <span className="text-[10px] text-gray-500 flex-shrink-0">
-                          {location.streams} {location.streams === 1 ? 'stream' : 'streams'}
-                        </span>
-                        <ChevronDown className={`flex-shrink-0 w-3 h-3 text-gray-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                      </div>
-                      {isExpanded && location.users?.length > 0 && (
-                        <div className="px-3 py-1.5 bg-dark-800 border-t border-dark-600">
-                          <div className="space-y-0.5">
-                            {location.users.map((user, userIndex) => (
-                              <div key={userIndex} className="flex items-center gap-1.5 px-1 py-0.5">
-                                {user.thumb ? (
-                                  <img src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`} alt={user.username} className="w-4 h-4 rounded-full object-cover" />
-                                ) : (
-                                  <div className="w-4 h-4 rounded-full bg-primary-600 flex items-center justify-center">
-                                    <span className="text-[9px] text-white font-semibold">{user.username.charAt(0).toUpperCase()}</span>
-                                  </div>
-                                )}
-                                <span className="text-[11px] text-white truncate">{user.username}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          ))}
         </div>
       )}
     </div>
