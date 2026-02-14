@@ -1206,9 +1206,17 @@ async function checkActivity(services) {
     const activeSessionKeys = new Set();
 
     // Check all configured services
-    for (const { name, service, type } of services) {
+    const now = Math.floor(Date.now() / 1000);
+    for (const { name, service, type, id } of services) {
       try {
         const activeStreams = await service.getActiveStreams();
+
+        // Server responded successfully - mark as healthy
+        try {
+          db.prepare('UPDATE servers SET last_healthy_at = ? WHERE id = ?').run(now, id);
+        } catch {
+          // Non-critical: don't break polling if health update fails
+        }
 
         // Update or create sessions for active streams
         for (const activity of activeStreams) {

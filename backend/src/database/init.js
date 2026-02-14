@@ -380,6 +380,13 @@ export function initDatabase() {
       console.log('🔧 Adding country column to sessions...');
       db.exec('ALTER TABLE sessions ADD COLUMN country TEXT');
     }
+    // Add last_healthy_at to servers table for real connectivity tracking
+    const serverColumns = db.prepare('PRAGMA table_info(servers)').all();
+    const serverColumnNames = serverColumns.map(col => col.name);
+    if (!serverColumnNames.includes('last_healthy_at')) {
+      console.log('🔧 Adding last_healthy_at column to servers...');
+      db.exec('ALTER TABLE servers ADD COLUMN last_healthy_at INTEGER');
+    }
   } catch (error) {
     console.error('Migration error:', error.message);
   }
