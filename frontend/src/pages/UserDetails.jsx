@@ -4,6 +4,39 @@ import { getUserStats } from '../utils/api';
 import { formatTimeAgo, formatDuration } from '../utils/format';
 import { ArrowLeft, Film, Tv, Headphones, Music, Book, Server, Clock, Activity, Link2, MapPin, ChevronDown, ChevronUp, Globe } from 'lucide-react';
 
+function MediaThumbnail({ src, alt, title, serverType, className = "w-full h-full", iconSize = "w-6 h-6" }) {
+  const [hasError, setHasError] = useState(false);
+  const imgSrc = src ? `/proxy/image?url=${encodeURIComponent(src)}` : null;
+
+  if (hasError || !src) {
+    return (
+      <div className={`${className} bg-gradient-to-br from-dark-600 to-dark-700 rounded flex items-center justify-center`}>
+        {serverType === 'audiobookshelf' || serverType === 'sappho' ? (
+          <Book className={`${iconSize} text-gray-500`} />
+        ) : (
+          <span className="text-gray-400 font-bold text-lg">
+            {title?.charAt(0)?.toUpperCase() || '?'}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  const isAudiobook = serverType === 'audiobookshelf' || serverType === 'sappho';
+  const sizeClass = isAudiobook ? 'max-w-full max-h-full' : className;
+  const objectFit = isAudiobook ? 'object-contain' : 'object-cover';
+
+  return (
+    <img
+      src={imgSrc}
+      alt={alt}
+      className={`${sizeClass} ${objectFit} rounded`}
+      loading="lazy"
+      onError={() => setHasError(true)}
+    />
+  );
+}
+
 function UserDetails() {
   const { userId } = useParams();
   const navigate = useNavigate();
@@ -270,56 +303,99 @@ function UserDetails() {
 
       {/* Recent Activity */}
       {stats.recentWatches && stats.recentWatches.length > 0 && (
-        <div className="bg-dark-800 rounded-xl border border-dark-700 overflow-hidden w-fit max-w-full">
-          <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-dark-700">
+        <div className="bg-dark-800 rounded-xl border border-dark-700 overflow-hidden">
+          <div className="px-4 py-3 border-b border-dark-700">
             <h3 className="text-sm sm:text-base font-semibold text-white flex items-center gap-2">
-              <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary-400" />
-              Activity
+              <Activity className="w-4 h-4 text-primary-400" />
+              Recent Activity
             </h3>
           </div>
-          <div className="p-3">
-            <div className="flex flex-wrap gap-2">
-              {stats.recentWatches.map((watch, index) => (
-                <div key={index} className="flex gap-2.5 p-2 bg-dark-700/30 rounded-lg border border-dark-600 hover:bg-dark-700/50 transition-colors w-[240px]">
-                  {/* Thumbnail */}
-                  {watch.thumb ? (
-                    <div className="relative w-9 h-12 sm:w-10 sm:h-14 bg-dark-600 overflow-hidden rounded flex-shrink-0 flex items-center justify-center">
-                      <img
-                        src={`/proxy/image?url=${encodeURIComponent(watch.thumb)}`}
-                        alt={watch.title}
-                        className={watch.server_type === 'audiobookshelf' || watch.server_type === 'sappho' ? 'max-w-full max-h-full object-contain' : 'w-full h-full object-cover'}
-                      />
-                      <div className="absolute bottom-0.5 right-0.5 p-0.5 bg-black/80 rounded">
-                        <div className="w-2.5 h-2.5 sm:w-3 sm:h-3">{getMediaIcon(watch.media_type)}</div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="w-9 h-12 sm:w-10 sm:h-14 bg-dark-600 rounded flex items-center justify-center text-gray-500 flex-shrink-0">
-                      <div className="w-3.5 h-3.5 sm:w-4 sm:h-4">{getMediaIcon(watch.media_type)}</div>
-                    </div>
+
+          {/* Mobile View */}
+          <div className="md:hidden divide-y divide-dark-700/50">
+            {stats.recentWatches.map((watch, index) => (
+              <div key={index} className="flex gap-3 p-3 hover:bg-dark-700/30 transition-colors">
+                <div className="flex-shrink-0 w-11 h-16 bg-dark-700 rounded overflow-hidden flex items-center justify-center">
+                  <MediaThumbnail
+                    src={watch.thumb}
+                    alt={watch.title}
+                    title={watch.title}
+                    serverType={watch.server_type}
+                    className="w-full h-full"
+                    iconSize="w-5 h-5"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-medium text-white truncate">{watch.title}</h4>
+                  {watch.parent_title && (
+                    <p className="text-xs text-gray-400 truncate">{watch.parent_title}</p>
                   )}
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-xs font-medium text-white truncate">{watch.title}</h4>
-                    {watch.parent_title && (
-                      <p className="text-xs text-gray-400 truncate">{watch.parent_title}</p>
-                    )}
-
-                    {/* Meta Info */}
-                    <div className="flex items-center gap-1.5 mt-0.5 text-xs text-gray-500">
-                      <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                      <span className="truncate">{formatTimeAgo(watch.watched_at)}</span>
+                  <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                    {getServerIcon(watch.server_type)}
+                    <span className="capitalize">{watch.media_type}</span>
+                    <span>·</span>
+                    <span>{formatTimeAgo(watch.watched_at)}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <div className="flex-1 h-1 bg-dark-600 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary-500 rounded-full"
+                        style={{ width: `${watch.percent_complete}%` }}
+                      />
                     </div>
+                    <span className="text-[10px] text-gray-500 flex-shrink-0">{watch.percent_complete}%</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
 
-                    {/* Progress Bar */}
-                    <div className="mt-1.5">
-                      <div className="w-full h-1 bg-dark-600 rounded-full overflow-hidden">
+          {/* Desktop View */}
+          <div className="hidden md:block">
+            <div className="divide-y divide-dark-700/50">
+              {stats.recentWatches.map((watch, index) => (
+                <div key={index} className="flex items-center gap-4 px-4 py-3 hover:bg-dark-700/30 transition-colors">
+                  <div className="flex-shrink-0 w-10 h-14 bg-dark-700 rounded overflow-hidden flex items-center justify-center">
+                    <MediaThumbnail
+                      src={watch.thumb}
+                      alt={watch.title}
+                      title={watch.title}
+                      serverType={watch.server_type}
+                      className="w-full h-full"
+                      iconSize="w-5 h-5"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2">
+                      <h4 className="text-sm font-medium text-white truncate">{watch.title}</h4>
+                      {watch.parent_title && (
+                        <span className="text-xs text-gray-500 truncate hidden lg:inline">{watch.parent_title}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500">
+                      {getServerIcon(watch.server_type)}
+                      <span className="capitalize">{watch.media_type}</span>
+                      {watch.stream_duration > 0 && (
+                        <>
+                          <span>·</span>
+                          <span>{formatDuration(watch.stream_duration)}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 flex-shrink-0">
+                    <div className="w-24 flex items-center gap-2">
+                      <div className="flex-1 h-1.5 bg-dark-600 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-gradient-to-r from-primary-500 to-accent-500 rounded-full"
+                          className="h-full bg-primary-500 rounded-full"
                           style={{ width: `${watch.percent_complete}%` }}
-                        ></div>
+                        />
                       </div>
+                      <span className="text-xs text-gray-500 w-8 text-right">{watch.percent_complete}%</span>
+                    </div>
+                    <div className="text-xs text-gray-500 w-24 text-right">
+                      <Clock className="w-3 h-3 inline mr-1" />
+                      {formatTimeAgo(watch.watched_at)}
                     </div>
                   </div>
                 </div>
