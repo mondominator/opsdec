@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getHistory, deleteHistoryItem } from '../utils/api';
 import { formatTimestamp, formatMediaType, formatDuration } from '../utils/format';
-import { History as HistoryIcon, Search, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Book } from 'lucide-react';
+import { History as HistoryIcon, Search, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Book, SlidersHorizontal } from 'lucide-react';
 import { useTimezone } from '../contexts/TimezoneContext';
 
 // Thumbnail component with error handling - shows placeholder on load failure
@@ -73,6 +73,7 @@ function History() {
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [sortField, setSortField] = useState('watched_at');
   const [sortDirection, setSortDirection] = useState('desc');
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   useEffect(() => {
     loadHistory();
   }, []);
@@ -297,89 +298,105 @@ function History() {
               placeholder="Search by title, show name, or username..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-primary-500"
+              className="w-full pl-10 pr-4 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white placeholder-gray-400 text-sm md:text-base focus:outline-none focus:border-primary-500"
             />
           </div>
 
-          {/* Filters Row */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* User Filter */}
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">User</label>
-              <select
-                value={filterUser}
-                onChange={(e) => setFilterUser(e.target.value)}
-                className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
-              >
-                <option value="">All Users</option>
-                {uniqueUsers.map(user => (
-                  <option key={user} value={user}>{user}</option>
-                ))}
-              </select>
+          {/* Mobile Filters Toggle */}
+          <button
+            onClick={() => setShowMobileFilters(!showMobileFilters)}
+            className="md:hidden flex items-center gap-2 text-sm text-gray-300 hover:text-white transition-colors"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            <span>Filters</span>
+            {hasActiveFilters && (
+              <span className="bg-primary-600 text-white text-xs rounded-full px-1.5 py-0.5 leading-none">
+                {[filterUser, filterServer, filterType].filter(Boolean).length}
+              </span>
+            )}
+          </button>
+
+          {/* Filters Row - always visible on desktop, toggled on mobile */}
+          <div className={`${showMobileFilters ? 'block' : 'hidden'} md:block`}>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* User Filter */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">User</label>
+                <select
+                  value={filterUser}
+                  onChange={(e) => setFilterUser(e.target.value)}
+                  className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                >
+                  <option value="">All Users</option>
+                  {uniqueUsers.map(user => (
+                    <option key={user} value={user}>{user}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Server Filter */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Server</label>
+                <select
+                  value={filterServer}
+                  onChange={(e) => setFilterServer(e.target.value)}
+                  className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                >
+                  <option value="">All Servers</option>
+                  {uniqueServers.map(server => (
+                    <option key={server} value={server}>{server.charAt(0).toUpperCase() + server.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Type Filter */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">
+                  Type
+                  <span className="ml-2 text-gray-500">
+                    ({filteredHistory.length} of {allHistory.length})
+                  </span>
+                </label>
+                <select
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                  className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                >
+                  <option value="">All Types</option>
+                  {uniqueTypes.map(type => (
+                    <option key={type} value={type}>{formatMediaType(type)}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Items Per Page */}
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Items per page</label>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                  className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                >
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                  <option value={250}>250</option>
+                </select>
+              </div>
             </div>
 
-            {/* Server Filter */}
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Server</label>
-              <select
-                value={filterServer}
-                onChange={(e) => setFilterServer(e.target.value)}
-                className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
-              >
-                <option value="">All Servers</option>
-                {uniqueServers.map(server => (
-                  <option key={server} value={server}>{server.charAt(0).toUpperCase() + server.slice(1)}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Type Filter */}
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">
-                Type
-                <span className="ml-2 text-gray-500">
-                  ({filteredHistory.length} of {allHistory.length})
-                </span>
-              </label>
-              <select
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-                className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
-              >
-                <option value="">All Types</option>
-                {uniqueTypes.map(type => (
-                  <option key={type} value={type}>{formatMediaType(type)}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Items Per Page */}
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Items per page</label>
-              <select
-                value={itemsPerPage}
-                onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-dark-700 border border-dark-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
-              >
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-                <option value={250}>250</option>
-              </select>
-            </div>
+            {/* Clear Filters Button */}
+            {hasActiveFilters && (
+              <div className="flex justify-start items-center mt-4">
+                <button
+                  onClick={clearFilters}
+                  className="text-sm text-primary-500 hover:text-primary-400"
+                >
+                  Clear all filters
+                </button>
+              </div>
+            )}
           </div>
-
-          {/* Clear Filters Button */}
-          {hasActiveFilters && (
-            <div className="flex justify-start items-center">
-              <button
-                onClick={clearFilters}
-                className="text-sm text-primary-500 hover:text-primary-400"
-              >
-                Clear all filters
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
