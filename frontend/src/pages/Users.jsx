@@ -168,11 +168,11 @@ function Users() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-white font-medium truncate">{user.username}</span>
-                      {user.is_admin && (
+                      {user.is_admin ? (
                         <span className="text-xs bg-primary-500/20 text-primary-400 px-2 py-0.5 rounded flex-shrink-0">
                           Admin
                         </span>
-                      )}
+                      ) : null}
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       {user.is_mapped && user.server_types && user.server_types.length > 0 ? (

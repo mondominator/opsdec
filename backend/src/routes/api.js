@@ -1172,22 +1172,16 @@ router.get('/servers', (req, res) => {
 // Get server health status
 router.get('/servers/health', (req, res) => {
   try {
-    const servers = db.prepare('SELECT id, type, name, enabled FROM servers').all();
-    const health = servers.map(server => {
-      // Check if server has had recent activity (within last 5 minutes)
-      const recentActivity = db.prepare(`
-        SELECT COUNT(*) as count FROM sessions
-        WHERE server_type = ? AND updated_at > ?
-      `).get(server.type, Math.floor(Date.now() / 1000) - 300);
-
-      return {
-        id: server.id,
-        type: server.type,
-        name: server.name,
-        enabled: server.enabled,
-        healthy: server.enabled === 1 && recentActivity.count > 0
-      };
-    });
+    const servers = db.prepare('SELECT id, type, name, enabled, last_healthy_at FROM servers').all();
+    // Consider server healthy if it responded within the last 3 minutes
+    const healthWindow = Math.floor(Date.now() / 1000) - 180;
+    const health = servers.map(server => ({
+      id: server.id,
+      type: server.type,
+      name: server.name,
+      enabled: server.enabled,
+      healthy: server.enabled === 1 && server.last_healthy_at != null && server.last_healthy_at > healthWindow
+    }));
 
     res.json({ success: true, data: health });
   } catch (error) {
