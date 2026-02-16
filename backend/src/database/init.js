@@ -178,6 +178,19 @@ export function initDatabase() {
     )
   `);
 
+  // Image cache - disk-cached cover images for offline resilience
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS image_cache (
+      url_hash TEXT PRIMARY KEY,
+      original_url TEXT NOT NULL,
+      file_path TEXT NOT NULL,
+      content_type TEXT NOT NULL,
+      file_size INTEGER NOT NULL,
+      created_at INTEGER DEFAULT (strftime('%s', 'now')),
+      last_accessed_at INTEGER DEFAULT (strftime('%s', 'now'))
+    )
+  `);
+
   // User mappings - map usernames from different servers to a unified username
   db.exec(`
     CREATE TABLE IF NOT EXISTS user_mappings (

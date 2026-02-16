@@ -18,6 +18,7 @@ import apiRouter from './routes/api.js';
 import authRouter from './routes/auth.js';
 import { authenticateToken, verifyToken } from './middleware/auth.js';
 import { decrypt } from './utils/crypto.js';
+import imageCache from './services/imageCache.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -89,6 +90,15 @@ app.get('/proxy/image', async (req, res) => {
       return res.status(400).send('Invalid URL protocol');
     }
 
+    // Check disk cache before doing SSRF validation or upstream fetch
+    const cached = imageCache.get(imageUrl);
+    if (cached) {
+      res.set('Content-Type', cached.contentType);
+      res.set('Cache-Control', 'public, max-age=86400');
+      res.set('X-Cache', 'HIT');
+      return res.send(cached.data);
+    }
+
     // Whitelist of trusted domains for user avatars (not internal network accessible)
     const trustedAvatarDomains = [
       'plex.tv',
@@ -144,10 +154,25 @@ app.get('/proxy/image', async (req, res) => {
       httpsAgent,
     });
 
-    res.set('Content-Type', response.headers['content-type']);
-    res.set('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+    const contentType = response.headers['content-type'];
+
+    // Cache the successfully fetched image to disk
+    imageCache.put(imageUrl, Buffer.from(response.data), contentType);
+
+    res.set('Content-Type', contentType);
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.set('X-Cache', 'MISS');
     res.send(response.data);
   } catch (error) {
+    // Upstream fetch failed — try serving stale cache as fallback
+    const stale = imageCache.get(req.query.url);
+    if (stale) {
+      res.set('Content-Type', stale.contentType);
+      res.set('Cache-Control', 'public, max-age=86400');
+      res.set('X-Cache', 'STALE');
+      return res.send(stale.data);
+    }
+
     console.error('Error proxying image:', error.message);
     res.status(500).send('Error fetching image');
   }
