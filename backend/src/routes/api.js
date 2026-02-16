@@ -1,6 +1,6 @@
 import express from 'express';
 import db from '../database/init.js';
-import { audiobookshelfService, sapphoService, jellyfinService } from '../services/monitor.js';
+import { audiobookshelfService, sapphoService, jellyfinService, getServerHealthStatus } from '../services/monitor.js';
 import { getJobs, runJob, updateJob } from '../services/jobs.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { encrypt, decrypt } from '../utils/crypto.js';
@@ -1172,16 +1172,17 @@ router.get('/servers', (req, res) => {
 // Get server health status
 router.get('/servers/health', (req, res) => {
   try {
-    const servers = db.prepare('SELECT id, type, name, enabled, last_healthy_at FROM servers').all();
-    // Consider server healthy if it responded within the last 3 minutes
-    const healthWindow = Math.floor(Date.now() / 1000) - 180;
-    const health = servers.map(server => ({
-      id: server.id,
-      type: server.type,
-      name: server.name,
-      enabled: server.enabled,
-      healthy: server.enabled === 1 && server.last_healthy_at != null && server.last_healthy_at > healthWindow
-    }));
+    const servers = db.prepare('SELECT id, type, name, enabled FROM servers').all();
+    const health = servers.map(server => {
+      const status = getServerHealthStatus(server.id);
+      return {
+        id: server.id,
+        type: server.type,
+        name: server.name,
+        enabled: server.enabled,
+        healthy: server.enabled === 1 && (status ? status.healthy : false)
+      };
+    });
 
     res.json({ success: true, data: health });
   } catch (error) {

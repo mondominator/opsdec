@@ -16,6 +16,8 @@ let audiobookshelfService = null;
 let sapphoService = null;
 let jellyfinService = null;
 let cronJob = null;
+// Track server health based on poll results (server_id -> { healthy, lastChecked, error })
+const serverHealthMap = new Map();
 
 // Helper function to get history filter settings
 function getHistorySettings() {
@@ -1210,6 +1212,7 @@ async function checkActivity(services) {
     for (const { name, service, type, id } of services) {
       try {
         const activeStreams = await service.getActiveStreams();
+        serverHealthMap.set(id, { healthy: true, lastChecked: Date.now() });
 
         // Server responded successfully - mark as healthy
         try {
@@ -1224,6 +1227,7 @@ async function checkActivity(services) {
           await updateSession(activity, type);
         }
       } catch (error) {
+        serverHealthMap.set(id, { healthy: false, lastChecked: Date.now(), error: error.message });
         console.error(`Error checking ${name} activity:`, error.message);
       }
     }
@@ -1521,6 +1525,10 @@ export function startActivityMonitor() {
   cronJob = cron.schedule('*/60 * * * * *', () => {
     checkActivity(services);
   });
+}
+
+export function getServerHealthStatus(serverId) {
+  return serverHealthMap.get(serverId) || null;
 }
 
 export function restartMonitoring() {
