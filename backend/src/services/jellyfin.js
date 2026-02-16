@@ -43,13 +43,8 @@ class JellyfinService {
   }
 
   async getSessions() {
-    try {
-      const response = await this.client.get('/Sessions');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching Jellyfin sessions:', error.message);
-      return [];
-    }
+    const response = await this.client.get('/Sessions');
+    return response.data;
   }
 
   async getUsers() {

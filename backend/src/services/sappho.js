@@ -74,28 +74,23 @@ class SapphoService {
    * This now uses the /api/sessions endpoint similar to Plex
    */
   async getActiveStreams() {
-    try {
-      const response = await this.client.get('/api/sessions');
-      const sessions = response.data.sessions || [];
+    const response = await this.client.get('/api/sessions');
+    const sessions = response.data.sessions || [];
 
-      const activeStreams = [];
+    const activeStreams = [];
 
-      console.log(`📊 Found ${sessions.length} active Sappho session(s)`);
+    console.log(`📊 Found ${sessions.length} active Sappho session(s)`);
 
-      for (const session of sessions) {
-        const activity = this.parseSessionToActivity(session);
-        if (activity) {
-          activeStreams.push(activity);
-        }
+    for (const session of sessions) {
+      const activity = this.parseSessionToActivity(session);
+      if (activity) {
+        activeStreams.push(activity);
       }
-
-      // OpsDec's monitor.js will handle session lifecycle (like Plex/Emby)
-      // No need for manual cleanup - sessions not in this list will be auto-stopped
-      return activeStreams;
-    } catch (error) {
-      console.error('Error getting active Sappho streams:', error.message);
-      return [];
     }
+
+    // OpsDec's monitor.js will handle session lifecycle (like Plex/Emby)
+    // No need for manual cleanup - sessions not in this list will be auto-stopped
+    return activeStreams;
   }
 
   /**

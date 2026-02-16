@@ -40,13 +40,8 @@ class PlexService {
   }
 
   async getSessions() {
-    try {
-      const response = await this.client.get('/status/sessions');
-      return response.data.MediaContainer.Metadata || [];
-    } catch (error) {
-      console.error('Error fetching Plex sessions:', error.message);
-      return [];
-    }
+    const response = await this.client.get('/status/sessions');
+    return response.data.MediaContainer.Metadata || [];
   }
 
   async getUsers() {

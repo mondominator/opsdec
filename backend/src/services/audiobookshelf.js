@@ -243,47 +243,40 @@ class AudiobookshelfService {
   }
 
   async getPlaybackSessions() {
+    // Try the /api/users endpoint with openPlaySessions parameter first
     try {
-      // Instead of getting "open" sessions (which includes paused sessions),
-      // we should look for users with active playback sessions
-      // Try the /api/users endpoint with openPlaySessions parameter
-      try {
-        const usersResponse = await this.client.get('/api/users?openPlaySessions=1');
-        const activeSessions = [];
+      const usersResponse = await this.client.get('/api/users?openPlaySessions=1');
+      const activeSessions = [];
 
-        if (usersResponse.data.users) {
-          for (const user of usersResponse.data.users) {
-            // Check if user has an active session (mostRecent with mediaPlayer)
-            if (user.mostRecent?.mediaPlayer) {
-              // This user has an active playback session
-              // Get their session details from /api/sessions
-              const sessionResponse = await this.client.get(`/api/sessions?userId=${user.id}&filterBy=open&sort=updatedAt&desc=1&limit=1`);
-              const userSessions = sessionResponse.data.sessions || sessionResponse.data || [];
-              if (userSessions.length > 0) {
-                activeSessions.push(...userSessions);
-              }
+      if (usersResponse.data.users) {
+        for (const user of usersResponse.data.users) {
+          // Check if user has an active session (mostRecent with mediaPlayer)
+          if (user.mostRecent?.mediaPlayer) {
+            // This user has an active playback session
+            // Get their session details from /api/sessions
+            const sessionResponse = await this.client.get(`/api/sessions?userId=${user.id}&filterBy=open&sort=updatedAt&desc=1&limit=1`);
+            const userSessions = sessionResponse.data.sessions || sessionResponse.data || [];
+            if (userSessions.length > 0) {
+              activeSessions.push(...userSessions);
             }
           }
         }
-
-        if (activeSessions.length > 0) {
-          console.log(`Found ${activeSessions.length} users with active playback`);
-          return activeSessions;
-        }
-      } catch {
-        console.log('Failed to check users for active sessions, falling back to open sessions');
       }
 
-      // Fallback: Get open/active playback sessions from /api/sessions?filterBy=open
-      // The default /api/sessions only returns closed/completed sessions
-      // Sort by updatedAt descending to get the most recently active sessions first
-      const response = await this.client.get('/api/sessions?filterBy=open&sort=updatedAt&desc=1');
-      const sessions = response.data.sessions || response.data || [];
-      return sessions;
-    } catch (error) {
-      console.error('Error fetching Audiobookshelf playback sessions:', error.message);
-      return [];
+      if (activeSessions.length > 0) {
+        console.log(`Found ${activeSessions.length} users with active playback`);
+        return activeSessions;
+      }
+    } catch {
+      console.log('Failed to check users for active sessions, falling back to open sessions');
     }
+
+    // Fallback: Get open/active playback sessions from /api/sessions?filterBy=open
+    // The default /api/sessions only returns closed/completed sessions
+    // Sort by updatedAt descending to get the most recently active sessions first
+    const response = await this.client.get('/api/sessions?filterBy=open&sort=updatedAt&desc=1');
+    const sessions = response.data.sessions || response.data || [];
+    return sessions;
   }
 
   async getListeningSessions() {
