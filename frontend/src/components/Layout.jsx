@@ -133,7 +133,7 @@ function Layout({ children }) {
                   <div className="flex items-center gap-2 ml-1 pl-4 border-l border-dark-700">
                     {serverHealth.map((server) => (
                       <div key={server.id} className="flex items-center gap-1" title={`${server.name}: ${server.healthy ? 'Healthy' : server.enabled ? 'Unreachable' : 'Disabled'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${server.healthy ? 'bg-green-500' : server.enabled ? 'bg-yellow-500' : 'bg-gray-600'}`} />
+                        <span className={`w-1.5 h-1.5 rounded-full ${server.healthy ? 'bg-green-500' : server.enabled ? 'bg-red-500' : 'bg-gray-600'}`} />
                         {getServerIcon(server.type)}
                       </div>
                     ))}
@@ -146,7 +146,7 @@ function Layout({ children }) {
               <div className="flex md:hidden items-center gap-2">
                 {serverHealth.map((server) => (
                   <div key={server.id} className="flex items-center gap-1" title={`${server.name}: ${server.healthy ? 'Healthy' : 'Inactive'}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${server.healthy ? 'bg-green-500' : server.enabled ? 'bg-yellow-500' : 'bg-gray-600'}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full ${server.healthy ? 'bg-green-500' : server.enabled ? 'bg-red-500' : 'bg-gray-600'}`} />
                     {getServerIcon(server.type)}
                   </div>
                 ))}
