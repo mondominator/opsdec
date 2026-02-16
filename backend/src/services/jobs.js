@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import { db } from '../database/init.js';
+import imageCache from './imageCache.js';
 
 // Job definitions
 const jobDefinitions = {
@@ -14,6 +15,12 @@ const jobDefinitions = {
     description: 'Consolidate duplicate history entries with same media_id + user_id',
     cronSchedule: '*/15 * * * *', // Every 15 minutes
     handler: mergeDuplicatesJob
+  },
+  'evict-image-cache': {
+    name: 'Evict Image Cache',
+    description: 'Remove expired and excess cached cover images from disk',
+    cronSchedule: '0 */6 * * *', // Every 6 hours
+    handler: evictImageCacheJob
   }
 };
 
@@ -516,4 +523,8 @@ function mergeDuplicatesJob() {
   }
 
   return { merged, duplicateSets: duplicates.length };
+}
+
+function evictImageCacheJob() {
+  return imageCache.evict();
 }
