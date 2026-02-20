@@ -138,6 +138,40 @@ class AudiobookshelfService {
     }
   }
 
+  async getRecentlyAdded(limit = 20) {
+    try {
+      const libraries = await this.getLibraries();
+      const items = [];
+
+      for (const library of libraries) {
+        if (library.type !== 'book') continue;
+
+        const response = await this.client.get(`/api/libraries/${library.id}/items`, {
+          params: { sort: 'addedAt', desc: 1, limit },
+        });
+
+        const libraryItems = response.data.results || [];
+        for (const item of libraryItems) {
+          const metadata = item.media?.metadata || {};
+          items.push({
+            id: item.id,
+            name: metadata.title || 'Unknown',
+            type: 'audiobook',
+            year: metadata.publishedYear ? parseInt(metadata.publishedYear) : null,
+            seriesName: metadata.seriesName || (metadata.series?.length > 0 ? metadata.series[0].name : null),
+            addedAt: item.addedAt ? new Date(item.addedAt * 1000).toISOString() : null,
+            thumb: `${this.baseUrl}/api/items/${item.id}/cover`,
+          });
+        }
+      }
+
+      return items.slice(0, limit);
+    } catch (error) {
+      console.error('Error fetching Audiobookshelf recently added:', error.message);
+      return [];
+    }
+  }
+
   // Search for a book by title - used to find current item ID when book was moved/reimported
   async searchByTitle(title) {
     try {
