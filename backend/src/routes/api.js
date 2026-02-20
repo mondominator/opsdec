@@ -1,6 +1,6 @@
 import express from 'express';
 import db from '../database/init.js';
-import { audiobookshelfService, sapphoService, jellyfinService, getServerHealthStatus } from '../services/monitor.js';
+import { embyService, plexService, audiobookshelfService, sapphoService, jellyfinService, getServerHealthStatus } from '../services/monitor.js';
 import { getJobs, runJob, updateJob } from '../services/jobs.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { encrypt, decrypt } from '../utils/crypto.js';
@@ -1364,6 +1364,72 @@ router.post('/monitoring/restart', async (req, res) => {
     res.json({ success: true, message: 'Monitoring service restarted' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get recently added media from all servers
+router.get('/stats/recently-added', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+
+    // Collect recently added from all active services in parallel
+    const promises = [];
+
+    if (plexService) promises.push(plexService.getRecentlyAdded(limit).then(items => items.map(i => ({ ...i, server_type: 'plex' }))));
+    if (embyService) promises.push(embyService.getRecentlyAdded(limit).then(items => items.map(i => ({ ...i, server_type: 'emby' }))));
+    if (jellyfinService) promises.push(jellyfinService.getRecentlyAdded(limit).then(items => items.map(i => ({ ...i, server_type: 'jellyfin' }))));
+    if (audiobookshelfService) promises.push(audiobookshelfService.getRecentlyAdded(limit).then(items => items.map(i => ({ ...i, server_type: 'audiobookshelf' }))));
+    if (sapphoService) promises.push(sapphoService.getRecentlyAdded(limit).then(items => items.map(i => ({ ...i, server_type: 'sappho' }))));
+
+    const results = await Promise.all(promises);
+    const allItems = results.flat();
+
+    // Deduplicate by title + year
+    const deduped = new Map();
+    for (const item of allItems) {
+      const key = `${(item.name || '').toLowerCase().trim()}|${item.year || ''}`;
+      const existing = deduped.get(key);
+      if (!existing) {
+        deduped.set(key, { ...item, servers: [item.server_type] });
+      } else {
+        // Keep earliest addedAt and first available thumb
+        if (item.addedAt && (!existing.addedAt || item.addedAt < existing.addedAt)) {
+          existing.addedAt = item.addedAt;
+        }
+        if (!existing.thumb && item.thumb) {
+          existing.thumb = item.thumb;
+        }
+        if (!existing.servers.includes(item.server_type)) {
+          existing.servers.push(item.server_type);
+        }
+      }
+    }
+
+    // Split into shows and books, sorted by addedAt descending
+    const all = Array.from(deduped.values());
+    const sortByAdded = (a, b) => {
+      if (!a.addedAt) return 1;
+      if (!b.addedAt) return -1;
+      return new Date(b.addedAt) - new Date(a.addedAt);
+    };
+
+    const showTypes = ['episode', 'show', 'series', 'season', 'movie', 'Movie', 'Episode'];
+    const bookTypes = ['audiobook', 'book', 'track', 'podcast'];
+
+    const recentShows = all
+      .filter(i => showTypes.includes(i.type))
+      .sort(sortByAdded)
+      .slice(0, limit);
+
+    const recentBooks = all
+      .filter(i => bookTypes.includes(i.type))
+      .sort(sortByAdded)
+      .slice(0, limit);
+
+    res.json({ success: true, data: { recentShows, recentBooks } });
+  } catch (error) {
+    console.error('Error fetching recently added:', error.message);
+    res.status(500).json({ success: false, error: 'Failed to fetch recently added media' });
   }
 });
 
