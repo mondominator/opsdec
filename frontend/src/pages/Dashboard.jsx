@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDashboardStats, getActivity, getWsToken } from '../utils/api';
+import { getDashboardStats, getActivity, getWsToken, getRecentlyAdded } from '../utils/api';
 import { formatDuration } from '../utils/format';
 import { Users, Headphones, ChevronDown, Book, Play, MapPin, Film, Tv } from 'lucide-react';
 
@@ -72,6 +72,7 @@ function Dashboard() {
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedItems, setExpandedItems] = useState({});
+  const [recentlyAdded, setRecentlyAdded] = useState(null);
   const wsRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
 
@@ -136,13 +137,15 @@ function Dashboard() {
 
   const loadData = async () => {
     try {
-      const [statsRes, activityRes] = await Promise.all([
+      const [statsRes, activityRes, recentRes] = await Promise.all([
         getDashboardStats(),
         getActivity(),
+        getRecentlyAdded(),
       ]);
 
       setStats(statsRes.data.data);
       setActivity(activityRes.data.data);
+      setRecentlyAdded(recentRes.data.data);
     } catch (error) {
       console.error('Error loading dashboard:', error);
     } finally {
@@ -201,6 +204,17 @@ function Dashboard() {
     stats.topLocations?.length > 0 && {
       type: 'location', locations: stats.topLocations, count: 5, span: '',
       icon: MapPin, label: 'Top Locations', accent: 'border-sky-400', iconColor: 'text-sky-400/70',
+    },
+  ].filter(Boolean);
+
+  const recentSections = [
+    recentlyAdded?.recentShows?.length > 0 && {
+      type: 'recent', items: recentlyAdded.recentShows, category: 'recent-shows', count: 5, span: '',
+      icon: Tv, label: 'Recently Added Shows', accent: 'border-indigo-400', iconColor: 'text-indigo-400/70',
+    },
+    recentlyAdded?.recentBooks?.length > 0 && {
+      type: 'recent', items: recentlyAdded.recentBooks, category: 'recent-books', count: 5, span: '',
+      icon: Book, label: 'Recently Added Books', accent: 'border-orange-400', iconColor: 'text-orange-400/70', bookMode: true,
     },
   ].filter(Boolean);
 
@@ -338,6 +352,37 @@ function Dashboard() {
       );
     });
 
+  const renderRecentRows = (section) =>
+    section.items.slice(0, section.count).map((item, index) => (
+      <div
+        key={index}
+        className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-white/[0.03] transition-colors"
+      >
+        <span className="flex-shrink-0 w-4 text-center text-gray-600 text-[11px] font-mono">{index + 1}</span>
+        <div className="flex-shrink-0 w-7 h-10 rounded overflow-hidden bg-dark-700">
+          <MediaThumbnail
+            src={item.thumb}
+            alt={item.name}
+            title={item.name}
+            serverType={section.bookMode ? 'audiobookshelf' : item.server_type}
+            className="w-full h-full"
+            iconSize="w-3 h-3"
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-white text-[13px] truncate" title={item.name}>{item.name}</div>
+          {item.seriesName && (
+            <div className="text-[11px] text-gray-500 truncate">{item.seriesName}</div>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {item.servers?.map(s => (
+            <span key={s}>{getServerIcon(s, 'w-3 h-3')}</span>
+          ))}
+        </div>
+      </div>
+    ));
+
   const renderSection = (section) => {
     const Icon = section.icon;
     return (
@@ -350,6 +395,7 @@ function Dashboard() {
           {section.type === 'media' && renderMediaRows(section)}
           {section.type === 'user' && renderUserRows(section)}
           {section.type === 'location' && renderLocationRows(section)}
+          {section.type === 'recent' && renderRecentRows(section)}
         </div>
       </div>
     );
@@ -577,10 +623,24 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Data grid — wide + narrow sections */}
-      {sections.length > 0 && (
+      {/* Popular media grid */}
+      {sections.filter((_, i) => i < 3).length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 items-start">
-          {sections.map(renderSection)}
+          {sections.filter((_, i) => i < 3).map(renderSection)}
+        </div>
+      )}
+
+      {/* Recently added grid */}
+      {recentSections.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 items-start">
+          {recentSections.map(renderSection)}
+        </div>
+      )}
+
+      {/* Top users/locations grid */}
+      {sections.filter((_, i) => i >= 3).length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 items-start">
+          {sections.filter((_, i) => i >= 3).map(renderSection)}
         </div>
       )}
     </div>
