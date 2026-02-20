@@ -186,13 +186,13 @@ function Dashboard() {
       type: 'media', items: stats.mostWatchedMovies, category: 'movies', count: 5, span: '',
       icon: Film, label: 'Popular Movies', accent: 'border-blue-400', iconColor: 'text-blue-400/70',
     },
-    stats.topWatchers?.length > 0 && {
-      type: 'user', users: stats.topWatchers, count: 5, span: '',
-      icon: Film, label: 'Top Watchers', accent: 'border-emerald-400', iconColor: 'text-emerald-400/70',
-    },
     stats.mostWatchedAudiobooks?.length > 0 && {
       type: 'media', items: stats.mostWatchedAudiobooks, category: 'books', count: 5, span: '',
       icon: Book, label: 'Popular Books', accent: 'border-amber-400', iconColor: 'text-amber-400/70', bookMode: true,
+    },
+    stats.topWatchers?.length > 0 && {
+      type: 'user', users: stats.topWatchers, count: 5, span: '',
+      icon: Film, label: 'Top Watchers', accent: 'border-emerald-400', iconColor: 'text-emerald-400/70',
     },
     stats.topListeners?.length > 0 && {
       type: 'user', users: stats.topListeners, count: 5, span: '',
@@ -230,9 +230,9 @@ function Dashboard() {
             <div className="flex items-center gap-1.5 text-[10px] text-gray-500 flex-shrink-0">
               <span className="flex items-center gap-0.5">
                 <Users className="w-2.5 h-2.5" />
-                {item.unique_users || item.plays}
+                {item.users?.length || item.unique_users || item.plays}
               </span>
-              {item.plays > (item.unique_users || item.plays) && (
+              {item.plays > (item.users?.length || item.unique_users || item.plays) && (
                 <span className="flex items-center gap-0.5">
                   <Play className="w-2.5 h-2.5" />
                   {item.plays}
@@ -579,7 +579,7 @@ function Dashboard() {
 
       {/* Data grid — wide + narrow sections */}
       {sections.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 items-start">
           {sections.map(renderSection)}
         </div>
       )}
