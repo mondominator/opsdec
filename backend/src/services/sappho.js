@@ -69,6 +69,28 @@ class SapphoService {
     }];
   }
 
+  async getRecentlyAdded(limit = 20) {
+    try {
+      const response = await this.client.get('/api/audiobooks', {
+        params: { sort: 'addedAt', desc: true, limit },
+      });
+
+      const audiobooks = response.data.audiobooks || response.data || [];
+      return audiobooks.slice(0, limit).map(book => ({
+        id: book.id?.toString(),
+        name: book.title || 'Unknown',
+        type: 'audiobook',
+        year: book.year || null,
+        seriesName: book.series || null,
+        addedAt: book.addedAt ? new Date(book.addedAt * 1000).toISOString() : (book.createdAt || null),
+        thumb: book.id ? `${this.baseUrl}/api/audiobooks/${book.id}/cover` : null,
+      }));
+    } catch (error) {
+      console.error('Error fetching Sappho recently added:', error.message);
+      return [];
+    }
+  }
+
   /**
    * Get active streams from Sappho's session tracking
    * This now uses the /api/sessions endpoint similar to Plex
