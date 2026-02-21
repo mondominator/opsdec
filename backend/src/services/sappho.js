@@ -71,20 +71,24 @@ class SapphoService {
 
   async getRecentlyAdded(limit = 20) {
     try {
+      // Sappho API does not support sorting, so fetch all and sort client-side
       const response = await this.client.get('/api/audiobooks', {
-        params: { sort: 'addedAt', desc: true, limit },
+        params: { limit: 1000 },
       });
 
       const audiobooks = response.data.audiobooks || response.data || [];
-      return audiobooks.slice(0, limit).map(book => ({
-        id: book.id?.toString(),
-        name: book.title || 'Unknown',
-        type: 'audiobook',
-        year: book.year || null,
-        seriesName: book.series || null,
-        addedAt: book.addedAt ? new Date(book.addedAt * 1000).toISOString() : (book.createdAt || null),
-        thumb: book.id ? `${this.baseUrl}/api/audiobooks/${book.id}/cover` : null,
-      }));
+      return audiobooks
+        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+        .slice(0, limit)
+        .map(book => ({
+          id: book.id?.toString(),
+          name: book.title || 'Unknown',
+          type: 'audiobook',
+          year: book.published_year || null,
+          seriesName: book.series || null,
+          addedAt: book.created_at ? new Date(book.created_at).toISOString() : null,
+          thumb: book.id ? `${this.baseUrl}/api/audiobooks/${book.id}/cover` : null,
+        }));
     } catch (error) {
       console.error('Error fetching Sappho recently added:', error.message);
       return [];

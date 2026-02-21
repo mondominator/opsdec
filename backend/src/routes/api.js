@@ -4,6 +4,7 @@ import { embyService, plexService, audiobookshelfService, sapphoService, jellyfi
 import { getJobs, runJob, updateJob } from '../services/jobs.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { encrypt, decrypt } from '../utils/crypto.js';
+import telegram from '../services/telegram.js';
 import multer from 'multer';
 
 const router = express.Router();
@@ -1367,6 +1368,9 @@ router.post('/monitoring/restart', async (req, res) => {
   }
 });
 
+// Track previously seen recently added items for telegram notifications
+let recentlyAddedSeenKeys = null;
+
 // Get recently added media from all servers
 router.get('/stats/recently-added', async (req, res) => {
   try {
@@ -1390,7 +1394,7 @@ router.get('/stats/recently-added', async (req, res) => {
 
     // Determine which servers to query (union of video and book preferences)
     const serversToQuery = new Set();
-    const videoServers = ['plex', 'emby', 'jellyfin', 'sappho'];
+    const videoServers = ['plex', 'emby', 'jellyfin'];
     const bookServers = ['audiobookshelf', 'sappho'];
 
     if (preferredVideo && serviceMap[preferredVideo]) {
@@ -1413,16 +1417,26 @@ router.get('/stats/recently-added', async (req, res) => {
     const results = await Promise.all(promises);
     const allItems = results.flat();
 
-    // Deduplicate by title + year
+    // Deduplicate: normalize names aggressively, match on primary title
+    const normalize = (s) => (s || '')
+      .toLowerCase()
+      .replace(/^(the|a|an)\s+/i, '')
+      .replace(/\(.*?\)/g, '')            // strip (unabridged), (2024), etc.
+      .replace(/\d+\s*(of|\/)\s*\d+/g, '') // strip "01 of 18", "1/3"
+      .replace(/\b(season|volume|vol|part|book)\s*\d*\b/gi, '') // strip "Season 1", "Volume 2"
+      .replace(/[^a-z0-9]/g, '')
+      .trim();
     const deduped = new Map();
     for (const item of allItems) {
-      const key = `${(item.name || '').toLowerCase().trim()}|${item.year || ''}`;
+      const key = normalize(item.name);
+      if (!key) continue;
       const existing = deduped.get(key);
       if (!existing) {
-        deduped.set(key, { ...item, servers: [item.server_type] });
+        deduped.set(key, { ...item, servers: [item.server_type], count: 1 });
       } else {
-        // Keep earliest addedAt and first available thumb
-        if (item.addedAt && (!existing.addedAt || item.addedAt < existing.addedAt)) {
+        existing.count++;
+        // Keep most recent addedAt and best available thumb
+        if (item.addedAt && (!existing.addedAt || item.addedAt > existing.addedAt)) {
           existing.addedAt = item.addedAt;
         }
         if (!existing.thumb && item.thumb) {
@@ -1434,42 +1448,36 @@ router.get('/stats/recently-added', async (req, res) => {
       }
     }
 
-    // Split into episodes, movies, and books, sorted by addedAt descending
+    // Filter by preferred server when set, then merge all into one sorted list
     const all = Array.from(deduped.values());
-    const sortByAdded = (a, b) => {
-      if (!a.addedAt) return 1;
-      if (!b.addedAt) return -1;
-      return new Date(b.addedAt) - new Date(a.addedAt);
-    };
-
-    const episodeTypes = ['episode', 'show', 'series', 'season', 'Episode'];
-    const movieTypes = ['movie', 'Movie'];
     const bookTypes = ['audiobook', 'book', 'track', 'podcast'];
 
-    // Filter by preferred server when set
-    const videoItems = preferredVideo
-      ? all.filter(i => i.server_type === preferredVideo)
-      : all;
-    const bookItems = preferredBook
-      ? all.filter(i => i.server_type === preferredBook)
-      : all;
+    const filtered = all.filter(item => {
+      const isBook = bookTypes.includes(item.type);
+      if (isBook && preferredBook) return item.server_type === preferredBook;
+      if (!isBook && preferredVideo) return item.server_type === preferredVideo;
+      return true;
+    });
 
-    const recentEpisodes = videoItems
-      .filter(i => episodeTypes.includes(i.type))
-      .sort(sortByAdded)
+    const recentItems = filtered
+      .sort((a, b) => {
+        if (!a.addedAt) return 1;
+        if (!b.addedAt) return -1;
+        return new Date(b.addedAt) - new Date(a.addedAt);
+      })
       .slice(0, limit);
 
-    const recentMovies = videoItems
-      .filter(i => movieTypes.includes(i.type))
-      .sort(sortByAdded)
-      .slice(0, limit);
+    // Check for new items and send telegram notification
+    const currentKeys = new Set(recentItems.map(i => normalize(i.name)));
+    if (recentlyAddedSeenKeys !== null) {
+      const newItems = recentItems.filter(i => !recentlyAddedSeenKeys.has(normalize(i.name)));
+      if (newItems.length > 0) {
+        telegram.notifyRecentlyAdded(newItems);
+      }
+    }
+    recentlyAddedSeenKeys = currentKeys;
 
-    const recentBooks = bookItems
-      .filter(i => bookTypes.includes(i.type))
-      .sort(sortByAdded)
-      .slice(0, limit);
-
-    res.json({ success: true, data: { recentEpisodes, recentMovies, recentBooks } });
+    res.json({ success: true, data: { recentItems } });
   } catch (error) {
     console.error('Error fetching recently added:', error.message);
     res.status(500).json({ success: false, error: 'Failed to fetch recently added media' });

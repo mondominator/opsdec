@@ -75,6 +75,7 @@ function Dashboard() {
   const [recentlyAdded, setRecentlyAdded] = useState(null);
   const wsRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
+  const recentRefreshRef = useRef(null);
 
   const connectWebSocket = useCallback(async () => {
     try {
@@ -95,6 +96,16 @@ function Dashboard() {
           const data = JSON.parse(event.data);
           if (data.type === 'session.update') {
             setActivity(data.data || []);
+          }
+          // Debounced refresh of recently added on any WS message
+          if (!recentRefreshRef.current) {
+            recentRefreshRef.current = setTimeout(async () => {
+              recentRefreshRef.current = null;
+              try {
+                const res = await getRecentlyAdded();
+                setRecentlyAdded(res.data.data);
+              } catch { /* silent refresh */ }
+            }, 10000);
           }
         } catch (e) {
           console.error('Error parsing WebSocket message:', e);
@@ -128,6 +139,9 @@ function Dashboard() {
       clearInterval(interval);
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (recentRefreshRef.current) {
+        clearTimeout(recentRefreshRef.current);
       }
       if (wsRef.current) {
         wsRef.current.close();
@@ -207,20 +221,7 @@ function Dashboard() {
     },
   ].filter(Boolean);
 
-  const recentSections = [
-    recentlyAdded?.recentEpisodes?.length > 0 && {
-      type: 'recent', items: recentlyAdded.recentEpisodes, category: 'recent-episodes', count: 5, span: '',
-      icon: Tv, label: 'Recently Added TV', accent: 'border-indigo-400', iconColor: 'text-indigo-400/70',
-    },
-    recentlyAdded?.recentMovies?.length > 0 && {
-      type: 'recent', items: recentlyAdded.recentMovies, category: 'recent-movies', count: 5, span: '',
-      icon: Film, label: 'Recently Added Movies', accent: 'border-cyan-400', iconColor: 'text-cyan-400/70',
-    },
-    recentlyAdded?.recentBooks?.length > 0 && {
-      type: 'recent', items: recentlyAdded.recentBooks, category: 'recent-books', count: 5, span: '',
-      icon: Book, label: 'Recently Added Books', accent: 'border-orange-400', iconColor: 'text-orange-400/70', bookMode: true,
-    },
-  ].filter(Boolean);
+  const recentItems = recentlyAdded?.recentItems || [];
 
   const renderMediaRows = (section) =>
     section.items.slice(0, section.count).map((item, index) => {
@@ -356,36 +357,7 @@ function Dashboard() {
       );
     });
 
-  const renderRecentRows = (section) =>
-    section.items.slice(0, section.count).map((item, index) => (
-      <div
-        key={index}
-        className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-white/[0.03] transition-colors"
-      >
-        <span className="flex-shrink-0 w-4 text-center text-gray-600 text-[11px] font-mono">{index + 1}</span>
-        <div className={`flex-shrink-0 ${section.bookMode ? 'w-10 h-10' : 'w-7 h-10'} rounded overflow-hidden bg-dark-700`}>
-          <MediaThumbnail
-            src={item.thumb}
-            alt={item.name}
-            title={item.name}
-            serverType={section.bookMode ? 'audiobookshelf' : item.server_type}
-            className="w-full h-full"
-            iconSize="w-3 h-3"
-          />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-white text-[13px] truncate" title={item.name}>{item.name}</div>
-          {item.seriesName && (
-            <div className="text-[11px] text-gray-500 truncate">{item.seriesName}</div>
-          )}
-        </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          {item.servers?.map(s => (
-            <span key={s}>{getServerIcon(s, 'w-3 h-3')}</span>
-          ))}
-        </div>
-      </div>
-    ));
+  const recentBookTypes = ['audiobook', 'book', 'track', 'podcast'];
 
   const renderSection = (section) => {
     const Icon = section.icon;
@@ -399,7 +371,6 @@ function Dashboard() {
           {section.type === 'media' && renderMediaRows(section)}
           {section.type === 'user' && renderUserRows(section)}
           {section.type === 'location' && renderLocationRows(section)}
-          {section.type === 'recent' && renderRecentRows(section)}
         </div>
       </div>
     );
@@ -477,20 +448,20 @@ function Dashboard() {
                 </div>
 
                 {/* Desktop View */}
-                <div className="hidden md:flex p-4 gap-4">
+                <div className="hidden md:flex p-3 gap-3">
                   <div className="flex-shrink-0">
-                    <div className="relative w-24 h-36 bg-dark-700 rounded-lg mb-3 overflow-hidden flex items-center justify-center">
+                    <div className="relative w-16 h-24 bg-dark-700 rounded-lg overflow-hidden flex items-center justify-center">
                       <MediaThumbnail
                         src={session.thumb}
                         alt={session.title}
                         title={session.title}
                         serverType={session.server_type}
                         className="w-full h-full"
-                        iconSize="w-12 h-12"
+                        iconSize="w-8 h-8"
                       />
                     </div>
-                    <div className={`flex items-center justify-center text-xs font-semibold ${session.server_type === 'sappho' ? '-space-x-0.5' : 'gap-1 capitalize'}`}>
-                      {getServerIcon(session.server_type, session.server_type === 'sappho' ? 'w-5 h-5' : 'w-3.5 h-3.5')}
+                    <div className={`flex items-center justify-center mt-1 text-[10px] font-semibold ${session.server_type === 'sappho' ? '-space-x-0.5' : 'gap-0.5 capitalize'}`}>
+                      {getServerIcon(session.server_type, session.server_type === 'sappho' ? 'w-4 h-4' : 'w-3 h-3')}
                       <span className={
                         session.server_type === 'emby' ? 'text-green-400' :
                         session.server_type === 'plex' ? 'text-yellow-400' :
@@ -504,13 +475,13 @@ function Dashboard() {
                     </div>
                   </div>
                   <div className="flex-1 min-w-0 flex flex-col">
-                    <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="flex items-start justify-between gap-2 mb-1">
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-semibold text-white line-clamp-2" title={session.title}>
+                        <h4 className="text-sm font-semibold text-white line-clamp-1" title={session.title}>
                           {session.title}
                         </h4>
                         {session.parent_title && (
-                          <div className="flex items-center gap-2 text-xs mt-1">
+                          <div className="flex items-center gap-2 text-xs">
                             <span className="text-gray-400 truncate">{session.parent_title}</span>
                             {session.season_number && session.episode_number && session.media_type === 'episode' && (
                               <span className="text-primary-400 font-semibold whitespace-nowrap">
@@ -521,7 +492,7 @@ function Dashboard() {
                         )}
                       </div>
                       <span
-                        className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${
+                        className={`flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                           session.state === 'playing'
                             ? 'bg-green-500/20 text-green-400'
                             : session.state === 'paused'
@@ -536,19 +507,19 @@ function Dashboard() {
                           : 'Stopped'}
                       </span>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-gray-400 mb-3">
+                    <div className="flex items-center gap-3 text-xs text-gray-400 mb-2">
                       <div
-                        className="flex items-center gap-2 cursor-pointer group"
+                        className="flex items-center gap-1.5 cursor-pointer group"
                         onClick={() => navigate(`/users/${session.user_id}`)}
                       >
                         {session.user_thumb ? (
                           <img
                             src={`/proxy/image?url=${encodeURIComponent(session.user_thumb)}`}
                             alt={session.username}
-                            className="w-6 h-6 rounded-full object-cover"
+                            className="w-5 h-5 rounded-full object-cover"
                           />
                         ) : (
-                          <div className="w-6 h-6 bg-primary-600 rounded-full flex items-center justify-center text-white text-xs font-medium">
+                          <div className="w-5 h-5 bg-primary-600 rounded-full flex items-center justify-center text-white text-[10px] font-medium">
                             {session.username.charAt(0).toUpperCase()}
                           </div>
                         )}
@@ -556,20 +527,19 @@ function Dashboard() {
                       </div>
                       <span>•</span>
                       <span className="capitalize">{session.media_type}</span>
+                      {(session.city || session.ip_address) && (
+                        <>
+                          <span>•</span>
+                          <span className="text-gray-500 truncate">
+                            {session.city === 'Local Network' ? 'Local'
+                              : session.city ? `${session.city}${session.region ? `, ${session.region}` : ''}`
+                              : session.ip_address}
+                          </span>
+                        </>
+                      )}
                     </div>
-                    {(session.city || session.ip_address) && (
-                      <div className="text-xs text-gray-500 mb-3">
-                        {session.city === 'Local Network' ? (
-                          <span>Local Network</span>
-                        ) : session.city ? (
-                          <span>{session.city}{session.region ? `, ${session.region}` : ''}{session.country ? `, ${session.country}` : ''}</span>
-                        ) : session.ip_address ? (
-                          <span>{session.ip_address}</span>
-                        ) : null}
-                      </div>
-                    )}
-                    <div className="mb-3">
-                      <div className="flex justify-between text-xs text-gray-400 mb-1">
+                    <div className="mb-2">
+                      <div className="flex justify-between text-[10px] text-gray-400 mb-0.5">
                         <span>
                           {session.current_time && session.duration
                             ? `${formatDuration(session.current_time, session.server_type === 'sappho')} / ${formatDuration(session.duration, session.server_type === 'sappho')}`
@@ -581,14 +551,14 @@ function Dashboard() {
                           <span>{session.progress_percent}%</span>
                         )}
                       </div>
-                      <div className="bg-dark-600 rounded-full h-2">
+                      <div className="bg-dark-600 rounded-full h-1.5">
                         <div
-                          className="bg-primary-500 h-2 rounded-full transition-all duration-300"
+                          className="bg-primary-500 h-1.5 rounded-full transition-all duration-300"
                           style={{ width: `${session.progress_percent}%` }}
                         />
                       </div>
                     </div>
-                    <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-xs">
+                    <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-[10px]">
                       {session.resolution && (
                         <span className="text-white font-semibold">{formatResolution(session.resolution)}</span>
                       )}
@@ -627,24 +597,60 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Popular media grid */}
-      {sections.filter((_, i) => i < 3).length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 items-start">
-          {sections.filter((_, i) => i < 3).map(renderSection)}
+      {/* Stats grid */}
+      {sections.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-start">
+          {sections.map(renderSection)}
         </div>
       )}
 
-      {/* Recently added grid */}
-      {recentSections.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 items-start">
-          {recentSections.map(renderSection)}
-        </div>
-      )}
-
-      {/* Top users/locations grid */}
-      {sections.filter((_, i) => i >= 3).length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 items-start">
-          {sections.filter((_, i) => i >= 3).map(renderSection)}
+      {/* Recently Added covers */}
+      {recentItems.length > 0 && (
+        <div className="bg-dark-800 rounded-lg overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-1.5 border-l-2 border-indigo-400 bg-dark-700/30">
+            <Film className="w-3 h-3 text-indigo-400/70" />
+            <span className="text-[11px] font-medium tracking-wider uppercase text-gray-500">Recently Added</span>
+          </div>
+          <div className="flex gap-2 p-3 overflow-x-auto scrollbar-thin scrollbar-thumb-dark-600">
+            {recentItems.map((item, index) => {
+              const isBook = recentBookTypes.includes((item.type || '').toLowerCase());
+              return (
+                <div key={index} className="flex-shrink-0 w-[100px]" title={item.name}>
+                  <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-dark-700 shadow-lg">
+                    {isBook ? (
+                      <div className="w-full h-full flex items-center justify-center p-1">
+                        <MediaThumbnail
+                          src={item.thumb}
+                          alt={item.name}
+                          title={item.name}
+                          serverType={item.server_type}
+                          className="max-w-full max-h-full rounded"
+                          iconSize="w-6 h-6"
+                        />
+                      </div>
+                    ) : (
+                      <MediaThumbnail
+                        src={item.thumb}
+                        alt={item.name}
+                        title={item.name}
+                        serverType={item.server_type}
+                        className="w-full h-full"
+                        iconSize="w-6 h-6"
+                      />
+                    )}
+                    <div className="absolute bottom-1 right-1 bg-black/70 rounded-sm p-0.5 backdrop-blur-sm">
+                      {getServerIcon(item.server_type, 'w-3 h-3')}
+                    </div>
+                    {item.count > 1 && (
+                      <div className="absolute top-1 right-1 bg-indigo-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow">
+                        {item.count}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

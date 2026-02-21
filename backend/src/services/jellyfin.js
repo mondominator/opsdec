@@ -250,15 +250,19 @@ class JellyfinService {
       const userId = await this.getFirstUserId();
       if (!userId) return [];
 
-      const response = await this.client.get('/Users/' + userId + '/Items/Latest', {
+      const response = await this.client.get('/Users/' + userId + '/Items', {
         params: {
           Limit: limit,
-          Fields: 'BasicSyncInfo,Path,ProductionYear',
-          IncludeItemTypes: 'Movie,Episode',
+          Fields: 'DateCreated,ProductionYear',
+          IncludeItemTypes: 'Movie,Series',
+          SortBy: 'DateCreated',
+          SortOrder: 'Descending',
+          Recursive: true,
         },
       });
 
-      return response.data.map(item => ({
+      const items = response.data.Items || [];
+      return items.map(item => ({
         id: item.Id,
         name: item.Name,
         type: item.Type,
@@ -268,7 +272,7 @@ class JellyfinService {
         thumb: item.ImageTags?.Primary ? `${this.baseUrl}/Items/${item.Id}/Images/Primary?api_key=${this.apiKey}` : null,
       }));
     } catch (error) {
-      console.error('Error fetching recently added:', error.message);
+      console.error('Error fetching Jellyfin recently added:', error.message);
       return [];
     }
   }

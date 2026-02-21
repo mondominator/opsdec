@@ -508,7 +508,7 @@ export function initDatabase() {
     const settingsKeys = [
       'history_min_duration', 'history_min_percent', 'history_exclusion_patterns', 'history_group_successive',
       'telegram_enabled', 'telegram_bot_token', 'telegram_chat_id',
-      'telegram_notify_playback_start', 'telegram_notify_playback_complete', 'telegram_notify_new_user',
+      'telegram_notify_playback_start', 'telegram_notify_playback_complete', 'telegram_notify_new_user', 'telegram_notify_recently_added',
       'recently_added_video_server', 'recently_added_book_server'
     ];
     const defaults = {
@@ -522,6 +522,7 @@ export function initDatabase() {
       telegram_notify_playback_start: 'true',
       telegram_notify_playback_complete: 'true',
       telegram_notify_new_user: 'true',
+      telegram_notify_recently_added: 'false',
       recently_added_video_server: '',
       recently_added_book_server: ''
     };

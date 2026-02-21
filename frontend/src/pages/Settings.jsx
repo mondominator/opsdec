@@ -1439,7 +1439,7 @@ export default function Settings() {
               className="w-full px-4 py-2 bg-dark-700 border border-dark-600 rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">All Servers</option>
-              {[...new Set(servers.map(s => s.type))].filter(t => ['plex', 'emby', 'jellyfin', 'sappho'].includes(t)).map(type => (
+              {[...new Set(servers.map(s => s.type))].filter(t => ['plex', 'emby', 'jellyfin'].includes(t)).map(type => (
                 <option key={type} value={type}>
                   {type.charAt(0).toUpperCase() + type.slice(1)}
                 </option>
@@ -1565,6 +1565,7 @@ export default function Settings() {
                   { key: 'telegram_notify_playback_start', label: 'Playback started' },
                   { key: 'telegram_notify_playback_complete', label: 'Playback completed' },
                   { key: 'telegram_notify_new_user', label: 'New user detected' },
+                  { key: 'telegram_notify_recently_added', label: 'Recently added media' },
                 ].map(({ key, label }) => (
                   <div key={key} className="flex items-center gap-3">
                     <input

@@ -91,4 +91,20 @@ function notifyNewUser(username, serverType) {
   sendMessage(text);
 }
 
-export default { isEnabled, sendMessage, testConnection, notifyPlaybackStarted, notifyPlaybackCompleted, notifyNewUser };
+function notifyRecentlyAdded(items) {
+  if (!isEnabled() || getSetting('telegram_notify_recently_added') !== 'true') return;
+  if (!items || items.length === 0) return;
+
+  const lines = items.slice(0, 10).map(item => {
+    const type = (item.type || '').toLowerCase();
+    const icon = ['audiobook', 'book'].includes(type) ? '📚' : type === 'series' ? '📺' : '🎬';
+    const year = item.year ? ` (${item.year})` : '';
+    return `${icon} <b>${item.name}</b>${year}`;
+  });
+
+  const extra = items.length > 10 ? `\n...and ${items.length - 10} more` : '';
+  const text = `🆕 <b>Recently Added</b>\n${lines.join('\n')}${extra}`;
+  sendMessage(text);
+}
+
+export default { isEnabled, sendMessage, testConnection, notifyPlaybackStarted, notifyPlaybackCompleted, notifyNewUser, notifyRecentlyAdded };
