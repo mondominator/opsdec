@@ -198,10 +198,10 @@ class PlexService {
       const items = response.data.MediaContainer.Metadata || [];
       return items.map(item => ({
         id: item.ratingKey,
-        name: item.title,
+        name: item.type === 'season' ? (item.parentTitle || item.title) : item.title,
         type: item.type,
         year: item.year,
-        seriesName: item.grandparentTitle,
+        seriesName: item.type === 'season' ? item.title : item.grandparentTitle,
         addedAt: item.addedAt ? new Date(item.addedAt * 1000).toISOString() : null,
         thumb: item.thumb ? `${this.baseUrl}${item.thumb}?X-Plex-Token=${this.token}` : null,
       }));

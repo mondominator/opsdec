@@ -1372,14 +1372,43 @@ router.get('/stats/recently-added', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
 
-    // Collect recently added from all active services in parallel
-    const promises = [];
+    // Check preferred server settings for video (movies/TV) and books
+    const videoRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('recently_added_video_server');
+    const bookRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('recently_added_book_server');
+    const preferredVideo = videoRow?.value || '';
+    const preferredBook = bookRow?.value || '';
 
-    if (plexService) promises.push(plexService.getRecentlyAdded(limit).then(items => items.map(i => ({ ...i, server_type: 'plex' }))));
-    if (embyService) promises.push(embyService.getRecentlyAdded(limit).then(items => items.map(i => ({ ...i, server_type: 'emby' }))));
-    if (jellyfinService) promises.push(jellyfinService.getRecentlyAdded(limit).then(items => items.map(i => ({ ...i, server_type: 'jellyfin' }))));
-    if (audiobookshelfService) promises.push(audiobookshelfService.getRecentlyAdded(limit).then(items => items.map(i => ({ ...i, server_type: 'audiobookshelf' }))));
-    if (sapphoService) promises.push(sapphoService.getRecentlyAdded(limit).then(items => items.map(i => ({ ...i, server_type: 'sappho' }))));
+    // Collect recently added from active services in parallel
+    const promises = [];
+    const serviceMap = {
+      plex: plexService,
+      emby: embyService,
+      jellyfin: jellyfinService,
+      audiobookshelf: audiobookshelfService,
+      sappho: sapphoService
+    };
+
+    // Determine which servers to query (union of video and book preferences)
+    const serversToQuery = new Set();
+    const videoServers = ['plex', 'emby', 'jellyfin', 'sappho'];
+    const bookServers = ['audiobookshelf', 'sappho'];
+
+    if (preferredVideo && serviceMap[preferredVideo]) {
+      serversToQuery.add(preferredVideo);
+    } else {
+      videoServers.forEach(s => serversToQuery.add(s));
+    }
+
+    if (preferredBook && serviceMap[preferredBook]) {
+      serversToQuery.add(preferredBook);
+    } else {
+      bookServers.forEach(s => serversToQuery.add(s));
+    }
+
+    for (const type of serversToQuery) {
+      const svc = serviceMap[type];
+      if (svc) promises.push(svc.getRecentlyAdded(limit).then(items => items.map(i => ({ ...i, server_type: type }))));
+    }
 
     const results = await Promise.all(promises);
     const allItems = results.flat();
@@ -1405,7 +1434,7 @@ router.get('/stats/recently-added', async (req, res) => {
       }
     }
 
-    // Split into shows and books, sorted by addedAt descending
+    // Split into episodes, movies, and books, sorted by addedAt descending
     const all = Array.from(deduped.values());
     const sortByAdded = (a, b) => {
       if (!a.addedAt) return 1;
@@ -1413,20 +1442,34 @@ router.get('/stats/recently-added', async (req, res) => {
       return new Date(b.addedAt) - new Date(a.addedAt);
     };
 
-    const showTypes = ['episode', 'show', 'series', 'season', 'movie', 'Movie', 'Episode'];
+    const episodeTypes = ['episode', 'show', 'series', 'season', 'Episode'];
+    const movieTypes = ['movie', 'Movie'];
     const bookTypes = ['audiobook', 'book', 'track', 'podcast'];
 
-    const recentShows = all
-      .filter(i => showTypes.includes(i.type))
+    // Filter by preferred server when set
+    const videoItems = preferredVideo
+      ? all.filter(i => i.server_type === preferredVideo)
+      : all;
+    const bookItems = preferredBook
+      ? all.filter(i => i.server_type === preferredBook)
+      : all;
+
+    const recentEpisodes = videoItems
+      .filter(i => episodeTypes.includes(i.type))
       .sort(sortByAdded)
       .slice(0, limit);
 
-    const recentBooks = all
+    const recentMovies = videoItems
+      .filter(i => movieTypes.includes(i.type))
+      .sort(sortByAdded)
+      .slice(0, limit);
+
+    const recentBooks = bookItems
       .filter(i => bookTypes.includes(i.type))
       .sort(sortByAdded)
       .slice(0, limit);
 
-    res.json({ success: true, data: { recentShows, recentBooks } });
+    res.json({ success: true, data: { recentEpisodes, recentMovies, recentBooks } });
   } catch (error) {
     console.error('Error fetching recently added:', error.message);
     res.status(500).json({ success: false, error: 'Failed to fetch recently added media' });

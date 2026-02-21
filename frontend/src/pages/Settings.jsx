@@ -1420,6 +1420,60 @@ export default function Settings() {
               <p className="mt-2 text-sm text-gray-400">Saving...</p>
             )}
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Recently Added - Movies & TV
+            </label>
+            <select
+              value={settings.recently_added_video_server || ''}
+              onChange={async (e) => {
+                const val = e.target.value;
+                try {
+                  await updateSetting('recently_added_video_server', val);
+                  setSettings({ ...settings, recently_added_video_server: val });
+                } catch {
+                  alert('Failed to update setting');
+                }
+              }}
+              className="w-full px-4 py-2 bg-dark-700 border border-dark-600 rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Servers</option>
+              {[...new Set(servers.map(s => s.type))].filter(t => ['plex', 'emby', 'jellyfin', 'sappho'].includes(t)).map(type => (
+                <option key={type} value={type}>
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500">Server for Recently Added Movies & TV Shows on the dashboard.</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Recently Added - Books
+            </label>
+            <select
+              value={settings.recently_added_book_server || ''}
+              onChange={async (e) => {
+                const val = e.target.value;
+                try {
+                  await updateSetting('recently_added_book_server', val);
+                  setSettings({ ...settings, recently_added_book_server: val });
+                } catch {
+                  alert('Failed to update setting');
+                }
+              }}
+              className="w-full px-4 py-2 bg-dark-700 border border-dark-600 rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Servers</option>
+              {[...new Set(servers.map(s => s.type))].filter(t => ['audiobookshelf', 'sappho'].includes(t)).map(type => (
+                <option key={type} value={type}>
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500">Server for Recently Added Books on the dashboard.</p>
+          </div>
         </div>
       </div>
 

@@ -208,9 +208,13 @@ function Dashboard() {
   ].filter(Boolean);
 
   const recentSections = [
-    recentlyAdded?.recentShows?.length > 0 && {
-      type: 'recent', items: recentlyAdded.recentShows, category: 'recent-shows', count: 5, span: '',
-      icon: Tv, label: 'Recently Added Shows', accent: 'border-indigo-400', iconColor: 'text-indigo-400/70',
+    recentlyAdded?.recentEpisodes?.length > 0 && {
+      type: 'recent', items: recentlyAdded.recentEpisodes, category: 'recent-episodes', count: 5, span: '',
+      icon: Tv, label: 'Recently Added TV', accent: 'border-indigo-400', iconColor: 'text-indigo-400/70',
+    },
+    recentlyAdded?.recentMovies?.length > 0 && {
+      type: 'recent', items: recentlyAdded.recentMovies, category: 'recent-movies', count: 5, span: '',
+      icon: Film, label: 'Recently Added Movies', accent: 'border-cyan-400', iconColor: 'text-cyan-400/70',
     },
     recentlyAdded?.recentBooks?.length > 0 && {
       type: 'recent', items: recentlyAdded.recentBooks, category: 'recent-books', count: 5, span: '',
@@ -228,7 +232,7 @@ function Dashboard() {
             onClick={() => toggleExpanded(section.category, index)}
           >
             <span className="flex-shrink-0 w-4 text-center text-gray-600 text-[11px] font-mono">{index + 1}</span>
-            <div className="flex-shrink-0 w-7 h-10 rounded overflow-hidden bg-dark-700">
+            <div className={`flex-shrink-0 ${section.bookMode ? 'w-10 h-10' : 'w-7 h-10'} rounded overflow-hidden bg-dark-700`}>
               <MediaThumbnail
                 src={item.thumb}
                 alt={item.title}
@@ -359,7 +363,7 @@ function Dashboard() {
         className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-white/[0.03] transition-colors"
       >
         <span className="flex-shrink-0 w-4 text-center text-gray-600 text-[11px] font-mono">{index + 1}</span>
-        <div className="flex-shrink-0 w-7 h-10 rounded overflow-hidden bg-dark-700">
+        <div className={`flex-shrink-0 ${section.bookMode ? 'w-10 h-10' : 'w-7 h-10'} rounded overflow-hidden bg-dark-700`}>
           <MediaThumbnail
             src={item.thumb}
             alt={item.name}
