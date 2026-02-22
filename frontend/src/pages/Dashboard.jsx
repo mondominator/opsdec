@@ -222,7 +222,7 @@ function Dashboard() {
       icon: Clock, label: 'Requests', accent: 'border-teal-400', iconColor: 'text-teal-400/70',
     },
     stats.topLocations?.length > 0 && {
-      type: 'location', locations: stats.topLocations, count: 5, span: '',
+      type: 'location', locations: stats.topLocations, count: 10, span: '',
       icon: MapPin, label: 'Top Locations', accent: 'border-sky-400', iconColor: 'text-sky-400/70',
     },
   ].filter(Boolean);
@@ -334,50 +334,45 @@ function Dashboard() {
       );
     });
 
-  const renderLocationRows = (section) =>
-    section.locations.slice(0, section.count).map((location, index) => {
-      const locationKey = `location-${location.city}-${location.region}`;
-      const isExpanded = expandedItems[locationKey];
-      return (
-        <div key={index}>
-          <div
-            className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-white/[0.03] transition-colors cursor-pointer"
-            onClick={() => setExpandedItems(prev => ({ ...prev, [locationKey]: !prev[locationKey] }))}
-          >
-            <span className="flex-shrink-0 w-4 text-center text-gray-600 text-[11px] font-mono">{index + 1}</span>
-            <div className="flex-1 min-w-0">
-              <span className="text-white text-[13px] truncate block">
-                {location.city === 'Local Network'
-                  ? 'Local Network'
-                  : `${location.city}${location.region ? `, ${location.region}` : ''}`}
-              </span>
-            </div>
-            <ChevronDown className={`flex-shrink-0 w-3 h-3 text-gray-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+  const renderLocationRows = (section) => (
+    <div className="flex flex-wrap items-stretch">
+      {section.locations.slice(0, section.count).map((location, index) => (
+        <div key={index} className="flex-1 min-w-[100px] px-3 py-2 text-center border-r border-dark-700 last:border-r-0">
+          <div className="text-white text-[13px] font-medium truncate" title={
+            location.city === 'Local Network'
+              ? 'Local Network'
+              : `${location.city}${location.region ? `, ${location.region}` : ''}`
+          }>
+            {location.city === 'Local Network'
+              ? 'Local Network'
+              : location.city}
           </div>
-          {isExpanded && (
-            <div className="px-3 py-1 bg-dark-900/30">
-              <div className="flex items-center gap-3 pl-6 py-1 text-[10px] text-gray-500 mb-0.5">
-                <span>{location.streams} {location.streams === 1 ? 'stream' : 'streams'}</span>
-              </div>
-              {location.users?.length > 0 && <div className="space-y-0.5 pl-6">
-                {location.users.map((user, ui) => (
-                  <div key={ui} className="flex items-center gap-1.5 px-1.5 py-0.5">
-                    {user.thumb ? (
-                      <img src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`} alt={user.username} className="w-4 h-4 rounded-full object-cover" />
-                    ) : (
-                      <div className="w-4 h-4 rounded-full bg-primary-600 flex items-center justify-center">
-                        <span className="text-[9px] text-white font-semibold">{user.username.charAt(0).toUpperCase()}</span>
-                      </div>
-                    )}
-                    <span className="text-[11px] text-white truncate">{user.username}</span>
+          {location.city !== 'Local Network' && location.region && (
+            <div className="text-[10px] text-gray-500 truncate">{location.region}</div>
+          )}
+          <div className="text-[10px] text-sky-400/70 mt-0.5">
+            {location.streams} {location.streams === 1 ? 'stream' : 'streams'}
+          </div>
+          {location.users?.length > 0 && (
+            <div className="flex items-center justify-center gap-1 mt-1">
+              {location.users.slice(0, 3).map((user, ui) => (
+                user.thumb ? (
+                  <img key={ui} src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`} alt={user.username} title={user.username} className="w-4 h-4 rounded-full object-cover" />
+                ) : (
+                  <div key={ui} className="w-4 h-4 rounded-full bg-primary-600 flex items-center justify-center" title={user.username}>
+                    <span className="text-[8px] text-white font-semibold">{user.username.charAt(0).toUpperCase()}</span>
                   </div>
-                ))}
-              </div>}
+                )
+              ))}
+              {location.users.length > 3 && (
+                <span className="text-[9px] text-gray-500">+{location.users.length - 3}</span>
+              )}
             </div>
           )}
         </div>
-      );
-    });
+      ))}
+    </div>
+  );
 
   const renderRequestRows = (section) =>
     section.requests.slice(0, section.count).map((request) => {
@@ -619,11 +614,14 @@ function Dashboard() {
       )}
 
       {/* Stats grid */}
-      {sections.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2 items-start">
-          {sections.map(renderSection)}
+      {sections.filter(s => s.type !== 'location').length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 items-start">
+          {sections.filter(s => s.type !== 'location').map(renderSection)}
         </div>
       )}
+
+      {/* Top Locations — full-width horizontal bar */}
+      {sections.filter(s => s.type === 'location').map(renderSection)}
 
     </div>
   );
