@@ -77,12 +77,14 @@ function Layout({ children }) {
         return <img src="/logos/audiobookshelf.svg" alt="Audiobookshelf" className="w-3 h-3" />;
       case 'sappho':
         return <img src="/logos/sappho.png" alt="Sappho" className="w-3 h-3" />;
+      case 'seerr':
+        return <img src="/logos/seerr.svg" alt="Seerr" className="w-3 h-3" />;
       default:
         return null;
     }
   };
 
-  const serverTypeOrder = { plex: 0, emby: 1, jellyfin: 2, audiobookshelf: 3, sappho: 4 };
+  const serverTypeOrder = { plex: 0, emby: 1, jellyfin: 2, audiobookshelf: 3, sappho: 4, seerr: 5 };
   const sortedServerHealth = [...serverHealth].sort((a, b) => (serverTypeOrder[a.type] ?? 9) - (serverTypeOrder[b.type] ?? 9));
 
   const isActive = (path) => {

@@ -643,7 +643,8 @@ export default function Settings() {
       plex: { name: 'Plex', color: 'bg-yellow-500/20 text-yellow-400' },
       jellyfin: { name: 'Jellyfin', color: 'bg-purple-500/20 text-purple-400' },
       audiobookshelf: { name: 'Audiobookshelf', color: 'bg-amber-500/20 text-amber-600' },
-      sappho: { name: 'Sappho', color: 'bg-blue-500/20 text-blue-400' }
+      sappho: { name: 'Sappho', color: 'bg-blue-500/20 text-blue-400' },
+      seerr: { name: 'Seerr', color: 'bg-teal-500/20 text-teal-400' }
     };
     return labels[type] || { name: type, color: 'bg-gray-500/20 text-gray-400' };
   };
@@ -660,6 +661,8 @@ export default function Settings() {
         return <img src="/logos/audiobookshelf.svg" alt="Audiobookshelf" className="w-5 h-5" />;
       case 'sappho':
         return <img src="/logos/sappho.png" alt="Sappho" className="w-5 h-5" />;
+      case 'seerr':
+        return <img src="/logos/seerr.svg" alt="Seerr" className="w-5 h-5" />;
       default:
         return <Server className="w-5 h-5" />;
     }
@@ -724,6 +727,7 @@ export default function Settings() {
                   <option value="plex">Plex</option>
                   <option value="audiobookshelf">Audiobookshelf</option>
                   <option value="sappho">Sappho</option>
+                  <option value="seerr">Seerr</option>
                 </select>
               </div>
 
