@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDashboardStats, getActivity, getWsToken, getRecentlyAdded } from '../utils/api';
+import { getDashboardStats, getActivity, getWsToken, getRecentlyAdded, getRecentRequests } from '../utils/api';
 import { formatDuration } from '../utils/format';
-import { Users, Headphones, ChevronDown, Book, Play, MapPin, Film, Tv } from 'lucide-react';
+import { Users, Headphones, ChevronDown, Book, Play, MapPin, Film, Tv, Clock } from 'lucide-react';
 
 function MediaThumbnail({ src, alt, title, serverType, className = "w-full h-full", iconSize = "w-8 h-8" }) {
   const [hasError, setHasError] = useState(false);
@@ -52,6 +52,8 @@ function Dashboard() {
         return <img src="/logos/audiobookshelf.svg" alt="Audiobookshelf" className={size} title="Audiobookshelf" />;
       case 'sappho':
         return <img src="/logos/sappho.png" alt="Sappho" className={`${size} rounded`} title="Sappho" />;
+      case 'seerr':
+        return <img src="/logos/seerr.svg" alt="Seerr" className={size} title="Seerr" />;
       default:
         return null;
     }
@@ -73,6 +75,7 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [expandedItems, setExpandedItems] = useState({});
   const [recentlyAdded, setRecentlyAdded] = useState(null);
+  const [recentRequests, setPendingRequests] = useState(null);
   const wsRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
   const recentRefreshRef = useRef(null);
@@ -151,15 +154,17 @@ function Dashboard() {
 
   const loadData = async () => {
     try {
-      const [statsRes, activityRes, recentRes] = await Promise.all([
+      const [statsRes, activityRes, recentRes, requestsRes] = await Promise.all([
         getDashboardStats(),
         getActivity(),
         getRecentlyAdded(),
+        getRecentRequests().catch(() => ({ data: { data: [] } })),
       ]);
 
       setStats(statsRes.data.data);
       setActivity(activityRes.data.data);
       setRecentlyAdded(recentRes.data.data);
+      setPendingRequests(requestsRes.data.data);
     } catch (error) {
       console.error('Error loading dashboard:', error);
     } finally {
@@ -212,8 +217,12 @@ function Dashboard() {
       type: 'user', users: stats.topListeners, count: 5, span: '',
       icon: Headphones, label: 'Top Listeners', accent: 'border-rose-400', iconColor: 'text-rose-400/70',
     },
+    recentRequests?.length > 0 && {
+      type: 'request', requests: recentRequests, count: 5, span: '',
+      icon: Clock, label: 'Requests', accent: 'border-teal-400', iconColor: 'text-teal-400/70',
+    },
     stats.topLocations?.length > 0 && {
-      type: 'location', locations: stats.topLocations, count: 5, span: '',
+      type: 'location', locations: stats.topLocations, count: 10, span: '',
       icon: MapPin, label: 'Top Locations', accent: 'border-sky-400', iconColor: 'text-sky-400/70',
     },
   ].filter(Boolean);
@@ -325,47 +334,97 @@ function Dashboard() {
       );
     });
 
-  const renderLocationRows = (section) =>
-    section.locations.slice(0, section.count).map((location, index) => {
-      const locationKey = `location-${location.city}-${location.region}`;
-      const isExpanded = expandedItems[locationKey];
-      return (
-        <div key={index}>
-          <div
-            className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-white/[0.03] transition-colors cursor-pointer"
-            onClick={() => setExpandedItems(prev => ({ ...prev, [locationKey]: !prev[locationKey] }))}
-          >
-            <span className="flex-shrink-0 w-4 text-center text-gray-600 text-[11px] font-mono">{index + 1}</span>
-            <div className="flex-1 min-w-0">
-              <span className="text-white text-[13px] truncate block">
-                {location.city === 'Local Network'
-                  ? 'Local Network'
-                  : `${location.city}${location.region ? `, ${location.region}` : ''}`}
-              </span>
-            </div>
-            <ChevronDown className={`flex-shrink-0 w-3 h-3 text-gray-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+  const renderLocationRows = (section) => (
+    <div className="flex flex-wrap items-stretch">
+      {section.locations.slice(0, section.count).map((location, index) => (
+        <div key={index} className="flex-1 min-w-[100px] px-3 py-2 text-center border-r border-dark-700 last:border-r-0">
+          <div className="text-white text-[13px] font-medium truncate" title={
+            location.city === 'Local Network'
+              ? 'Local Network'
+              : `${location.city}${location.region ? `, ${location.region}` : ''}`
+          }>
+            {location.city === 'Local Network'
+              ? 'Local Network'
+              : location.city}
           </div>
-          {isExpanded && (
-            <div className="px-3 py-1 bg-dark-900/30">
-              <div className="flex items-center gap-3 pl-6 py-1 text-[10px] text-gray-500 mb-0.5">
-                <span>{location.streams} {location.streams === 1 ? 'stream' : 'streams'}</span>
-              </div>
-              {location.users?.length > 0 && <div className="space-y-0.5 pl-6">
-                {location.users.map((user, ui) => (
-                  <div key={ui} className="flex items-center gap-1.5 px-1.5 py-0.5">
-                    {user.thumb ? (
-                      <img src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`} alt={user.username} className="w-4 h-4 rounded-full object-cover" />
-                    ) : (
-                      <div className="w-4 h-4 rounded-full bg-primary-600 flex items-center justify-center">
-                        <span className="text-[9px] text-white font-semibold">{user.username.charAt(0).toUpperCase()}</span>
-                      </div>
-                    )}
-                    <span className="text-[11px] text-white truncate">{user.username}</span>
+          {location.city !== 'Local Network' && location.region && (
+            <div className="text-[10px] text-gray-500 truncate">{location.region}</div>
+          )}
+          <div className="text-[10px] text-sky-400/70 mt-0.5">
+            {location.streams} {location.streams === 1 ? 'stream' : 'streams'}
+          </div>
+          {location.users?.length > 0 && (
+            <div className="flex items-center justify-center gap-1 mt-1">
+              {location.users.slice(0, 3).map((user, ui) => (
+                user.thumb ? (
+                  <img key={ui} src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`} alt={user.username} title={user.username} className="w-4 h-4 rounded-full object-cover" />
+                ) : (
+                  <div key={ui} className="w-4 h-4 rounded-full bg-primary-600 flex items-center justify-center" title={user.username}>
+                    <span className="text-[8px] text-white font-semibold">{user.username.charAt(0).toUpperCase()}</span>
                   </div>
-                ))}
-              </div>}
+                )
+              ))}
+              {location.users.length > 3 && (
+                <span className="text-[9px] text-gray-500">+{location.users.length - 3}</span>
+              )}
             </div>
           )}
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderRequestRows = (section) =>
+    section.requests.slice(0, section.count).map((request) => {
+      const timeAgo = request.createdAt ? (() => {
+        const diff = Math.floor((Date.now() - new Date(request.createdAt).getTime()) / 1000);
+        if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+        return `${Math.floor(diff / 86400)}d ago`;
+      })() : '';
+
+      return (
+        <div key={request.id}>
+          <div className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-white/[0.03] transition-colors">
+            <div className="flex-shrink-0 w-7 h-10 rounded overflow-hidden bg-dark-700">
+              {request.posterUrl ? (
+                <img
+                  src={request.posterUrl}
+                  alt={request.title}
+                  className="w-full h-full object-cover rounded"
+                  loading="lazy"
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <Film className="w-3 h-3 text-gray-500" />
+                </div>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-white text-[13px] truncate" title={request.title}>
+                {request.title}
+                {request.year && <span className="text-gray-500 ml-1">({request.year})</span>}
+              </div>
+              <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
+                {request.requestedBy?.avatar ? (
+                  <img src={request.requestedBy.avatar} alt="" className="w-3 h-3 rounded-full" />
+                ) : (
+                  <div className="w-3 h-3 rounded-full bg-teal-600 flex items-center justify-center">
+                    <span className="text-[7px] text-white font-semibold">
+                      {(request.requestedBy?.username || '?').charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                <span className="truncate">{request.requestedBy?.username}</span>
+                <span className="text-gray-600">·</span>
+                <span>{timeAgo}</span>
+              </div>
+            </div>
+            <span className="flex-shrink-0 text-[9px] text-teal-400/60 uppercase font-medium">
+              {request.type === 'tv' ? 'TV' : 'Film'}
+            </span>
+          </div>
         </div>
       );
     });
@@ -384,6 +443,7 @@ function Dashboard() {
           {section.type === 'media' && renderMediaRows(section)}
           {section.type === 'user' && renderUserRows(section)}
           {section.type === 'location' && renderLocationRows(section)}
+          {section.type === 'request' && renderRequestRows(section)}
         </div>
       </div>
     );
@@ -463,208 +523,87 @@ function Dashboard() {
               Currently Streaming ({activity.length})
             </h3>
           </div>
-          <div className="space-y-3 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-3 md:space-y-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-2">
             {activity.map((session) => (
               <div
                 key={session.id}
                 className={`card hover:border-primary-500 transition-colors ${session.state === 'playing' ? 'streaming-active' : ''}`}
               >
-                {/* Mobile View */}
-                <div className="flex md:hidden p-3 gap-3">
+                <div className="flex p-2 gap-2">
+                  {/* Poster */}
                   <div className="flex-shrink-0">
-                    <div className="relative w-16 h-24 bg-dark-700 rounded overflow-hidden flex items-center justify-center">
+                    <div className="relative w-10 h-14 bg-dark-700 rounded overflow-hidden">
                       <MediaThumbnail
                         src={session.thumb}
                         alt={session.title}
                         title={session.title}
                         serverType={session.server_type}
                         className="w-full h-full"
-                        iconSize="w-8 h-8"
+                        iconSize="w-4 h-4"
                       />
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <h4 className="text-sm font-semibold text-white line-clamp-1" title={session.title}>
-                        {session.title}
-                      </h4>
-                      <span
-                        className={`flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-semibold ${
-                          session.state === 'playing'
-                            ? 'bg-green-500/20 text-green-400'
-                            : session.state === 'paused'
-                            ? 'bg-yellow-500/20 text-yellow-400'
-                            : 'bg-gray-500/20 text-gray-400'
-                        }`}
-                      >
-                        {session.state === 'playing' ? '▶' : session.state === 'paused' ? '⏸' : '⏹'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-gray-400 mb-2">
-                      <span className="truncate">{session.username}</span>
-                      <span>•</span>
-                      {getServerIcon(session.server_type, session.server_type === 'sappho' ? 'w-4 h-4' : 'w-3.5 h-3.5')}
-                    </div>
-                    <div className="mb-1">
-                      <div className="bg-dark-600 rounded-full h-1.5">
-                        <div
-                          className="bg-primary-500 h-1.5 rounded-full transition-all duration-300"
-                          style={{ width: `${session.progress_percent}%` }}
-                        />
+                      <div className="absolute bottom-0.5 right-0.5 bg-black/70 rounded-sm p-px">
+                        {getServerIcon(session.server_type, 'w-2 h-2')}
                       </div>
                     </div>
-                    <div className="text-xs text-gray-500">
-                      {session.current_time && session.duration
-                        ? `${formatDuration(session.current_time, session.server_type === 'sappho')} / ${formatDuration(session.duration, session.server_type === 'sappho')}`
-                        : session.duration
-                        ? formatDuration(session.duration, session.server_type === 'sappho')
-                        : 'Unknown'}
-                      {session.progress_percent > 0 && ` • ${session.progress_percent}%`}
-                    </div>
                   </div>
-                </div>
 
-                {/* Desktop View */}
-                <div className="hidden md:flex p-3 gap-3">
-                  <div className="flex-shrink-0">
-                    <div className="relative w-16 h-24 bg-dark-700 rounded-lg overflow-hidden flex items-center justify-center">
-                      <MediaThumbnail
-                        src={session.thumb}
-                        alt={session.title}
-                        title={session.title}
-                        serverType={session.server_type}
-                        className="w-full h-full"
-                        iconSize="w-8 h-8"
-                      />
-                    </div>
-                    <div className={`flex items-center justify-center mt-1 text-[10px] font-semibold ${session.server_type === 'sappho' ? '-space-x-0.5' : 'gap-0.5 capitalize'}`}>
-                      {getServerIcon(session.server_type, session.server_type === 'sappho' ? 'w-4 h-4' : 'w-3 h-3')}
-                      <span className={
-                        session.server_type === 'emby' ? 'text-green-400' :
-                        session.server_type === 'plex' ? 'text-yellow-400' :
-                        session.server_type === 'jellyfin' ? 'text-purple-400' :
-                        session.server_type === 'audiobookshelf' ? 'text-amber-600' :
-                        session.server_type === 'sappho' ? 'text-blue-400' :
-                        'text-gray-400'
-                      }>
-                        {session.server_type === 'sappho' ? 'appho' : session.server_type}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0 flex flex-col">
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-semibold text-white line-clamp-1" title={session.title}>
+                  {/* Info */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-between">
+                    {/* Title + status */}
+                    <div>
+                      <div className="flex items-start justify-between gap-1">
+                        <h4 className="text-[12px] font-semibold text-white truncate" title={session.title}>
                           {session.title}
                         </h4>
-                        {session.parent_title && (
-                          <div className="flex items-center gap-2 text-xs">
-                            <span className="text-gray-400 truncate">{session.parent_title}</span>
-                            {session.season_number && session.episode_number && session.media_type === 'episode' && (
-                              <span className="text-primary-400 font-semibold whitespace-nowrap">
-                                S{String(session.season_number).padStart(2, '0')}E{String(session.episode_number).padStart(2, '0')}
-                              </span>
-                            )}
-                          </div>
-                        )}
+                        <span className={`flex-shrink-0 w-1.5 h-1.5 rounded-full mt-1 ${
+                          session.state === 'playing' ? 'bg-green-500' : session.state === 'paused' ? 'bg-yellow-500' : 'bg-gray-500'
+                        }`} />
                       </div>
-                      <span
-                        className={`flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                          session.state === 'playing'
-                            ? 'bg-green-500/20 text-green-400'
-                            : session.state === 'paused'
-                            ? 'bg-yellow-500/20 text-yellow-400'
-                            : 'bg-gray-500/20 text-gray-400'
-                        }`}
-                      >
-                        {session.state === 'playing'
-                          ? (['audiobook', 'track', 'book', 'music'].includes(session.media_type) ? 'Listening' : 'Playing')
-                          : session.state === 'paused'
-                          ? 'Paused'
-                          : 'Stopped'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-gray-400 mb-2">
-                      <div
-                        className="flex items-center gap-1.5 cursor-pointer group"
-                        onClick={() => navigate(`/users/${session.user_id}`)}
-                      >
-                        {session.user_thumb ? (
-                          <img
-                            src={`/proxy/image?url=${encodeURIComponent(session.user_thumb)}`}
-                            alt={session.username}
-                            className="w-5 h-5 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-5 h-5 bg-primary-600 rounded-full flex items-center justify-center text-white text-[10px] font-medium">
-                            {session.username.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        <span className="group-hover:text-primary-400 transition-colors">{session.username}</span>
-                      </div>
-                      <span>•</span>
-                      <span className="capitalize">{session.media_type}</span>
-                      {(session.city || session.ip_address) && (
-                        <>
-                          <span>•</span>
-                          <span className="text-gray-500 truncate">
-                            {session.city === 'Local Network' ? 'Local'
-                              : session.city ? `${session.city}${session.region ? `, ${session.region}` : ''}`
-                              : session.ip_address}
-                          </span>
-                        </>
+                      {session.parent_title ? (
+                        <div className="flex items-center gap-1 text-[10px]">
+                          <span className="text-gray-400 truncate">{session.parent_title}</span>
+                          {session.season_number && session.episode_number && session.media_type === 'episode' && (
+                            <span className="text-primary-400 font-semibold whitespace-nowrap">
+                              S{String(session.season_number).padStart(2, '0')}E{String(session.episode_number).padStart(2, '0')}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-gray-500 capitalize">{session.media_type}</span>
                       )}
                     </div>
-                    <div className="mb-2">
-                      <div className="flex justify-between text-[10px] text-gray-400 mb-0.5">
+
+                    {/* User */}
+                    <div
+                      className="flex items-center gap-1 cursor-pointer group mt-0.5"
+                      onClick={() => navigate(`/users/${session.user_id}`)}
+                    >
+                      {session.user_thumb ? (
+                        <img src={`/proxy/image?url=${encodeURIComponent(session.user_thumb)}`} alt={session.username} className="w-3.5 h-3.5 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-3.5 h-3.5 bg-primary-600 rounded-full flex items-center justify-center text-white text-[8px] font-medium">
+                          {session.username.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <span className="text-[10px] text-gray-400 group-hover:text-primary-400 transition-colors truncate">{session.username}</span>
+                    </div>
+
+                    {/* Progress */}
+                    <div className="mt-0.5">
+                      <div className="bg-dark-600 rounded-full h-1">
+                        <div className="bg-primary-500 h-1 rounded-full transition-all duration-300" style={{ width: `${session.progress_percent}%` }} />
+                      </div>
+                      <div className="flex justify-between text-[9px] text-gray-500 mt-0.5">
                         <span>
                           {session.current_time && session.duration
                             ? `${formatDuration(session.current_time, session.server_type === 'sappho')} / ${formatDuration(session.duration, session.server_type === 'sappho')}`
-                            : session.duration
-                            ? formatDuration(session.duration, session.server_type === 'sappho')
-                            : 'Unknown'}
+                            : session.duration ? formatDuration(session.duration, session.server_type === 'sappho') : ''}
                         </span>
-                        {session.progress_percent > 0 && (
-                          <span>{session.progress_percent}%</span>
-                        )}
-                      </div>
-                      <div className="bg-dark-600 rounded-full h-1.5">
-                        <div
-                          className="bg-primary-500 h-1.5 rounded-full transition-all duration-300"
-                          style={{ width: `${session.progress_percent}%` }}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-[10px]">
-                      {session.resolution && (
-                        <span className="text-white font-semibold">{formatResolution(session.resolution)}</span>
-                      )}
-                      {session.video_codec && (
-                        <span className="text-gray-400">{session.video_codec.toUpperCase()}</span>
-                      )}
-                      {session.audio_codec && (
-                        <span className="text-gray-400">{session.audio_codec.toUpperCase()}</span>
-                      )}
-                      {session.container && (
-                        <span className="text-gray-400">{session.container.toUpperCase()}</span>
-                      )}
-                      {session.bitrate && (
-                        <span className="text-primary-400 font-semibold">
-                          {session.server_type === 'audiobookshelf'
-                            ? `${Math.round(session.bitrate / 1000)} kbps`
-                            : `${session.bitrate} Mbps`}
+                        <span>
+                          {session.resolution ? formatResolution(session.resolution) : ''}
+                          {session.server_type !== 'audiobookshelf' && (session.transcoding === 1 ? ' • TC' : ' • DP')}
                         </span>
-                      )}
-                      {session.audio_channels && (
-                        <span className="text-gray-400">{session.audio_channels === 1 ? 'Mono' : session.audio_channels === 2 ? 'Stereo' : `${session.audio_channels}ch`}</span>
-                      )}
-                      {session.server_type !== 'audiobookshelf' && (
-                        session.transcoding === 1 ? (
-                          <span className="text-yellow-500 font-semibold whitespace-nowrap">Transcoding</span>
-                        ) : (
-                          <span className="text-green-500 font-semibold whitespace-nowrap">Direct Play</span>
-                        )
-                      )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -675,11 +614,14 @@ function Dashboard() {
       )}
 
       {/* Stats grid */}
-      {sections.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2 items-start">
-          {sections.map(renderSection)}
+      {sections.filter(s => s.type !== 'location').length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 items-start">
+          {sections.filter(s => s.type !== 'location').map(renderSection)}
         </div>
       )}
+
+      {/* Top Locations — full-width horizontal bar */}
+      {sections.filter(s => s.type === 'location').map(renderSection)}
 
     </div>
   );

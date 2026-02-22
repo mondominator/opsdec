@@ -4,6 +4,7 @@ import PlexService from './plex.js';
 import AudiobookshelfService from './audiobookshelf.js';
 import SapphoService from './sappho.js';
 import JellyfinService from './jellyfin.js';
+import SeerrService from './seerr.js';
 import db from '../database/init.js';
 import { broadcast } from '../index.js';
 import geolocation from './geolocation.js';
@@ -15,6 +16,7 @@ let plexService = null;
 let audiobookshelfService = null;
 let sapphoService = null;
 let jellyfinService = null;
+let seerrService = null;
 let cronJob = null;
 // Track server health based on poll results (server_id -> { healthy, lastChecked, error })
 const serverHealthMap = new Map();
@@ -130,6 +132,20 @@ export function initServices() {
           jellyfinService = service;
           services.push({ name: server.name, service, type: 'jellyfin', id: server.id });
           console.log(`✅ ${server.name} (Jellyfin) initialized from database`);
+        } else if (server.type === 'seerr') {
+          seerrService = new SeerrService(server.url, apiKey);
+          // Seerr does not join the polling loop (no playback sessions)
+          // Test connection to mark health
+          seerrService.testConnection().then(result => {
+            serverHealthMap.set(server.id, { healthy: result.success, lastChecked: Date.now() });
+            if (result.success) {
+              const now = Math.floor(Date.now() / 1000);
+              try { db.prepare('UPDATE servers SET last_healthy_at = ? WHERE id = ?').run(now, server.id); } catch { /* non-critical */ }
+            }
+          }).catch(() => {
+            serverHealthMap.set(server.id, { healthy: false, lastChecked: Date.now() });
+          });
+          console.log(`✅ ${server.name} (Seerr) initialized from database`);
         }
       } catch (error) {
         console.error(`❌ Failed to initialize ${server.name}:`, error.message);
@@ -223,6 +239,21 @@ function migrateEnvToDatabase() {
           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `).run(id, 'jellyfin', 'Jellyfin', jellyfinUrl, jellyfinApiKey, 1, now, now);
         console.log('📥 Migrated Jellyfin from environment variables to database');
+      }
+    }
+
+    // Check and migrate Seerr
+    const seerrUrl = process.env.SEERR_URL;
+    const seerrApiKey = process.env.SEERR_API_KEY;
+    if (seerrUrl && seerrApiKey) {
+      const existing = db.prepare('SELECT * FROM servers WHERE type = ? AND url = ?').get('seerr', seerrUrl);
+      if (!existing) {
+        const id = `seerr-${Date.now()}`;
+        db.prepare(`
+          INSERT INTO servers (id, type, name, url, api_key, enabled, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(id, 'seerr', 'Seerr', seerrUrl, seerrApiKey, 1, now, now);
+        console.log('📥 Migrated Seerr from environment variables to database');
       }
     }
   } catch (error) {
@@ -1569,6 +1600,7 @@ export function restartMonitoring() {
   audiobookshelfService = null;
   sapphoService = null;
   jellyfinService = null;
+  seerrService = null;
 
   // Restart monitoring
   startActivityMonitor();
@@ -1576,4 +1608,4 @@ export function restartMonitoring() {
   console.log('✅ Monitoring service restarted');
 }
 
-export { embyService, plexService, audiobookshelfService, sapphoService, jellyfinService };
+export { embyService, plexService, audiobookshelfService, sapphoService, jellyfinService, seerrService };

@@ -1,6 +1,6 @@
 import express from 'express';
 import db from '../database/init.js';
-import { embyService, plexService, audiobookshelfService, sapphoService, jellyfinService, getServerHealthStatus } from '../services/monitor.js';
+import { embyService, plexService, audiobookshelfService, sapphoService, jellyfinService, seerrService, getServerHealthStatus } from '../services/monitor.js';
 import { getJobs, runJob, updateJob } from '../services/jobs.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { encrypt, decrypt } from '../utils/crypto.js';
@@ -1231,6 +1231,12 @@ router.post('/servers/:id/test', async (req, res) => {
           url: process.env.JELLYFIN_URL,
           api_key: process.env.JELLYFIN_API_KEY
         };
+      } else if (envType === 'seerr' && process.env.SEERR_URL && process.env.SEERR_API_KEY) {
+        server = {
+          type: 'seerr',
+          url: process.env.SEERR_URL,
+          api_key: process.env.SEERR_API_KEY
+        };
       }
     }
 
@@ -1258,6 +1264,9 @@ router.post('/servers/:id/test', async (req, res) => {
     } else if (server.type === 'jellyfin') {
       const { default: JellyfinService } = await import('../services/jellyfin.js');
       ServiceClass = JellyfinService;
+    } else if (server.type === 'seerr') {
+      const { default: SeerrService } = await import('../services/seerr.js');
+      ServiceClass = SeerrService;
     } else {
       return res.status(400).json({ success: false, error: 'Invalid server type' });
     }
@@ -1440,6 +1449,21 @@ router.get('/stats/recently-added', async (req, res) => {
   } catch (error) {
     console.error('Error fetching recently added:', error.message);
     res.status(500).json({ success: false, error: 'Failed to fetch recently added media' });
+  }
+});
+
+// Get recent media requests from Seerr
+router.get('/stats/recent-requests', async (req, res) => {
+  try {
+    if (!seerrService) {
+      return res.json({ success: true, data: [] });
+    }
+
+    const requests = await seerrService.getRecentRequests();
+    res.json({ success: true, data: requests });
+  } catch (error) {
+    console.error('Error fetching recent requests:', error.message);
+    res.status(500).json({ success: false, error: 'Failed to fetch recent requests' });
   }
 });
 
