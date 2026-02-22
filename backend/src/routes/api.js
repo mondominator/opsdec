@@ -1417,49 +1417,7 @@ router.get('/stats/recently-added', async (req, res) => {
     const results = await Promise.all(promises);
     const allItems = results.flat();
 
-    // Deduplicate: normalize names aggressively, match on primary title
-    const normalize = (s) => (s || '')
-      .toLowerCase()
-      .replace(/^(the|a|an)\s+/i, '')
-      .replace(/\(.*?\)/g, '')            // strip (unabridged), (2024), etc.
-      .replace(/\d+\s*(of|\/)\s*\d+/g, '') // strip "01 of 18", "1/3"
-      .replace(/\b(season|volume|vol|part|book)\s*\d*\b/gi, '') // strip "Season 1", "Volume 2"
-      .replace(/[^a-z0-9]/g, '')
-      .trim();
-    const deduped = new Map();
-    for (const item of allItems) {
-      const key = normalize(item.name);
-      if (!key) continue;
-      const existing = deduped.get(key);
-      if (!existing) {
-        deduped.set(key, { ...item, servers: [item.server_type], count: 1 });
-      } else {
-        existing.count++;
-        // Keep most recent addedAt and best available thumb
-        if (item.addedAt && (!existing.addedAt || item.addedAt > existing.addedAt)) {
-          existing.addedAt = item.addedAt;
-        }
-        if (!existing.thumb && item.thumb) {
-          existing.thumb = item.thumb;
-        }
-        if (!existing.servers.includes(item.server_type)) {
-          existing.servers.push(item.server_type);
-        }
-      }
-    }
-
-    // Filter by preferred server when set, then merge all into one sorted list
-    const all = Array.from(deduped.values());
-    const bookTypes = ['audiobook', 'book', 'track', 'podcast'];
-
-    const filtered = all.filter(item => {
-      const isBook = bookTypes.includes(item.type);
-      if (isBook && preferredBook) return item.server_type === preferredBook;
-      if (!isBook && preferredVideo) return item.server_type === preferredVideo;
-      return true;
-    });
-
-    const recentItems = filtered
+    const recentItems = allItems
       .sort((a, b) => {
         if (!a.addedAt) return 1;
         if (!b.addedAt) return -1;
@@ -1468,6 +1426,7 @@ router.get('/stats/recently-added', async (req, res) => {
       .slice(0, limit);
 
     // Check for new items and send telegram notification
+    const normalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const currentKeys = new Set(recentItems.map(i => normalize(i.name)));
     if (recentlyAddedSeenKeys !== null) {
       const newItems = recentItems.filter(i => !recentlyAddedSeenKeys.has(normalize(i.name)));

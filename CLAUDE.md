@@ -59,6 +59,8 @@ docker-compose down
 
 **Important:** Docker/Podman only mounts the `./data` volume, not source code. After code changes, you MUST rebuild the image with `--no-cache` flag to ensure changes are included.
 
+**Cleanup:** After committing/pushing, run `podman system prune -af` to free disk space. Podman builds accumulate layers quickly and will cause "no space left on device" errors if not pruned regularly.
+
 ## Architecture
 
 ### High-Level Data Flow

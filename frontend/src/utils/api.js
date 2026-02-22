@@ -130,7 +130,7 @@ export const deleteHistoryItem = (id) => api.delete(`/history/${id}`);
 export const getUsers = () => api.get('/users');
 export const getUserStats = (userId) => api.get(`/users/${userId}/stats`);
 export const getDashboardStats = () => api.get('/stats/dashboard');
-export const getRecentlyAdded = () => api.get('/stats/recently-added?limit=20');
+export const getRecentlyAdded = () => api.get('/stats/recently-added?limit=30');
 export const getServerHealth = () => api.get('/servers/health');
 export const getSettings = () => api.get('/settings');
 export const updateSetting = (key, value) => api.put(`/settings/${key}`, { value });
