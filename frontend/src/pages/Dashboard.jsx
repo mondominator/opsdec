@@ -191,9 +191,6 @@ function Dashboard() {
     );
   }
 
-  // Flat sections with col-span for varied widths
-  // Row 1: Shows (wide) | Movies (narrow) | Watchers (narrow)
-  // Row 2: Books (wide)  | Listeners (narrow) | Locations (narrow)
   const sections = [
     stats.mostWatchedEpisodes?.length > 0 && {
       type: 'media', items: stats.mostWatchedEpisodes, category: 'shows', count: 5, span: '',
@@ -246,23 +243,21 @@ function Dashboard() {
             <div className="flex-1 min-w-0">
               <div className="text-white text-[13px] truncate" title={item.title}>{item.title}</div>
             </div>
-            <div className="flex items-center gap-1.5 text-[10px] text-gray-500 flex-shrink-0">
-              <span className="flex items-center gap-0.5">
-                <Users className="w-2.5 h-2.5" />
-                {item.users?.length || item.unique_users || item.plays}
-              </span>
-              {item.plays > (item.users?.length || item.unique_users || item.plays) && (
-                <span className="flex items-center gap-0.5">
-                  <Play className="w-2.5 h-2.5" />
-                  {item.plays}
-                </span>
-              )}
-            </div>
             <ChevronDown className={`flex-shrink-0 w-3 h-3 text-gray-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
           </div>
-          {isExpanded && item.users?.length > 0 && (
+          {isExpanded && (
             <div className="px-3 py-1 bg-dark-900/30">
-              <div className="space-y-0.5 pl-6">
+              <div className="flex items-center gap-3 pl-6 py-1 text-[10px] text-gray-500">
+                <span className="flex items-center gap-0.5">
+                  <Users className="w-2.5 h-2.5" />
+                  {item.users?.length || item.unique_users || item.plays} {(item.users?.length || item.unique_users || item.plays) === 1 ? 'user' : 'users'}
+                </span>
+                <span className="flex items-center gap-0.5">
+                  <Play className="w-2.5 h-2.5" />
+                  {item.plays} {item.plays === 1 ? 'play' : 'plays'}
+                </span>
+              </div>
+              {item.users?.length > 0 && <div className="space-y-0.5 pl-6">
                 {item.users.map((user, ui) => (
                   <div
                     key={ui}
@@ -279,7 +274,7 @@ function Dashboard() {
                     <span className="text-[11px] text-white truncate">{user.username}</span>
                   </div>
                 ))}
-              </div>
+              </div>}
             </div>
           )}
         </div>
@@ -287,30 +282,48 @@ function Dashboard() {
     });
 
   const renderUserRows = (section) =>
-    section.users.slice(0, section.count).map((user, index) => (
-      <div
-        key={user.username}
-        onClick={() => user.user_id && navigate(`/users/${user.user_id}`)}
-        className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-white/[0.03] transition-colors cursor-pointer"
-      >
-        <span className="flex-shrink-0 w-4 text-center text-gray-600 text-[11px] font-mono">{index + 1}</span>
-        {user.thumb ? (
-          <img
-            src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`}
-            alt={user.username}
-            className="flex-shrink-0 w-6 h-6 rounded-full object-cover"
-          />
-        ) : (
-          <div className="flex-shrink-0 w-6 h-6 bg-primary-600 rounded-full flex items-center justify-center text-white text-[10px] font-medium">
-            {user.username.charAt(0).toUpperCase()}
+    section.users.slice(0, section.count).map((user, index) => {
+      const userKey = `user-${user.username}`;
+      const isExpanded = expandedItems[userKey];
+      return (
+        <div key={user.username}>
+          <div
+            className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-white/[0.03] transition-colors cursor-pointer"
+            onClick={() => setExpandedItems(prev => ({ ...prev, [userKey]: !prev[userKey] }))}
+          >
+            <span className="flex-shrink-0 w-4 text-center text-gray-600 text-[11px] font-mono">{index + 1}</span>
+            {user.thumb ? (
+              <img
+                src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`}
+                alt={user.username}
+                className="flex-shrink-0 w-6 h-6 rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex-shrink-0 w-6 h-6 bg-primary-600 rounded-full flex items-center justify-center text-white text-[10px] font-medium">
+                {user.username.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <span className="text-white text-[13px] truncate block">{user.username}</span>
+            </div>
+            <ChevronDown className={`flex-shrink-0 w-3 h-3 text-gray-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
           </div>
-        )}
-        <div className="flex-1 min-w-0">
-          <span className="text-white text-[13px] truncate block">{user.username}</span>
+          {isExpanded && (
+            <div className="px-3 py-1 bg-dark-900/30">
+              <div className="flex items-center gap-3 pl-6 py-1 text-[10px] text-gray-500">
+                <span className="flex items-center gap-0.5">
+                  <Play className="w-2.5 h-2.5" />
+                  {formatDuration(user.total_duration)}
+                </span>
+                <span className="flex items-center gap-0.5">
+                  {user.plays || user.total_plays || 0} plays
+                </span>
+              </div>
+            </div>
+          )}
         </div>
-        <span className="text-[11px] text-gray-500 flex-shrink-0">{formatDuration(user.total_duration)}</span>
-      </div>
-    ));
+      );
+    });
 
   const renderLocationRows = (section) =>
     section.locations.slice(0, section.count).map((location, index) => {
@@ -330,14 +343,14 @@ function Dashboard() {
                   : `${location.city}${location.region ? `, ${location.region}` : ''}`}
               </span>
             </div>
-            <span className="text-[11px] text-gray-500 flex-shrink-0">
-              {location.streams} {location.streams === 1 ? 'stream' : 'streams'}
-            </span>
             <ChevronDown className={`flex-shrink-0 w-3 h-3 text-gray-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
           </div>
-          {isExpanded && location.users?.length > 0 && (
+          {isExpanded && (
             <div className="px-3 py-1 bg-dark-900/30">
-              <div className="space-y-0.5 pl-6">
+              <div className="flex items-center gap-3 pl-6 py-1 text-[10px] text-gray-500 mb-0.5">
+                <span>{location.streams} {location.streams === 1 ? 'stream' : 'streams'}</span>
+              </div>
+              {location.users?.length > 0 && <div className="space-y-0.5 pl-6">
                 {location.users.map((user, ui) => (
                   <div key={ui} className="flex items-center gap-1.5 px-1.5 py-0.5">
                     {user.thumb ? (
@@ -350,7 +363,7 @@ function Dashboard() {
                     <span className="text-[11px] text-white truncate">{user.username}</span>
                   </div>
                 ))}
-              </div>
+              </div>}
             </div>
           )}
         </div>
@@ -378,6 +391,70 @@ function Dashboard() {
 
   return (
     <div className="space-y-3">
+      {/* Recently Added covers */}
+      {recentItems.length > 0 && (
+        <div className="bg-dark-800 rounded-lg overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-1 border-l-2 border-indigo-400 bg-dark-700/30">
+            <Film className="w-2.5 h-2.5 text-indigo-400/70" />
+            <span className="text-[10px] font-medium tracking-wider uppercase text-gray-500">Recently Added</span>
+          </div>
+          <div className="flex gap-1 p-1.5 overflow-x-auto scrollbar-thin scrollbar-thumb-dark-600">
+            {recentItems.map((item, index) => {
+              const isBook = recentBookTypes.includes((item.type || '').toLowerCase());
+              const isYoutube = (item.type || '').toLowerCase() === 'youtube' || item.isYoutube;
+              return (
+                <div key={index} className="flex-shrink-0 w-[50px]" title={item.name}>
+                  <div className="relative aspect-[2/3] rounded overflow-hidden bg-dark-700 shadow">
+                    {isYoutube ? (
+                      <div className="w-full h-full flex items-center justify-center p-0.5">
+                        <div className="w-8 h-8 rounded-full overflow-hidden bg-dark-600 flex-shrink-0">
+                          <MediaThumbnail
+                            src={item.thumb}
+                            alt={item.seriesName || item.name}
+                            title={item.seriesName || item.name}
+                            serverType={item.server_type}
+                            className="w-full h-full rounded-full"
+                            iconSize="w-3 h-3"
+                          />
+                        </div>
+                      </div>
+                    ) : isBook ? (
+                      <div className="w-full h-full flex items-center justify-center p-0.5">
+                        <MediaThumbnail
+                          src={item.thumb}
+                          alt={item.name}
+                          title={item.name}
+                          serverType={item.server_type}
+                          className="max-w-full max-h-full rounded-sm"
+                          iconSize="w-3 h-3"
+                        />
+                      </div>
+                    ) : (
+                      <MediaThumbnail
+                        src={item.thumb}
+                        alt={item.name}
+                        title={item.name}
+                        serverType={item.server_type}
+                        className="w-full h-full"
+                        iconSize="w-3 h-3"
+                      />
+                    )}
+                    <div className="absolute bottom-0.5 right-0.5 bg-black/70 rounded-sm p-px backdrop-blur-sm">
+                      {getServerIcon(item.server_type, 'w-2 h-2')}
+                    </div>
+                    {item.count > 1 && (
+                      <div className="absolute top-0.5 right-0.5 bg-indigo-500 text-white text-[7px] font-bold rounded-full w-3 h-3 flex items-center justify-center shadow">
+                        {item.count}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Active Streams */}
       {activity.length > 0 && (
         <div>
@@ -599,60 +676,11 @@ function Dashboard() {
 
       {/* Stats grid */}
       {sections.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-start">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2 items-start">
           {sections.map(renderSection)}
         </div>
       )}
 
-      {/* Recently Added covers */}
-      {recentItems.length > 0 && (
-        <div className="bg-dark-800 rounded-lg overflow-hidden">
-          <div className="flex items-center gap-2 px-3 py-1.5 border-l-2 border-indigo-400 bg-dark-700/30">
-            <Film className="w-3 h-3 text-indigo-400/70" />
-            <span className="text-[11px] font-medium tracking-wider uppercase text-gray-500">Recently Added</span>
-          </div>
-          <div className="flex gap-2 p-3 overflow-x-auto scrollbar-thin scrollbar-thumb-dark-600">
-            {recentItems.map((item, index) => {
-              const isBook = recentBookTypes.includes((item.type || '').toLowerCase());
-              return (
-                <div key={index} className="flex-shrink-0 w-[100px]" title={item.name}>
-                  <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-dark-700 shadow-lg">
-                    {isBook ? (
-                      <div className="w-full h-full flex items-center justify-center p-1">
-                        <MediaThumbnail
-                          src={item.thumb}
-                          alt={item.name}
-                          title={item.name}
-                          serverType={item.server_type}
-                          className="max-w-full max-h-full rounded"
-                          iconSize="w-6 h-6"
-                        />
-                      </div>
-                    ) : (
-                      <MediaThumbnail
-                        src={item.thumb}
-                        alt={item.name}
-                        title={item.name}
-                        serverType={item.server_type}
-                        className="w-full h-full"
-                        iconSize="w-6 h-6"
-                      />
-                    )}
-                    <div className="absolute bottom-1 right-1 bg-black/70 rounded-sm p-0.5 backdrop-blur-sm">
-                      {getServerIcon(item.server_type, 'w-3 h-3')}
-                    </div>
-                    {item.count > 1 && (
-                      <div className="absolute top-1 right-1 bg-indigo-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow">
-                        {item.count}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -38,6 +38,31 @@ async function sendMessage(text, { botToken, chatId } = {}) {
   }
 }
 
+async function sendPhoto(photoUrl, caption) {
+  const token = getSetting('telegram_bot_token');
+  const chat = getSetting('telegram_chat_id');
+  if (!token || !chat) return;
+
+  try {
+    // Download image from media server (local network) and upload to Telegram
+    const imgResponse = await axios.get(photoUrl, { responseType: 'arraybuffer', timeout: 10000 });
+    const FormData = (await import('form-data')).default;
+    const form = new FormData();
+    form.append('chat_id', chat);
+    form.append('caption', caption);
+    form.append('parse_mode', 'HTML');
+    form.append('photo', Buffer.from(imgResponse.data), { filename: 'cover.jpg', contentType: imgResponse.headers['content-type'] || 'image/jpeg' });
+
+    await axios.post(`${TELEGRAM_API}${token}/sendPhoto`, form, {
+      headers: form.getHeaders(),
+      timeout: 15000,
+    });
+  } catch {
+    // If photo fails, fall back to text-only message
+    await sendMessage(caption);
+  }
+}
+
 async function testConnection(botToken, chatId) {
   const token = botToken || getSetting('telegram_bot_token');
   const chat = chatId || getSetting('telegram_chat_id');
@@ -91,20 +116,71 @@ function notifyNewUser(username, serverType) {
   sendMessage(text);
 }
 
+// Buffer for recently added items — waits 2 minutes to batch episodes of the same show
+let recentlyAddedBuffer = [];
+let recentlyAddedTimer = null;
+const RECENTLY_ADDED_DELAY = 2 * 60 * 1000; // 2 minutes
+
 function notifyRecentlyAdded(items) {
   if (!isEnabled() || getSetting('telegram_notify_recently_added') !== 'true') return;
   if (!items || items.length === 0) return;
 
-  const lines = items.slice(0, 10).map(item => {
-    const type = (item.type || '').toLowerCase();
-    const icon = ['audiobook', 'book'].includes(type) ? '📚' : type === 'series' ? '📺' : '🎬';
-    const year = item.year ? ` (${item.year})` : '';
-    return `${icon} <b>${item.name}</b>${year}`;
-  });
+  recentlyAddedBuffer.push(...items);
 
-  const extra = items.length > 10 ? `\n...and ${items.length - 10} more` : '';
-  const text = `🆕 <b>Recently Added</b>\n${lines.join('\n')}${extra}`;
-  sendMessage(text);
+  // Reset the timer each time new items arrive
+  if (recentlyAddedTimer) clearTimeout(recentlyAddedTimer);
+  recentlyAddedTimer = setTimeout(() => flushRecentlyAdded(), RECENTLY_ADDED_DELAY);
+}
+
+async function flushRecentlyAdded() {
+  let items = recentlyAddedBuffer;
+  recentlyAddedBuffer = [];
+  recentlyAddedTimer = null;
+
+  if (items.length === 0) return;
+
+  // Filter by allowed servers if configured
+  const allowedServers = getSetting('telegram_recently_added_servers');
+  if (allowedServers) {
+    const allowed = new Set(allowedServers.split(',').map(s => s.trim()).filter(Boolean));
+    items = items.filter(i => allowed.has(i.server_type));
+    if (items.length === 0) return;
+  }
+
+  // Group episodes/tracks by their series/show name, keep standalone items separate
+  const groups = new Map();
+  const standalone = [];
+
+  for (const item of items) {
+    const type = (item.type || '').toLowerCase();
+    const isEpisode = type === 'episode' || type === 'series' || type === 'youtube';
+    // If it looks like a show (series/episode), group by name
+    if (isEpisode && items.filter(i => i.name === item.name).length > 1) {
+      // Multiple items with same show name — already deduplicated at show level, skip dupes
+      if (!groups.has(item.name)) {
+        groups.set(item.name, item);
+      }
+    } else {
+      standalone.push(item);
+    }
+  }
+
+  // Merge: grouped shows + standalone items
+  const toSend = [...groups.values(), ...standalone];
+
+  // Send each as an individual photo message with a small delay between
+  for (const item of toSend) {
+    const caption = `<b>${item.name}</b>`;
+
+    if (item.thumb) {
+      await sendPhoto(item.thumb, caption);
+    } else {
+      await sendMessage(caption);
+    }
+
+    // Small delay to avoid Telegram rate limits
+    await new Promise(r => setTimeout(r, 500));
+  }
 }
 
 export default { isEnabled, sendMessage, testConnection, notifyPlaybackStarted, notifyPlaybackCompleted, notifyNewUser, notifyRecentlyAdded };

@@ -821,103 +821,82 @@ export default function Settings() {
           <p className="text-gray-500">Add a server to start monitoring your media</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {servers.map((server) => {
-            const typeInfo = getServerTypeLabel(server.type);
-            return (
-              <div key={server.id} className={`card ${server.from_env ? 'opacity-90' : ''}`}>
-                <div className="p-4 sm:p-6 flex flex-col h-full">
-                  {/* Header */}
-                  <div className="mb-4">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${server.enabled === 1 ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-gray-500'}`} />
-                      <h4 className="text-lg font-semibold text-white">{server.name}</h4>
-                    </div>
-                    <div className="ml-5">
-                      <span className={`px-3 py-1 text-sm font-medium rounded-full inline-flex items-center gap-2 ${typeInfo.color}`}>
+        <div className="bg-dark-800 border border-dark-700 rounded-lg overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-dark-700 text-left">
+                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">URL</th>
+                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Version</th>
+                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Status</th>
+                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-dark-700">
+              {servers.map((server) => {
+                const typeInfo = getServerTypeLabel(server.type);
+                return (
+                  <tr key={server.id} className={`hover:bg-dark-750 transition-colors ${server.from_env ? 'opacity-80' : ''}`}>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
                         {getServerIcon(server.type)}
-                        {typeInfo.name}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Environment Variable Badge */}
-                  {server.from_env && (
-                    <div className="mb-3 px-3 py-2 text-sm font-medium rounded-lg bg-blue-500/20 text-blue-400 flex items-center gap-2">
-                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                      Environment Variable
-                    </div>
-                  )}
-
-                  {/* Server Details */}
-                  <div className="space-y-2 mb-4 pb-4 border-b border-dark-700">
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="text-gray-500 text-sm flex-shrink-0">URL:</span>
-                      <span className="text-gray-400 font-mono text-sm truncate text-right">{server.url}</span>
-                    </div>
-                    {serverVersions[server.id] && serverVersions[server.id] !== 'Unknown' && (
-                      <div className="flex items-center justify-between gap-4">
-                        <span className="text-gray-500 text-sm flex-shrink-0">Version:</span>
-                        <span className="text-gray-400 font-medium text-sm">{serverVersions[server.id]}</span>
+                        <span className={`text-xs ${typeInfo.color} px-1.5 py-0.5 rounded`}>{typeInfo.name}</span>
+                        {server.from_env && <span className="text-xs text-blue-400">ENV</span>}
                       </div>
-                    )}
-                  </div>
-
-                  {/* Environment Warning */}
-                  {server.from_env && (
-                    <div className="text-yellow-400/80 text-sm mb-4 flex items-start gap-2">
-                      <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                      <span>This server is configured via environment variables and cannot be edited or deleted through the UI.</span>
-                    </div>
-                  )}
-
-                  {/* Test Results */}
-                  {testResults[server.id] && (
-                    <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium mb-4 ${
-                      testResults[server.id].success
-                        ? 'bg-green-500/10 text-green-400'
-                        : 'bg-red-500/10 text-red-400'
-                    }`}>
-                      {testResults[server.id].success ? (
-                        <Check className="w-4 h-4" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm font-medium text-white">{server.name}</span>
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      <span className="text-sm text-gray-400 font-mono truncate block max-w-[300px]">{server.url}</span>
+                    </td>
+                    <td className="px-4 py-3 hidden lg:table-cell">
+                      <span className="text-sm text-gray-400">{serverVersions[server.id] && serverVersions[server.id] !== 'Unknown' ? serverVersions[server.id] : '—'}</span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {testResults[server.id] ? (
+                        testResults[server.id].success ? (
+                          <Check className="w-4 h-4 text-green-400 inline" />
+                        ) : (
+                          <X className="w-4 h-4 text-red-400 inline" />
+                        )
                       ) : (
-                        <X className="w-4 h-4" />
+                        <div className={`w-2 h-2 rounded-full inline-block ${server.enabled === 1 ? 'bg-green-500' : 'bg-gray-500'}`} />
                       )}
-                      {testResults[server.id].message}
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div className="flex flex-col sm:flex-row gap-2 mt-auto">
-                    <button
-                      onClick={() => handleTest(server.id)}
-                      disabled={testing[server.id]}
-                      className="flex-1 px-4 py-2 bg-dark-700 hover:bg-dark-600 disabled:bg-dark-750 disabled:opacity-50 text-gray-300 rounded-lg font-medium transition-colors text-sm"
-                    >
-                      {testing[server.id] ? 'Testing...' : 'Test'}
-                    </button>
-                    {!server.from_env && (
-                      <>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
-                          onClick={() => handleEdit(server)}
-                          className="flex-1 px-4 py-2 bg-dark-700 hover:bg-dark-600 text-gray-300 rounded-lg font-medium transition-colors text-sm"
+                          onClick={() => handleTest(server.id)}
+                          disabled={testing[server.id]}
+                          className="px-3 py-1.5 bg-dark-700 hover:bg-dark-600 disabled:opacity-50 text-gray-300 rounded text-xs font-medium transition-colors"
                         >
-                          Edit
+                          {testing[server.id] ? '...' : 'Test'}
                         </button>
-                        <button
-                          onClick={() => handleDelete(server.id)}
-                          className="sm:flex-none px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg font-medium transition-colors text-sm flex items-center justify-center gap-2"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          <span className="sm:hidden">Delete</span>
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+                        {!server.from_env && (
+                          <>
+                            <button
+                              onClick={() => handleEdit(server)}
+                              className="px-3 py-1.5 bg-dark-700 hover:bg-dark-600 text-gray-300 rounded text-xs font-medium transition-colors"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(server.id)}
+                              className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -1587,6 +1566,54 @@ export default function Settings() {
                   </div>
                 ))}
               </div>
+
+              {/* Server filter for recently added notifications */}
+              {settings.telegram_notify_recently_added === 'true' && servers.length > 0 && (
+                <div className="mt-3 pl-7">
+                  <p className="text-xs text-gray-500 mb-2">Send notifications from</p>
+                  <div className="space-y-2">
+                    {servers.map((server) => {
+                      const currentVal = settings.telegram_recently_added_servers || '';
+                      const selected = currentVal ? currentVal.split(',').map(s => s.trim()) : [];
+                      const allSelected = selected.length === 0;
+                      const isChecked = allSelected || selected.includes(server.type);
+                      return (
+                        <div key={server.id} className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            id={`tg-srv-${server.id}`}
+                            checked={isChecked}
+                            onChange={async (e) => {
+                              let next;
+                              if (allSelected && !e.target.checked) {
+                                // Switching from "all" to specific — include all except this one
+                                next = servers.map(s => s.type).filter(t => t !== server.type);
+                              } else if (allSelected) {
+                                return; // Already all selected, checking does nothing
+                              } else if (e.target.checked) {
+                                next = [...selected, server.type];
+                              } else {
+                                next = selected.filter(t => t !== server.type);
+                              }
+                              // If all are selected again, clear the setting (means "all")
+                              const allTypes = new Set(servers.map(s => s.type));
+                              const val = next.length >= allTypes.size ? '' : next.join(',');
+                              try {
+                                await updateSetting('telegram_recently_added_servers', val);
+                                setSettings({ ...settings, telegram_recently_added_servers: val });
+                              } catch {}
+                            }}
+                            className="w-3.5 h-3.5 text-primary-500 bg-dark-700 border-dark-600 rounded focus:ring-primary-500 focus:ring-1 cursor-pointer"
+                          />
+                          <label htmlFor={`tg-srv-${server.id}`} className="text-xs text-gray-400 cursor-pointer">
+                            {server.name}
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Test Connection Button */}

@@ -250,11 +250,18 @@ class JellyfinService {
       const userId = await this.getFirstUserId();
       if (!userId) return [];
 
+      // Get libraries to identify YouTube libraries
+      const libraries = await this.getLibraries();
+      const youtubeLibIds = new Set(
+        libraries.filter(l => (l.name || '').toLowerCase() === 'youtube').map(l => l.id)
+      );
+
+      // Fetch from all libraries, including YouTube (Video type)
       const response = await this.client.get('/Users/' + userId + '/Items', {
         params: {
           Limit: limit,
-          Fields: 'DateCreated,ProductionYear',
-          IncludeItemTypes: 'Movie,Series',
+          Fields: 'DateCreated,ProductionYear,Path',
+          IncludeItemTypes: 'Movie,Series,Video',
           SortBy: 'DateCreated',
           SortOrder: 'Descending',
           Recursive: true,
@@ -262,15 +269,43 @@ class JellyfinService {
       });
 
       const items = response.data.Items || [];
-      return items.map(item => ({
-        id: item.Id,
-        name: item.Name,
-        type: item.Type,
-        year: item.ProductionYear,
-        seriesName: item.SeriesName,
-        addedAt: item.DateCreated,
-        thumb: item.ImageTags?.Primary ? `${this.baseUrl}/Items/${item.Id}/Images/Primary?api_key=${this.apiKey}` : null,
-      }));
+
+      // Build set of YouTube series IDs by checking which Series belong to YouTube libraries
+      const youtubeSeriesIds = new Set();
+      for (const item of items) {
+        if (item.Type === 'Series' && youtubeLibIds.size > 0) {
+          // Check if this series' path contains youtube
+          if (item.Path && item.Path.toLowerCase().includes('/youtube')) {
+            youtubeSeriesIds.add(item.Id);
+          }
+        }
+      }
+
+      return items.map(item => {
+        // Check if item is from a YouTube library
+        const isYoutube = youtubeSeriesIds.has(item.Id) ||
+          youtubeSeriesIds.has(item.SeriesId) ||
+          (item.Path && item.Path.toLowerCase().includes('/youtube'));
+
+        // For YouTube, use channel image (series/parent); otherwise standard poster
+        let thumb = null;
+        if (isYoutube && item.SeriesId) {
+          thumb = `${this.baseUrl}/Items/${item.SeriesId}/Images/Primary?api_key=${this.apiKey}`;
+        } else if (item.ImageTags?.Primary) {
+          thumb = `${this.baseUrl}/Items/${item.Id}/Images/Primary?api_key=${this.apiKey}`;
+        }
+
+        return {
+          id: item.Id,
+          name: item.Name,
+          type: isYoutube ? 'youtube' : item.Type,
+          year: item.ProductionYear,
+          seriesName: item.SeriesName,
+          addedAt: item.DateCreated,
+          thumb,
+          isYoutube,
+        };
+      });
     } catch (error) {
       console.error('Error fetching Jellyfin recently added:', error.message);
       return [];

@@ -82,6 +82,9 @@ function Layout({ children }) {
     }
   };
 
+  const serverTypeOrder = { plex: 0, emby: 1, jellyfin: 2, audiobookshelf: 3, sappho: 4 };
+  const sortedServerHealth = [...serverHealth].sort((a, b) => (serverTypeOrder[a.type] ?? 9) - (serverTypeOrder[b.type] ?? 9));
+
   const isActive = (path) => {
     return location.pathname === path;
   };
@@ -131,7 +134,7 @@ function Layout({ children }) {
                 </div>
                 {serverHealth.length > 0 && (
                   <div className="flex items-center gap-2 ml-1 pl-4 border-l border-dark-700">
-                    {serverHealth.map((server) => (
+                    {sortedServerHealth.map((server) => (
                       <div key={server.id} className="flex items-center gap-1" title={`${server.name}: ${server.healthy ? 'Healthy' : server.enabled ? 'Unreachable' : 'Disabled'}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${server.healthy ? 'bg-green-500' : server.enabled ? 'bg-red-500' : 'bg-gray-600'}`} />
                         {getServerIcon(server.type)}
@@ -144,7 +147,7 @@ function Layout({ children }) {
             {/* Mobile: just server health dots */}
             {serverHealth.length > 0 && (
               <div className="flex md:hidden items-center gap-2">
-                {serverHealth.map((server) => (
+                {sortedServerHealth.map((server) => (
                   <div key={server.id} className="flex items-center gap-1" title={`${server.name}: ${server.healthy ? 'Healthy' : 'Inactive'}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${server.healthy ? 'bg-green-500' : server.enabled ? 'bg-red-500' : 'bg-gray-600'}`} />
                     {getServerIcon(server.type)}
@@ -207,51 +210,6 @@ function Layout({ children }) {
                     })}
                   </div>
 
-                  {/* Statistics Section */}
-                  {stats && (
-                    <div className="px-4 py-3 border-t border-dark-700">
-                      <div className="text-xs text-gray-400 mb-3 font-semibold">Statistics</div>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                        <div>
-                          <div className="text-gray-400">Total Users</div>
-                          <div className="text-white font-semibold">{stats.totalUsers || 0}</div>
-                        </div>
-                        <div>
-                          <div className="text-gray-400">Watch Time</div>
-                          <div className="text-white font-semibold">{formatDuration(stats.watchDuration || 0)}</div>
-                        </div>
-                        <div>
-                          <div className="text-gray-400">Listen Time</div>
-                          <div className="text-white font-semibold">{formatDuration(stats.listenDuration || 0)}</div>
-                        </div>
-                        <div>
-                          <div className="text-gray-400">Monthly Avg</div>
-                          <div className="text-white font-semibold">{stats.monthlyAverage || 0} plays</div>
-                        </div>
-                        <div>
-                          <div className="text-gray-400">Weekly Avg</div>
-                          <div className="text-white font-semibold">{stats.weeklyAverage || 0} plays</div>
-                        </div>
-                        <div>
-                          <div className="text-gray-400">Daily Avg</div>
-                          <div className="text-white font-semibold">{stats.dailyAverage || 0} plays</div>
-                        </div>
-                        <div>
-                          <div className="text-gray-400">Peak Day</div>
-                          <div className="text-white font-semibold">{stats.peakDay || 'N/A'}</div>
-                        </div>
-                        <div>
-                          <div className="text-gray-400">Peak Hour</div>
-                          <div className="text-white font-semibold">{stats.peakHour || 'N/A'}</div>
-                        </div>
-                        <div>
-                          <div className="text-gray-400">Monthly Active</div>
-                          <div className="text-white font-semibold">{stats.activeMonthlyUsers || 0} users</div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
                   {/* Logout */}
                   <div className="py-2 border-t border-dark-700">
                     <button
@@ -270,7 +228,7 @@ function Layout({ children }) {
       </header>
 
       {/* Main Content */}
-      <main className="mx-auto px-6 py-8 max-w-[1600px]">
+      <main className="mx-auto px-6 pt-3 pb-8 max-w-[1600px]">
         {children}
       </main>
 
