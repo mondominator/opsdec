@@ -1377,9 +1377,6 @@ router.post('/monitoring/restart', async (req, res) => {
   }
 });
 
-// Track previously seen recently added items for telegram notifications
-let recentlyAddedSeenKeys = null;
-
 // Get recently added media from all servers
 router.get('/stats/recently-added', async (req, res) => {
   try {
@@ -1434,16 +1431,18 @@ router.get('/stats/recently-added', async (req, res) => {
       })
       .slice(0, limit);
 
-    // Check for new items and send telegram notification
-    const normalize = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const currentKeys = new Set(recentItems.map(i => normalize(i.name)));
-    if (recentlyAddedSeenKeys !== null) {
-      const newItems = recentItems.filter(i => !recentlyAddedSeenKeys.has(normalize(i.name)));
-      if (newItems.length > 0) {
-        telegram.notifyRecentlyAdded(newItems);
+    // Check for new items using persistent DB tracking and send telegram notification
+    const notified = new Set(
+      db.prepare('SELECT server_type || \'|\' || media_id AS key FROM notified_recently_added').all().map(r => r.key)
+    );
+    const newItems = recentItems.filter(i => !notified.has(i.server_type + '|' + i.id));
+    if (newItems.length > 0) {
+      telegram.notifyRecentlyAdded(newItems);
+      const insert = db.prepare('INSERT OR IGNORE INTO notified_recently_added (server_type, media_id, title) VALUES (?, ?, ?)');
+      for (const item of newItems) {
+        insert.run(item.server_type, item.id, item.name);
       }
     }
-    recentlyAddedSeenKeys = currentKeys;
 
     res.json({ success: true, data: { recentItems } });
   } catch (error) {

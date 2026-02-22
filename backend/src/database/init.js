@@ -230,6 +230,21 @@ export function initDatabase() {
     )
   `);
 
+  // Track notified recently added items to prevent duplicate Telegram notifications
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS notified_recently_added (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      server_type TEXT NOT NULL,
+      media_id TEXT NOT NULL,
+      title TEXT,
+      notified_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(server_type, media_id)
+    )
+  `);
+
+  // Purge notifications older than 30 days
+  db.exec(`DELETE FROM notified_recently_added WHERE notified_at < datetime('now', '-30 days')`);
+
   // Create indexes for better query performance
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
