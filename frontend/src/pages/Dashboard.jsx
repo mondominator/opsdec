@@ -524,7 +524,7 @@ function Dashboard() {
                 <div className="flex flex-col p-2 gap-1.5">
                   {/* Poster */}
                   <div className="relative w-full">
-                    <div className={`relative rounded overflow-hidden w-full ${session.server_type === 'audiobookshelf' || session.server_type === 'sappho' ? 'aspect-square' : 'aspect-[2/3]'} bg-dark-700`}>
+                    <div className={`relative rounded overflow-hidden w-full ${session.server_type === 'audiobookshelf' || session.server_type === 'sappho' ? 'aspect-square' : 'aspect-[3/4]'} bg-dark-700`}>
                       <MediaThumbnail
                         src={session.thumb}
                         alt={session.title}
