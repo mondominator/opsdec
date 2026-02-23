@@ -1,5 +1,5 @@
 // Service Worker for OpsDec PWA
-const CACHE_NAME = 'opsdec-v1';
+const CACHE_NAME = 'opsdec-v2';
 
 // Install event - cache essential assets
 self.addEventListener('install', (event) => {
