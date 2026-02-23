@@ -44,8 +44,9 @@ async function sendPhoto(photoUrl, caption) {
   if (!token || !chat) return;
 
   try {
-    // Download image from media server (local network) and upload to Telegram
-    const imgResponse = await axios.get(photoUrl, { responseType: 'arraybuffer', timeout: 10000 });
+    // Fetch via local image proxy to handle auth headers for media servers
+    const proxyUrl = `http://localhost:${process.env.PORT || 3001}/proxy/image?url=${encodeURIComponent(photoUrl)}`;
+    const imgResponse = await axios.get(proxyUrl, { responseType: 'arraybuffer', timeout: 10000 });
     const FormData = (await import('form-data')).default;
     const form = new FormData();
     form.append('chat_id', chat);

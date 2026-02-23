@@ -1432,12 +1432,16 @@ router.get('/stats/recently-added', async (req, res) => {
       .slice(0, limit);
 
     // Check for new items using persistent DB tracking and send telegram notification
+    const notifiedCount = db.prepare('SELECT COUNT(*) AS cnt FROM notified_recently_added').get().cnt;
     const notified = new Set(
       db.prepare('SELECT server_type || \'|\' || media_id AS key FROM notified_recently_added').all().map(r => r.key)
     );
     const newItems = recentItems.filter(i => !notified.has(i.server_type + '|' + i.id));
     if (newItems.length > 0) {
-      telegram.notifyRecentlyAdded(newItems);
+      // Only notify if the table was already seeded — first run just seeds without notifying
+      if (notifiedCount > 0) {
+        telegram.notifyRecentlyAdded(newItems);
+      }
       const insert = db.prepare('INSERT OR IGNORE INTO notified_recently_added (server_type, media_id, title) VALUES (?, ?, ?)');
       for (const item of newItems) {
         insert.run(item.server_type, item.id, item.name);
