@@ -1549,6 +1549,7 @@ export default function Settings() {
                   { key: 'telegram_notify_playback_complete', label: 'Playback completed' },
                   { key: 'telegram_notify_new_user', label: 'New user detected' },
                   { key: 'telegram_notify_recently_added', label: 'Recently added media' },
+                  { key: 'telegram_notify_server_down', label: 'Server down / recovered' },
                 ].map(({ key, label }) => (
                   <div key={key} className="flex items-center gap-3">
                     <input

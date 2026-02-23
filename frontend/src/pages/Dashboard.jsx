@@ -389,7 +389,7 @@ function Dashboard() {
             <div className="flex-shrink-0 w-7 h-10 rounded overflow-hidden bg-dark-700">
               {request.posterUrl ? (
                 <img
-                  src={request.posterUrl}
+                  src={`/proxy/image?url=${encodeURIComponent(request.posterUrl)}`}
                   alt={request.title}
                   className="w-full h-full object-cover rounded"
                   loading="lazy"
@@ -408,7 +408,7 @@ function Dashboard() {
               </div>
               <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
                 {request.requestedBy?.avatar ? (
-                  <img src={request.requestedBy.avatar} alt="" className="w-3 h-3 rounded-full" />
+                  <img src={`/proxy/image?url=${encodeURIComponent(request.requestedBy.avatar)}`} alt="" className="w-3 h-3 rounded-full" />
                 ) : (
                   <div className="w-3 h-3 rounded-full bg-teal-600 flex items-center justify-center">
                     <span className="text-[7px] text-white font-semibold">

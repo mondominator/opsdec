@@ -1241,9 +1241,14 @@ async function checkActivity(services) {
     // Check all configured services
     const now = Math.floor(Date.now() / 1000);
     for (const { name, service, type, id } of services) {
+      const prevHealth = serverHealthMap.get(id);
       try {
         const activeStreams = await service.getActiveStreams();
         serverHealthMap.set(id, { healthy: true, lastChecked: Date.now() });
+
+        if (prevHealth && !prevHealth.healthy) {
+          telegram.notifyServerRecovered(name, type);
+        }
 
         // Server responded successfully - mark as healthy
         try {
@@ -1259,6 +1264,9 @@ async function checkActivity(services) {
         }
       } catch (error) {
         serverHealthMap.set(id, { healthy: false, lastChecked: Date.now(), error: error.message });
+        if (!prevHealth || prevHealth.healthy) {
+          telegram.notifyServerDown(name, type, error.message);
+        }
         console.error(`Error checking ${name} activity:`, error.message);
       }
     }

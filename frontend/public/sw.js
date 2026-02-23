@@ -32,6 +32,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Skip cross-origin requests — only cache same-origin assets
+  if (new URL(event.request.url).origin !== self.location.origin) return;
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
@@ -46,7 +49,7 @@ self.addEventListener('fetch', (event) => {
       })
       .catch(() => {
         // Fallback to cache if network fails
-        return caches.match(event.request);
+        return caches.match(event.request).then((cached) => cached || new Response('', { status: 503 }));
       })
   );
 });

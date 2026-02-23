@@ -199,4 +199,18 @@ async function flushRecentlyAdded() {
   }
 }
 
-export default { isEnabled, sendMessage, testConnection, notifyPlaybackStarted, notifyPlaybackCompleted, notifyNewUser, notifyRecentlyAdded };
+function notifyServerDown(serverName, serverType, error) {
+  if (!isEnabled() || getSetting('telegram_notify_server_down') !== 'true') return;
+  const serverIcon = getServerEmoji(serverType);
+  const text = `${serverIcon} 🔴 <b>${serverName}</b> is unreachable\n${error}`;
+  sendMessage(text);
+}
+
+function notifyServerRecovered(serverName, serverType) {
+  if (!isEnabled() || getSetting('telegram_notify_server_down') !== 'true') return;
+  const serverIcon = getServerEmoji(serverType);
+  const text = `${serverIcon} 🟢 <b>${serverName}</b> is back online`;
+  sendMessage(text);
+}
+
+export default { isEnabled, sendMessage, testConnection, notifyPlaybackStarted, notifyPlaybackCompleted, notifyNewUser, notifyRecentlyAdded, notifyServerDown, notifyServerRecovered };
