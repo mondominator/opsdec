@@ -453,42 +453,34 @@ function Dashboard() {
     <div className="space-y-3">
       {/* Recently Added covers */}
       {recentItems.length > 0 && (
-        <div className="bg-dark-800 rounded-lg overflow-hidden">
-          <div className="flex items-center gap-2 px-3 py-1 border-l-2 border-indigo-400 bg-dark-700/30">
-            <Film className="w-2.5 h-2.5 text-indigo-400/70" />
-            <span className="text-[10px] font-medium tracking-wider uppercase text-gray-500">Recently Added</span>
-          </div>
-          <div className="flex gap-1 p-1.5 overflow-x-auto scrollbar-thin scrollbar-thumb-dark-600">
+        <div>
+          <div className="flex gap-1 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {recentItems.map((item, index) => {
               const isBook = recentBookTypes.includes((item.type || '').toLowerCase());
               const isYoutube = (item.type || '').toLowerCase() === 'youtube' || item.isYoutube;
               return (
                 <div key={index} className="flex-shrink-0 w-[50px]" title={item.name}>
-                  <div className="relative aspect-[2/3] rounded overflow-hidden bg-dark-700 shadow">
+                  <div className={`relative rounded overflow-hidden shadow ${isBook || isYoutube ? '' : 'aspect-[2/3] bg-dark-700'}`}>
                     {isYoutube ? (
-                      <div className="w-full h-full flex items-center justify-center p-0.5">
-                        <div className="w-8 h-8 rounded-full overflow-hidden bg-dark-600 flex-shrink-0">
-                          <MediaThumbnail
-                            src={item.thumb}
-                            alt={item.seriesName || item.name}
-                            title={item.seriesName || item.name}
-                            serverType={item.server_type}
-                            className="w-full h-full rounded-full"
-                            iconSize="w-3 h-3"
-                          />
-                        </div>
-                      </div>
-                    ) : isBook ? (
-                      <div className="w-full h-full flex items-center justify-center p-0.5">
+                      <div className="w-8 h-8 rounded-full overflow-hidden bg-dark-600 mx-auto">
                         <MediaThumbnail
                           src={item.thumb}
-                          alt={item.name}
-                          title={item.name}
+                          alt={item.seriesName || item.name}
+                          title={item.seriesName || item.name}
                           serverType={item.server_type}
-                          className="max-w-full max-h-full rounded-sm"
+                          className="w-full h-full rounded-full"
                           iconSize="w-3 h-3"
                         />
                       </div>
+                    ) : isBook ? (
+                      <MediaThumbnail
+                        src={item.thumb}
+                        alt={item.name}
+                        title={item.name}
+                        serverType={item.server_type}
+                        className="w-full h-auto rounded-sm"
+                        iconSize="w-3 h-3"
+                      />
                     ) : (
                       <MediaThumbnail
                         src={item.thumb}
@@ -529,16 +521,16 @@ function Dashboard() {
                 key={session.id}
                 className={`card hover:border-primary-500 transition-colors ${session.state === 'playing' ? 'streaming-active' : ''}`}
               >
-                <div className="flex p-2 gap-2">
+                <div className="flex p-2 gap-2 items-center">
                   {/* Poster */}
                   <div className="flex-shrink-0">
-                    <div className="relative w-10 h-14 bg-dark-700 rounded overflow-hidden">
+                    <div className={`relative rounded overflow-hidden ${session.server_type === 'audiobookshelf' || session.server_type === 'sappho' ? 'w-10' : 'w-10 h-14 bg-dark-700'}`}>
                       <MediaThumbnail
                         src={session.thumb}
                         alt={session.title}
                         title={session.title}
                         serverType={session.server_type}
-                        className="w-full h-full"
+                        className="w-full h-auto"
                         iconSize="w-4 h-4"
                       />
                       <div className="absolute bottom-0.5 right-0.5 bg-black/70 rounded-sm p-px">
@@ -615,7 +607,7 @@ function Dashboard() {
 
       {/* Stats grid */}
       {sections.filter(s => s.type !== 'location').length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 items-start">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2 items-start">
           {sections.filter(s => s.type !== 'location').map(renderSection)}
         </div>
       )}
