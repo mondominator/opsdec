@@ -260,7 +260,7 @@ class JellyfinService {
       const response = await this.client.get('/Users/' + userId + '/Items', {
         params: {
           Limit: limit,
-          Fields: 'DateCreated,ProductionYear,Path',
+          Fields: 'DateCreated,ProductionYear,Path,ImageTags',
           IncludeItemTypes: 'Movie,Series,Video',
           SortBy: 'DateCreated',
           SortOrder: 'Descending',
