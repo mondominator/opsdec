@@ -515,55 +515,47 @@ function Dashboard() {
               Currently Streaming ({activity.length})
             </h3>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-7 gap-2">
             {activity.map((session) => (
               <div
                 key={session.id}
                 className={`card hover:border-primary-500 transition-colors ${session.state === 'playing' ? 'streaming-active' : ''}`}
               >
-                <div className="flex p-2 gap-2 items-center">
+                <div className="flex flex-col p-2 gap-1.5">
                   {/* Poster */}
-                  <div className="flex-shrink-0">
-                    <div className={`relative rounded overflow-hidden ${session.server_type === 'audiobookshelf' || session.server_type === 'sappho' ? 'w-10' : 'w-10 h-14 bg-dark-700'}`}>
+                  <div className="relative w-full">
+                    <div className={`relative rounded overflow-hidden w-full ${session.server_type === 'audiobookshelf' || session.server_type === 'sappho' ? 'aspect-square' : 'aspect-[2/3]'} bg-dark-700`}>
                       <MediaThumbnail
                         src={session.thumb}
                         alt={session.title}
                         title={session.title}
                         serverType={session.server_type}
-                        className="w-full h-auto"
-                        iconSize="w-4 h-4"
+                        className="w-full h-full object-cover"
+                        iconSize="w-6 h-6"
                       />
-                      <div className="absolute bottom-0.5 right-0.5 bg-black/70 rounded-sm p-px">
-                        {getServerIcon(session.server_type, 'w-2 h-2')}
-                      </div>
+                      <span className={`absolute top-1 right-1 w-2 h-2 rounded-full ${
+                        session.state === 'playing' ? 'bg-green-500' : session.state === 'paused' ? 'bg-yellow-500' : 'bg-gray-500'
+                      }`} />
                     </div>
                   </div>
 
                   {/* Info */}
-                  <div className="flex-1 min-w-0 flex flex-col justify-between">
-                    {/* Title + status */}
-                    <div>
-                      <div className="flex items-start justify-between gap-1">
-                        <h4 className="text-[12px] font-semibold text-white truncate" title={session.title}>
-                          {session.title}
-                        </h4>
-                        <span className={`flex-shrink-0 w-1.5 h-1.5 rounded-full mt-1 ${
-                          session.state === 'playing' ? 'bg-green-500' : session.state === 'paused' ? 'bg-yellow-500' : 'bg-gray-500'
-                        }`} />
+                  <div className="min-w-0 flex flex-col">
+                    <h4 className="text-[11px] font-semibold text-white truncate" title={session.title}>
+                      {session.title}
+                    </h4>
+                    {session.parent_title ? (
+                      <div className="flex items-center gap-1 text-[10px]">
+                        <span className="text-gray-400 truncate">{session.parent_title}</span>
+                        {session.season_number && session.episode_number && session.media_type === 'episode' && (
+                          <span className="text-primary-400 font-semibold whitespace-nowrap">
+                            S{String(session.season_number).padStart(2, '0')}E{String(session.episode_number).padStart(2, '0')}
+                          </span>
+                        )}
                       </div>
-                      {session.parent_title ? (
-                        <div className="flex items-center gap-1 text-[10px]">
-                          <span className="text-gray-400 truncate">{session.parent_title}</span>
-                          {session.season_number && session.episode_number && session.media_type === 'episode' && (
-                            <span className="text-primary-400 font-semibold whitespace-nowrap">
-                              S{String(session.season_number).padStart(2, '0')}E{String(session.episode_number).padStart(2, '0')}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-[10px] text-gray-500 capitalize">{session.media_type}</span>
-                      )}
-                    </div>
+                    ) : (
+                      <span className="text-[10px] text-gray-500 capitalize">{session.media_type}</span>
+                    )}
 
                     {/* User */}
                     <div
@@ -580,8 +572,17 @@ function Dashboard() {
                       <span className="text-[10px] text-gray-400 group-hover:text-primary-400 transition-colors truncate">{session.username}</span>
                     </div>
 
+                    {/* Location */}
+                    {(session.city || session.ip_address) && (
+                      <p className="text-[9px] text-gray-500 mt-0.5 truncate">
+                        {session.city === 'Local Network'
+                          ? 'Local Network'
+                          : [session.city, session.region, session.country].filter(Boolean).join(', ') || session.ip_address}
+                      </p>
+                    )}
+
                     {/* Progress */}
-                    <div className="mt-0.5">
+                    <div className="mt-1">
                       <div className="bg-dark-600 rounded-full h-1">
                         <div className="bg-primary-500 h-1 rounded-full transition-all duration-300" style={{ width: `${session.progress_percent}%` }} />
                       </div>
@@ -591,11 +592,23 @@ function Dashboard() {
                             ? `${formatDuration(session.current_time, session.server_type === 'sappho')} / ${formatDuration(session.duration, session.server_type === 'sappho')}`
                             : session.duration ? formatDuration(session.duration, session.server_type === 'sappho') : ''}
                         </span>
-                        <span>
-                          {session.resolution ? formatResolution(session.resolution) : ''}
-                          {session.server_type !== 'audiobookshelf' && (session.transcoding === 1 ? ' • TC' : ' • DP')}
-                        </span>
                       </div>
+                    </div>
+
+                    {/* Server logo + Media info */}
+                    <div className="flex items-center justify-between mt-1 pt-1 border-t border-dark-600">
+                      <div className="flex items-center gap-1">
+                        {getServerIcon(session.server_type, 'w-3 h-3')}
+                        <span className="text-[9px] text-gray-500 capitalize">{session.server_type}</span>
+                      </div>
+                      <span className="text-[9px] text-gray-500 truncate ml-1">
+                        {[
+                          session.resolution && formatResolution(session.resolution),
+                          session.video_codec,
+                          session.audio_codec,
+                          session.server_type !== 'audiobookshelf' && (session.transcoding === 1 ? 'TC' : 'DP'),
+                        ].filter(Boolean).join(' • ')}
+                      </span>
                     </div>
                   </div>
                 </div>
