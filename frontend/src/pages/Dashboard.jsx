@@ -459,7 +459,7 @@ function Dashboard() {
               const isBook = recentBookTypes.includes((item.type || '').toLowerCase());
               const isYoutube = (item.type || '').toLowerCase() === 'youtube' || item.isYoutube;
               return (
-                <div key={index} className="flex-shrink-0 w-[50px]" title={item.name}>
+                <div key={index} className="flex-shrink-0 w-[60px]" title={item.name}>
                   <div className={`relative rounded overflow-hidden shadow ${isBook || isYoutube ? '' : 'aspect-[2/3] bg-dark-700'}`}>
                     {isYoutube ? (
                       <div className="w-8 h-8 rounded-full overflow-hidden bg-dark-600 mx-auto">
