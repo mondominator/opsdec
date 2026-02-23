@@ -93,12 +93,24 @@ async function testConnection(botToken, chatId) {
   }
 }
 
+function getServerEmoji(serverType) {
+  switch (serverType) {
+    case 'sappho': return '📚';
+    case 'emby': return '💚';
+    case 'plex': return '🟠';
+    case 'jellyfin': return '💜';
+    case 'audiobookshelf': return '🎧';
+    default: return '📺';
+  }
+}
+
 function notifyPlaybackStarted(session) {
   if (!isEnabled() || getSetting('telegram_notify_playback_start') !== 'true') return;
 
   const { username, title, serverType, mediaType } = session;
+  const serverIcon = getServerEmoji(serverType);
   const icon = mediaType === 'audio' || mediaType === 'audiobook' ? '🎧' : '▶️';
-  const text = `${icon} <b>${username}</b> started <b>${title}</b> on ${serverType}`;
+  const text = `${serverIcon} ${icon} <b>${username}</b> started <b>${title}</b>`;
   sendMessage(text);
 }
 
@@ -106,14 +118,16 @@ function notifyPlaybackCompleted(session) {
   if (!isEnabled() || getSetting('telegram_notify_playback_complete') !== 'true') return;
 
   const { username, title, progressPercent, serverType } = session;
-  const text = `✅ <b>${username}</b> finished <b>${title}</b> (${progressPercent}%) on ${serverType}`;
+  const serverIcon = getServerEmoji(serverType);
+  const text = `${serverIcon} ✅ <b>${username}</b> finished <b>${title}</b> (${progressPercent}%)`;
   sendMessage(text);
 }
 
 function notifyNewUser(username, serverType) {
   if (!isEnabled() || getSetting('telegram_notify_new_user') !== 'true') return;
 
-  const text = `👤 New user: <b>${username}</b> on ${serverType}`;
+  const serverIcon = getServerEmoji(serverType);
+  const text = `${serverIcon} 👤 New user: <b>${username}</b>`;
   sendMessage(text);
 }
 
@@ -171,7 +185,8 @@ async function flushRecentlyAdded() {
 
   // Send each as an individual photo message with a small delay between
   for (const item of toSend) {
-    const caption = `<b>${item.name}</b>`;
+    const serverIcon = getServerEmoji(item.server_type);
+    const caption = `${serverIcon} <b>${item.name}</b>`;
 
     if (item.thumb) {
       await sendPhoto(item.thumb, caption);
