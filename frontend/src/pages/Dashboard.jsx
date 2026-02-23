@@ -61,13 +61,16 @@ function Dashboard() {
 
   const formatResolution = (resolution) => {
     if (!resolution) return null;
-    const height = parseInt(resolution.split('x')[1]);
-    if (height >= 2160) return '4K';
-    if (height >= 1440) return '1440p';
-    if (height >= 1080) return '1080p';
-    if (height >= 720) return '720p';
-    if (height >= 480) return '480p';
-    return resolution;
+    const parts = resolution.split('x');
+    const width = parseInt(parts[0]);
+    const height = parseInt(parts[1]);
+    if (width >= 3840 || height >= 2160) return '4K';
+    if (width >= 2560 || height >= 1440) return '1440p';
+    if (width >= 1920 || height >= 1080) return '1080p';
+    if (width >= 1280 || height >= 720) return '720p';
+    if (width >= 854 || height >= 480) return '480p';
+    if (width >= 640 || height >= 360) return '360p';
+    return `${height}p`;
   };
 
   const [stats, setStats] = useState(null);
@@ -540,51 +543,54 @@ function Dashboard() {
                   </div>
 
                   {/* Info */}
-                  <div className="min-w-0 flex flex-col">
-                    <h4 className="text-[11px] font-semibold text-white truncate" title={session.title}>
-                      {session.title}
-                    </h4>
-                    {session.parent_title ? (
-                      <div className="flex items-center gap-1 text-[10px]">
-                        <span className="text-gray-400 truncate">{session.parent_title}</span>
-                        {session.season_number && session.episode_number && session.media_type === 'episode' && (
-                          <span className="text-primary-400 font-semibold whitespace-nowrap">
-                            S{String(session.season_number).padStart(2, '0')}E{String(session.episode_number).padStart(2, '0')}
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-[10px] text-gray-500 capitalize">{session.media_type}</span>
-                    )}
-
-                    {/* User */}
-                    <div
-                      className="flex items-center gap-1 cursor-pointer group mt-0.5"
-                      onClick={() => navigate(`/users/${session.user_id}`)}
-                    >
-                      {session.user_thumb ? (
-                        <img src={`/proxy/image?url=${encodeURIComponent(session.user_thumb)}`} alt={session.username} className="w-3.5 h-3.5 rounded-full object-cover" />
-                      ) : (
-                        <div className="w-3.5 h-3.5 bg-primary-600 rounded-full flex items-center justify-center text-white text-[8px] font-medium">
-                          {session.username.charAt(0).toUpperCase()}
+                  <div className="min-w-0 flex flex-col gap-1.5">
+                    {/* Title */}
+                    <div>
+                      <h4 className="text-xs font-bold text-white truncate" title={session.title}>
+                        {session.title}
+                      </h4>
+                      {session.parent_title ? (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="text-[10px] text-gray-400 truncate">{session.parent_title}</span>
+                          {session.season_number && session.episode_number && session.media_type === 'episode' && (
+                            <span className="text-[9px] bg-primary-500/20 text-primary-400 font-bold px-1 py-px rounded whitespace-nowrap">
+                              S{String(session.season_number).padStart(2, '0')}E{String(session.episode_number).padStart(2, '0')}
+                            </span>
+                          )}
                         </div>
+                      ) : (
+                        <span className="text-[9px] text-gray-500 capitalize mt-0.5 block">{session.media_type}</span>
                       )}
-                      <span className="text-[10px] text-gray-400 group-hover:text-primary-400 transition-colors truncate">{session.username}</span>
                     </div>
 
-                    {/* Location */}
-                    {(session.city || session.ip_address) && (
-                      <p className="text-[9px] text-gray-500 mt-0.5 truncate">
-                        {session.city === 'Local Network'
-                          ? 'Local Network'
-                          : [session.city, session.region, session.country].filter(Boolean).join(', ') || session.ip_address}
-                      </p>
-                    )}
+                    {/* User + Location */}
+                    <div>
+                      <div
+                        className="flex items-center gap-1.5 cursor-pointer group"
+                        onClick={() => navigate(`/users/${session.user_id}`)}
+                      >
+                        {session.user_thumb ? (
+                          <img src={`/proxy/image?url=${encodeURIComponent(session.user_thumb)}`} alt={session.username} className="w-4 h-4 rounded-full object-cover ring-1 ring-primary-500/30" />
+                        ) : (
+                          <div className="w-4 h-4 bg-primary-600 rounded-full flex items-center justify-center text-white text-[8px] font-bold ring-1 ring-primary-500/30">
+                            {session.username.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <span className="text-[10px] text-gray-200 group-hover:text-primary-400 transition-colors truncate font-medium">{session.username}</span>
+                      </div>
+                      {(session.city || session.ip_address) && (
+                        <p className="text-[9px] text-gray-500 mt-0.5 pl-[22px] truncate">
+                          {session.city === 'Local Network'
+                            ? 'Local Network'
+                            : [session.city, session.region, session.country].filter(Boolean).join(', ') || session.ip_address}
+                        </p>
+                      )}
+                    </div>
 
                     {/* Progress */}
-                    <div className="mt-1">
-                      <div className="bg-dark-600 rounded-full h-1">
-                        <div className="bg-primary-500 h-1 rounded-full transition-all duration-300" style={{ width: `${session.progress_percent}%` }} />
+                    <div>
+                      <div className="bg-dark-600 rounded-full h-1.5 overflow-hidden">
+                        <div className="bg-primary-500 h-1.5 rounded-full transition-all duration-300" style={{ width: `${session.progress_percent}%` }} />
                       </div>
                       <div className="flex justify-between text-[9px] text-gray-500 mt-0.5">
                         <span>
@@ -592,23 +598,42 @@ function Dashboard() {
                             ? `${formatDuration(session.current_time, session.server_type === 'sappho')} / ${formatDuration(session.duration, session.server_type === 'sappho')}`
                             : session.duration ? formatDuration(session.duration, session.server_type === 'sappho') : ''}
                         </span>
+                        <span>{session.progress_percent}%</span>
                       </div>
                     </div>
 
-                    {/* Server logo + Media info */}
-                    <div className="flex items-center justify-between mt-1 pt-1 border-t border-dark-600">
-                      <div className="flex items-center gap-1">
-                        {getServerIcon(session.server_type, 'w-3 h-3')}
-                        <span className="text-[9px] text-gray-500 capitalize">{session.server_type}</span>
-                      </div>
-                      <span className="text-[9px] text-gray-500 truncate ml-1">
-                        {[
-                          session.resolution && formatResolution(session.resolution),
-                          session.video_codec,
-                          session.audio_codec,
-                          session.server_type !== 'audiobookshelf' && (session.transcoding === 1 ? 'TC' : 'DP'),
-                        ].filter(Boolean).join(' • ')}
-                      </span>
+                    {/* Media info pills */}
+                    <div className="flex flex-wrap gap-1">
+                      {session.resolution && (
+                        <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-sky-500/15 text-sky-400 font-semibold uppercase">
+                          {formatResolution(session.resolution)}
+                        </span>
+                      )}
+                      {session.video_codec && (
+                        <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-violet-500/15 text-violet-400 font-semibold uppercase">
+                          {session.video_codec}
+                        </span>
+                      )}
+                      {session.audio_codec && (
+                        <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-semibold uppercase">
+                          {session.audio_codec}
+                        </span>
+                      )}
+                      {session.server_type !== 'audiobookshelf' && (
+                        <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-semibold uppercase ${
+                          session.transcoding === 1
+                            ? 'bg-rose-500/15 text-rose-400'
+                            : 'bg-emerald-500/15 text-emerald-400'
+                        }`}>
+                          {session.transcoding === 1 ? 'TC' : 'DP'}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Server */}
+                    <div className="flex items-center gap-1 pt-1 border-t border-dark-600">
+                      {getServerIcon(session.server_type, 'w-3 h-3')}
+                      <span className="text-[9px] text-gray-500 capitalize">{session.server_type}</span>
                     </div>
                   </div>
                 </div>
