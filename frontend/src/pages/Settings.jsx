@@ -1545,80 +1545,78 @@ export default function Settings() {
               <p className="text-sm font-medium text-gray-300 mb-3">Notify on</p>
               <div className="space-y-3">
                 {[
-                  { key: 'telegram_notify_playback_start', label: 'Playback started' },
-                  { key: 'telegram_notify_playback_complete', label: 'Playback completed' },
-                  { key: 'telegram_notify_new_user', label: 'New user detected' },
-                  { key: 'telegram_notify_recently_added', label: 'Recently added media' },
-                  { key: 'telegram_notify_server_down', label: 'Server down / recovered' },
-                ].map(({ key, label }) => (
-                  <div key={key} className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      id={key}
-                      checked={settings[key] !== 'false'}
-                      onChange={async (e) => {
-                        const val = e.target.checked ? 'true' : 'false';
-                        try {
-                          await updateSetting(key, val);
-                          setSettings({ ...settings, [key]: val });
-                        } catch (error) {
-                          console.error(`Failed to update ${key}:`, error);
-                        }
-                      }}
-                      className="w-4 h-4 text-primary-500 bg-dark-700 border-dark-600 rounded focus:ring-primary-500 focus:ring-2 cursor-pointer"
-                    />
-                    <label htmlFor={key} className="text-sm text-gray-300 cursor-pointer">{label}</label>
+                  { key: 'telegram_notify_playback_start', label: 'Playback started', serversKey: 'telegram_playback_start_servers' },
+                  { key: 'telegram_notify_playback_complete', label: 'Playback completed', serversKey: 'telegram_playback_complete_servers' },
+                  { key: 'telegram_notify_new_user', label: 'New user detected', serversKey: 'telegram_new_user_servers' },
+                  { key: 'telegram_notify_recently_added', label: 'Recently added media', serversKey: 'telegram_recently_added_servers' },
+                  { key: 'telegram_notify_server_down', label: 'Server down / recovered', serversKey: 'telegram_server_down_servers' },
+                ].map(({ key, label, serversKey }) => (
+                  <div key={key}>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        id={key}
+                        checked={settings[key] !== 'false'}
+                        onChange={async (e) => {
+                          const val = e.target.checked ? 'true' : 'false';
+                          try {
+                            await updateSetting(key, val);
+                            setSettings({ ...settings, [key]: val });
+                          } catch (error) {
+                            console.error(`Failed to update ${key}:`, error);
+                          }
+                        }}
+                        className="w-4 h-4 text-primary-500 bg-dark-700 border-dark-600 rounded focus:ring-primary-500 focus:ring-2 cursor-pointer"
+                      />
+                      <label htmlFor={key} className="text-sm text-gray-300 cursor-pointer">{label}</label>
+                    </div>
+                    {settings[key] === 'true' && servers.length > 0 && (
+                      <div className="mt-2 mb-1 pl-7">
+                        <p className="text-xs text-gray-500 mb-2">Send notifications from</p>
+                        <div className="space-y-2">
+                          {servers.map((server) => {
+                            const currentVal = settings[serversKey] || '';
+                            const selected = currentVal ? currentVal.split(',').map(s => s.trim()) : [];
+                            const allSelected = selected.length === 0;
+                            const isChecked = allSelected || selected.includes(server.type);
+                            return (
+                              <div key={server.id} className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  id={`tg-srv-${serversKey}-${server.id}`}
+                                  checked={isChecked}
+                                  onChange={async (e) => {
+                                    let next;
+                                    if (allSelected && !e.target.checked) {
+                                      next = servers.map(s => s.type).filter(t => t !== server.type);
+                                    } else if (allSelected) {
+                                      return;
+                                    } else if (e.target.checked) {
+                                      next = [...selected, server.type];
+                                    } else {
+                                      next = selected.filter(t => t !== server.type);
+                                    }
+                                    const allTypes = new Set(servers.map(s => s.type));
+                                    const val = next.length >= allTypes.size ? '' : next.join(',');
+                                    try {
+                                      await updateSetting(serversKey, val);
+                                      setSettings({ ...settings, [serversKey]: val });
+                                    } catch {}
+                                  }}
+                                  className="w-3.5 h-3.5 text-primary-500 bg-dark-700 border-dark-600 rounded focus:ring-primary-500 focus:ring-1 cursor-pointer"
+                                />
+                                <label htmlFor={`tg-srv-${serversKey}-${server.id}`} className="text-xs text-gray-400 cursor-pointer">
+                                  {server.name}
+                                </label>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
-
-              {/* Server filter for recently added notifications */}
-              {settings.telegram_notify_recently_added === 'true' && servers.length > 0 && (
-                <div className="mt-3 pl-7">
-                  <p className="text-xs text-gray-500 mb-2">Send notifications from</p>
-                  <div className="space-y-2">
-                    {servers.map((server) => {
-                      const currentVal = settings.telegram_recently_added_servers || '';
-                      const selected = currentVal ? currentVal.split(',').map(s => s.trim()) : [];
-                      const allSelected = selected.length === 0;
-                      const isChecked = allSelected || selected.includes(server.type);
-                      return (
-                        <div key={server.id} className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            id={`tg-srv-${server.id}`}
-                            checked={isChecked}
-                            onChange={async (e) => {
-                              let next;
-                              if (allSelected && !e.target.checked) {
-                                // Switching from "all" to specific — include all except this one
-                                next = servers.map(s => s.type).filter(t => t !== server.type);
-                              } else if (allSelected) {
-                                return; // Already all selected, checking does nothing
-                              } else if (e.target.checked) {
-                                next = [...selected, server.type];
-                              } else {
-                                next = selected.filter(t => t !== server.type);
-                              }
-                              // If all are selected again, clear the setting (means "all")
-                              const allTypes = new Set(servers.map(s => s.type));
-                              const val = next.length >= allTypes.size ? '' : next.join(',');
-                              try {
-                                await updateSetting('telegram_recently_added_servers', val);
-                                setSettings({ ...settings, telegram_recently_added_servers: val });
-                              } catch {}
-                            }}
-                            className="w-3.5 h-3.5 text-primary-500 bg-dark-700 border-dark-600 rounded focus:ring-primary-500 focus:ring-1 cursor-pointer"
-                          />
-                          <label htmlFor={`tg-srv-${server.id}`} className="text-xs text-gray-400 cursor-pointer">
-                            {server.name}
-                          </label>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Test Connection Button */}

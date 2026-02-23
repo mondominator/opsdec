@@ -93,6 +93,12 @@ async function testConnection(botToken, chatId) {
   }
 }
 
+function isServerAllowed(serverType, settingKey) {
+  const allowed = getSetting(settingKey);
+  if (!allowed) return true;
+  return new Set(allowed.split(',').map(s => s.trim()).filter(Boolean)).has(serverType);
+}
+
 function getServerEmoji(serverType) {
   switch (serverType) {
     case 'sappho': return '📚';
@@ -108,6 +114,7 @@ function notifyPlaybackStarted(session) {
   if (!isEnabled() || getSetting('telegram_notify_playback_start') !== 'true') return;
 
   const { username, title, serverType, mediaType } = session;
+  if (!isServerAllowed(serverType, 'telegram_playback_start_servers')) return;
   const serverIcon = getServerEmoji(serverType);
   const icon = mediaType === 'audio' || mediaType === 'audiobook' ? '🎧' : '▶️';
   const text = `${serverIcon} ${icon} <b>${username}</b> started <b>${title}</b>`;
@@ -118,6 +125,7 @@ function notifyPlaybackCompleted(session) {
   if (!isEnabled() || getSetting('telegram_notify_playback_complete') !== 'true') return;
 
   const { username, title, progressPercent, serverType } = session;
+  if (!isServerAllowed(serverType, 'telegram_playback_complete_servers')) return;
   const serverIcon = getServerEmoji(serverType);
   const text = `${serverIcon} ✅ <b>${username}</b> finished <b>${title}</b> (${progressPercent}%)`;
   sendMessage(text);
@@ -125,6 +133,7 @@ function notifyPlaybackCompleted(session) {
 
 function notifyNewUser(username, serverType) {
   if (!isEnabled() || getSetting('telegram_notify_new_user') !== 'true') return;
+  if (!isServerAllowed(serverType, 'telegram_new_user_servers')) return;
 
   const serverIcon = getServerEmoji(serverType);
   const text = `${serverIcon} 👤 New user: <b>${username}</b>`;
@@ -155,12 +164,8 @@ async function flushRecentlyAdded() {
   if (items.length === 0) return;
 
   // Filter by allowed servers if configured
-  const allowedServers = getSetting('telegram_recently_added_servers');
-  if (allowedServers) {
-    const allowed = new Set(allowedServers.split(',').map(s => s.trim()).filter(Boolean));
-    items = items.filter(i => allowed.has(i.server_type));
-    if (items.length === 0) return;
-  }
+  items = items.filter(i => isServerAllowed(i.server_type, 'telegram_recently_added_servers'));
+  if (items.length === 0) return;
 
   // Group episodes/tracks by their series/show name, keep standalone items separate
   const groups = new Map();
@@ -201,6 +206,7 @@ async function flushRecentlyAdded() {
 
 function notifyServerDown(serverName, serverType, error) {
   if (!isEnabled() || getSetting('telegram_notify_server_down') !== 'true') return;
+  if (!isServerAllowed(serverType, 'telegram_server_down_servers')) return;
   const serverIcon = getServerEmoji(serverType);
   const text = `${serverIcon} 🔴 <b>${serverName}</b> is unreachable\n${error}`;
   sendMessage(text);
@@ -208,6 +214,7 @@ function notifyServerDown(serverName, serverType, error) {
 
 function notifyServerRecovered(serverName, serverType) {
   if (!isEnabled() || getSetting('telegram_notify_server_down') !== 'true') return;
+  if (!isServerAllowed(serverType, 'telegram_server_down_servers')) return;
   const serverIcon = getServerEmoji(serverType);
   const text = `${serverIcon} 🟢 <b>${serverName}</b> is back online`;
   sendMessage(text);

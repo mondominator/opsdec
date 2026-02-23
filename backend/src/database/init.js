@@ -523,7 +523,8 @@ export function initDatabase() {
     const settingsKeys = [
       'history_min_duration', 'history_min_percent', 'history_exclusion_patterns', 'history_group_successive',
       'telegram_enabled', 'telegram_bot_token', 'telegram_chat_id',
-      'telegram_notify_playback_start', 'telegram_notify_playback_complete', 'telegram_notify_new_user', 'telegram_notify_recently_added', 'telegram_notify_server_down', 'telegram_recently_added_servers',
+      'telegram_notify_playback_start', 'telegram_notify_playback_complete', 'telegram_notify_new_user', 'telegram_notify_recently_added', 'telegram_notify_server_down',
+      'telegram_playback_start_servers', 'telegram_playback_complete_servers', 'telegram_new_user_servers', 'telegram_recently_added_servers', 'telegram_server_down_servers',
       'recently_added_video_server', 'recently_added_book_server'
     ];
     const defaults = {
@@ -539,7 +540,11 @@ export function initDatabase() {
       telegram_notify_new_user: 'true',
       telegram_notify_recently_added: 'false',
       telegram_notify_server_down: 'true',
+      telegram_playback_start_servers: '',
+      telegram_playback_complete_servers: '',
+      telegram_new_user_servers: '',
       telegram_recently_added_servers: '',
+      telegram_server_down_servers: '',
       recently_added_video_server: '',
       recently_added_book_server: ''
     };
