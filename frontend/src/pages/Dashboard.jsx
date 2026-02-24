@@ -528,13 +528,13 @@ function Dashboard() {
               Currently Streaming ({activity.length})
             </h3>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-7 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2">
             {activity.map((session) => (
               <div
                 key={session.id}
                 className={`card hover:border-primary-500 transition-colors ${session.state === 'playing' ? 'streaming-active' : ''}`}
               >
-                <div className="flex flex-col p-1.5 gap-1">
+                <div className="flex flex-col p-2 gap-1.5">
                   {/* Poster */}
                   <div className="relative w-full">
                     <div className="relative rounded overflow-hidden w-full aspect-square">
@@ -553,47 +553,47 @@ function Dashboard() {
                   </div>
 
                   {/* Info */}
-                  <div className="min-w-0 flex flex-col gap-1">
+                  <div className="min-w-0 flex flex-col gap-1.5">
                     {/* Title */}
                     <div>
-                      <h4 className="text-[11px] font-bold text-white truncate" title={session.title}>
+                      <h4 className="text-xs font-bold text-white truncate" title={session.title}>
                         {session.title}
                       </h4>
                       {session.parent_title ? (
-                        <div className="flex items-center gap-1">
-                          <span className="text-[9px] text-gray-400 truncate">{session.parent_title}</span>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="text-[10px] text-gray-400 truncate">{session.parent_title}</span>
                           {session.season_number && session.episode_number && session.media_type === 'episode' && (
-                            <span className="text-[8px] bg-primary-500/20 text-primary-400 font-bold px-1 py-px rounded whitespace-nowrap">
+                            <span className="text-[9px] bg-primary-500/20 text-primary-400 font-bold px-1 py-px rounded whitespace-nowrap">
                               S{String(session.season_number).padStart(2, '0')}E{String(session.episode_number).padStart(2, '0')}
                             </span>
                           )}
                         </div>
                       ) : (
-                        <span className="text-[8px] text-gray-500 capitalize block">{session.media_type}</span>
+                        <span className="text-[9px] text-gray-500 capitalize mt-0.5 block">{session.media_type}</span>
                       )}
                     </div>
 
                     {/* User */}
                     <div
-                      className="flex items-center gap-1 cursor-pointer group"
+                      className="flex items-center gap-1.5 cursor-pointer group"
                       onClick={() => navigate(`/users/${session.user_id}`)}
                     >
                       {session.user_thumb ? (
-                        <img src={`/proxy/image?url=${encodeURIComponent(session.user_thumb)}`} alt={session.username} className="w-3.5 h-3.5 rounded-full object-cover ring-1 ring-primary-500/30" />
+                        <img src={`/proxy/image?url=${encodeURIComponent(session.user_thumb)}`} alt={session.username} className="w-4 h-4 rounded-full object-cover ring-1 ring-primary-500/30" />
                       ) : (
-                        <div className="w-3.5 h-3.5 bg-primary-600 rounded-full flex items-center justify-center text-white text-[7px] font-bold ring-1 ring-primary-500/30">
+                        <div className="w-4 h-4 bg-primary-600 rounded-full flex items-center justify-center text-white text-[8px] font-bold ring-1 ring-primary-500/30">
                           {session.username.charAt(0).toUpperCase()}
                         </div>
                       )}
-                      <span className="text-[9px] text-gray-200 group-hover:text-primary-400 transition-colors truncate font-medium">{session.username}</span>
+                      <span className="text-[10px] text-gray-200 group-hover:text-primary-400 transition-colors truncate font-medium">{session.username}</span>
                     </div>
 
                     {/* Progress */}
                     <div>
-                      <div className="bg-dark-600 rounded-full h-1 overflow-hidden">
-                        <div className="bg-primary-500 h-1 rounded-full transition-all duration-300" style={{ width: `${session.progress_percent}%` }} />
+                      <div className="bg-dark-600 rounded-full h-1.5 overflow-hidden">
+                        <div className="bg-primary-500 h-1.5 rounded-full transition-all duration-300" style={{ width: `${session.progress_percent}%` }} />
                       </div>
-                      <div className="flex justify-between text-[8px] text-gray-500 mt-0.5">
+                      <div className="flex justify-between text-[9px] text-gray-500 mt-0.5">
                         <span>
                           {session.current_time && session.duration
                             ? `${formatDuration(session.current_time, session.server_type === 'sappho')} / ${formatDuration(session.duration, session.server_type === 'sappho')}`
@@ -604,24 +604,24 @@ function Dashboard() {
                     </div>
 
                     {/* Media info pills */}
-                    <div className="flex flex-wrap gap-0.5">
+                    <div className="flex flex-wrap gap-1">
                       {session.resolution && (
-                        <span className="text-[7px] px-1 py-px rounded-full bg-sky-500/15 text-sky-400 font-semibold uppercase">
+                        <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-sky-500/15 text-sky-400 font-semibold uppercase">
                           {formatResolution(session.resolution)}
                         </span>
                       )}
                       {session.video_codec && (
-                        <span className="text-[7px] px-1 py-px rounded-full bg-violet-500/15 text-violet-400 font-semibold uppercase">
+                        <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-violet-500/15 text-violet-400 font-semibold uppercase">
                           {session.video_codec}
                         </span>
                       )}
                       {session.audio_codec && (
-                        <span className="text-[7px] px-1 py-px rounded-full bg-amber-500/15 text-amber-400 font-semibold uppercase">
+                        <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-semibold uppercase">
                           {session.audio_codec}
                         </span>
                       )}
                       {session.server_type !== 'audiobookshelf' && (
-                        <span className={`text-[7px] px-1 py-px rounded-full font-semibold uppercase ${
+                        <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-semibold uppercase ${
                           session.transcoding === 1
                             ? 'bg-rose-500/15 text-rose-400'
                             : 'bg-emerald-500/15 text-emerald-400'
@@ -632,13 +632,13 @@ function Dashboard() {
                     </div>
 
                     {/* Server + Location */}
-                    <div className="flex items-center justify-between pt-0.5 border-t border-dark-600">
+                    <div className="flex items-center justify-between pt-1 border-t border-dark-600">
                       <div className="flex items-center gap-1">
-                        {getServerIcon(session.server_type, 'w-2.5 h-2.5')}
-                        <span className="text-[8px] text-gray-500 capitalize">{session.server_type}</span>
+                        {getServerIcon(session.server_type, 'w-3 h-3')}
+                        <span className="text-[9px] text-gray-500 capitalize">{session.server_type}</span>
                       </div>
                       {(session.city || session.ip_address) && (
-                        <span className="text-[8px] text-gray-500 truncate ml-1">
+                        <span className="text-[9px] text-gray-500 truncate ml-1">
                           {session.city === 'Local Network'
                             ? 'Local'
                             : [session.city, session.region].filter(Boolean).join(', ') || session.ip_address}
