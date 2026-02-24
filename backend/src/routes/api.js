@@ -1423,12 +1423,11 @@ router.get('/stats/recently-added', async (req, res) => {
     const results = await Promise.all(promises);
     const allItems = results.flat();
 
+    // Only show items added within the last 14 days
+    const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
     const recentItems = allItems
-      .sort((a, b) => {
-        if (!a.addedAt) return 1;
-        if (!b.addedAt) return -1;
-        return new Date(b.addedAt) - new Date(a.addedAt);
-      })
+      .filter(i => i.addedAt && new Date(i.addedAt) >= cutoff)
+      .sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt))
       .slice(0, limit);
 
     // Check for new items using persistent DB tracking and send telegram notification
