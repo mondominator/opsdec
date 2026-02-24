@@ -573,28 +573,19 @@ function Dashboard() {
                       )}
                     </div>
 
-                    {/* User + Location */}
-                    <div>
-                      <div
-                        className="flex items-center gap-1 cursor-pointer group"
-                        onClick={() => navigate(`/users/${session.user_id}`)}
-                      >
-                        {session.user_thumb ? (
-                          <img src={`/proxy/image?url=${encodeURIComponent(session.user_thumb)}`} alt={session.username} className="w-3.5 h-3.5 rounded-full object-cover ring-1 ring-primary-500/30" />
-                        ) : (
-                          <div className="w-3.5 h-3.5 bg-primary-600 rounded-full flex items-center justify-center text-white text-[7px] font-bold ring-1 ring-primary-500/30">
-                            {session.username.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        <span className="text-[9px] text-gray-200 group-hover:text-primary-400 transition-colors truncate font-medium">{session.username}</span>
-                      </div>
-                      {(session.city || session.ip_address) && (
-                        <p className="text-[8px] text-gray-500 mt-0.5 pl-[18px] truncate">
-                          {session.city === 'Local Network'
-                            ? 'Local Network'
-                            : [session.city, session.region, session.country].filter(Boolean).join(', ') || session.ip_address}
-                        </p>
+                    {/* User */}
+                    <div
+                      className="flex items-center gap-1 cursor-pointer group"
+                      onClick={() => navigate(`/users/${session.user_id}`)}
+                    >
+                      {session.user_thumb ? (
+                        <img src={`/proxy/image?url=${encodeURIComponent(session.user_thumb)}`} alt={session.username} className="w-3.5 h-3.5 rounded-full object-cover ring-1 ring-primary-500/30" />
+                      ) : (
+                        <div className="w-3.5 h-3.5 bg-primary-600 rounded-full flex items-center justify-center text-white text-[7px] font-bold ring-1 ring-primary-500/30">
+                          {session.username.charAt(0).toUpperCase()}
+                        </div>
                       )}
+                      <span className="text-[9px] text-gray-200 group-hover:text-primary-400 transition-colors truncate font-medium">{session.username}</span>
                     </div>
 
                     {/* Progress */}
@@ -640,10 +631,19 @@ function Dashboard() {
                       )}
                     </div>
 
-                    {/* Server */}
-                    <div className="flex items-center gap-1 pt-0.5 border-t border-dark-600">
-                      {getServerIcon(session.server_type, 'w-2.5 h-2.5')}
-                      <span className="text-[8px] text-gray-500 capitalize">{session.server_type}</span>
+                    {/* Server + Location */}
+                    <div className="flex items-center justify-between pt-0.5 border-t border-dark-600">
+                      <div className="flex items-center gap-1">
+                        {getServerIcon(session.server_type, 'w-2.5 h-2.5')}
+                        <span className="text-[8px] text-gray-500 capitalize">{session.server_type}</span>
+                      </div>
+                      {(session.city || session.ip_address) && (
+                        <span className="text-[8px] text-gray-500 truncate ml-1">
+                          {session.city === 'Local Network'
+                            ? 'Local'
+                            : session.city || session.ip_address}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
