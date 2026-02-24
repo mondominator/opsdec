@@ -24,7 +24,7 @@ function MediaThumbnail({ src, alt, title, serverType, className = "w-full h-ful
 
   const isAudiobook = serverType === 'audiobookshelf' || serverType === 'sappho';
   const sizeClass = isAudiobook ? 'max-w-full max-h-full' : className;
-  const objectFit = isAudiobook ? 'object-contain' : 'object-cover';
+  const objectFit = className.includes('object-contain') ? 'object-contain' : (isAudiobook ? 'object-contain' : 'object-cover');
 
   return (
     <img
@@ -537,13 +537,13 @@ function Dashboard() {
                 <div className="flex flex-col p-1.5 gap-1">
                   {/* Poster */}
                   <div className="relative w-full">
-                    <div className={`relative rounded overflow-hidden w-full ${session.server_type === 'audiobookshelf' || session.server_type === 'sappho' ? 'aspect-square' : 'aspect-[3/4]'} bg-dark-700`}>
+                    <div className="relative rounded overflow-hidden w-full aspect-square">
                       <MediaThumbnail
                         src={session.thumb}
                         alt={session.title}
                         title={session.title}
                         serverType={session.server_type}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain"
                         iconSize="w-5 h-5"
                       />
                       <span className={`absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full ${
@@ -641,7 +641,7 @@ function Dashboard() {
                         <span className="text-[8px] text-gray-500 truncate ml-1">
                           {session.city === 'Local Network'
                             ? 'Local'
-                            : session.city || session.ip_address}
+                            : [session.city, session.region].filter(Boolean).join(', ') || session.ip_address}
                         </span>
                       )}
                     </div>
