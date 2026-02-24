@@ -40,6 +40,18 @@ function MediaThumbnail({ src, alt, title, serverType, className = "w-full h-ful
 function Dashboard() {
   const navigate = useNavigate();
 
+  const getServerDotColor = (serverType) => {
+    switch (serverType) {
+      case 'emby': return 'bg-green-500';
+      case 'plex': return 'bg-yellow-500';
+      case 'jellyfin': return 'bg-purple-500';
+      case 'audiobookshelf': return 'bg-amber-500';
+      case 'sappho': return 'bg-blue-500';
+      case 'seerr': return 'bg-teal-500';
+      default: return 'bg-gray-500';
+    }
+  };
+
   const getServerIcon = (serverType, size = 'w-5 h-5') => {
     switch (serverType) {
       case 'emby':
@@ -494,9 +506,7 @@ function Dashboard() {
                         iconSize="w-3 h-3"
                       />
                     )}
-                    <div className="absolute bottom-0.5 right-0.5 bg-black/70 rounded-sm p-px backdrop-blur-sm">
-                      {getServerIcon(item.server_type, 'w-2 h-2')}
-                    </div>
+                    <div className={`absolute bottom-0.5 right-0.5 w-2 h-2 rounded-full ${getServerDotColor(item.server_type)} ring-1 ring-black/50`} title={item.server_type} />
                     {item.count > 1 && (
                       <div className="absolute top-0.5 right-0.5 bg-indigo-500 text-white text-[7px] font-bold rounded-full w-3 h-3 flex items-center justify-center shadow">
                         {item.count}
