@@ -101,12 +101,12 @@ function isServerAllowed(serverType, settingKey) {
 
 function getServerEmoji(serverType) {
   switch (serverType) {
-    case 'sappho': return '📚';
-    case 'emby': return '💚';
+    case 'sappho': return '🔵';
+    case 'emby': return '🟢';
     case 'plex': return '🟠';
-    case 'jellyfin': return '💜';
-    case 'audiobookshelf': return '🎧';
-    default: return '📺';
+    case 'jellyfin': return '🟣';
+    case 'audiobookshelf': return '🟤';
+    default: return '⚪';
   }
 }
 

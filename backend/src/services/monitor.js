@@ -18,8 +18,10 @@ let sapphoService = null;
 let jellyfinService = null;
 let seerrService = null;
 let cronJob = null;
-// Track server health based on poll results (server_id -> { healthy, lastChecked, error })
+// Track server health based on poll results (server_id -> { healthy, lastChecked, error, failCount })
 const serverHealthMap = new Map();
+// Guard against concurrent checkActivity calls (WebSocket events can fire rapidly)
+let isCheckingActivity = false;
 
 // Helper function to get history filter settings
 function getHistorySettings() {
@@ -1235,6 +1237,10 @@ function stopInactiveSessions(activeSessionKeys) {
 }
 
 async function checkActivity(services) {
+  // Prevent concurrent execution — WebSocket events can fire rapidly
+  if (isCheckingActivity) return;
+  isCheckingActivity = true;
+
   try {
     const activeSessionKeys = new Set();
 
@@ -1244,8 +1250,9 @@ async function checkActivity(services) {
       const prevHealth = serverHealthMap.get(id);
       try {
         const activeStreams = await service.getActiveStreams();
-        serverHealthMap.set(id, { healthy: true, lastChecked: Date.now() });
+        serverHealthMap.set(id, { healthy: true, lastChecked: Date.now(), failCount: 0 });
 
+        // Only notify recovery if server was previously marked as down
         if (prevHealth && !prevHealth.healthy) {
           telegram.notifyServerRecovered(name, type);
         }
@@ -1263,8 +1270,11 @@ async function checkActivity(services) {
           await updateSession(activity, type);
         }
       } catch (error) {
-        serverHealthMap.set(id, { healthy: false, lastChecked: Date.now(), error: error.message });
-        if (!prevHealth || prevHealth.healthy) {
+        const failCount = (prevHealth?.failCount || 0) + 1;
+        serverHealthMap.set(id, { healthy: false, lastChecked: Date.now(), error: error.message, failCount });
+
+        // Only notify on exactly the 2nd consecutive failure to avoid transient errors / startup noise
+        if (failCount === 2) {
           telegram.notifyServerDown(name, type, error.message);
         }
         console.error(`Error checking ${name} activity:`, error.message);
@@ -1289,6 +1299,8 @@ async function checkActivity(services) {
 
   } catch (error) {
     console.error('Error checking activity:', error.message);
+  } finally {
+    isCheckingActivity = false;
   }
 }
 
