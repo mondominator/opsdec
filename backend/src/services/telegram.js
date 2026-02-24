@@ -116,8 +116,7 @@ function notifyPlaybackStarted(session) {
   const { username, title, serverType, mediaType } = session;
   if (!isServerAllowed(serverType, 'telegram_playback_start_servers')) return;
   const serverIcon = getServerEmoji(serverType);
-  const icon = mediaType === 'audio' || mediaType === 'audiobook' ? '🎧' : '▶️';
-  const text = `${serverIcon} · ${icon} <b>${username}</b> started <b>${title}</b>`;
+  const text = `${serverIcon} · <b>${username}</b> started <b>${title}</b>`;
   sendMessage(text);
 }
 
@@ -127,7 +126,7 @@ function notifyPlaybackCompleted(session) {
   const { username, title, progressPercent, serverType } = session;
   if (!isServerAllowed(serverType, 'telegram_playback_complete_servers')) return;
   const serverIcon = getServerEmoji(serverType);
-  const text = `${serverIcon} · ✅ <b>${username}</b> finished <b>${title}</b> (${progressPercent}%)`;
+  const text = `${serverIcon} · <b>${username}</b> finished <b>${title}</b> (${progressPercent}%)`;
   sendMessage(text);
 }
 
@@ -136,7 +135,7 @@ function notifyNewUser(username, serverType) {
   if (!isServerAllowed(serverType, 'telegram_new_user_servers')) return;
 
   const serverIcon = getServerEmoji(serverType);
-  const text = `${serverIcon} · 👤 New user: <b>${username}</b>`;
+  const text = `${serverIcon} · New user: <b>${username}</b>`;
   sendMessage(text);
 }
 
@@ -208,7 +207,7 @@ function notifyServerDown(serverName, serverType, error) {
   if (!isEnabled() || getSetting('telegram_notify_server_down') !== 'true') return;
   if (!isServerAllowed(serverType, 'telegram_server_down_servers')) return;
   const serverIcon = getServerEmoji(serverType);
-  const text = `${serverIcon} · 🔴 <b>${serverName}</b> is unreachable\n${error}`;
+  const text = `${serverIcon} · <b>${serverName}</b> is unreachable\n${error}`;
   sendMessage(text);
 }
 
@@ -216,7 +215,7 @@ function notifyServerRecovered(serverName, serverType) {
   if (!isEnabled() || getSetting('telegram_notify_server_down') !== 'true') return;
   if (!isServerAllowed(serverType, 'telegram_server_down_servers')) return;
   const serverIcon = getServerEmoji(serverType);
-  const text = `${serverIcon} · 🟢 <b>${serverName}</b> is back online`;
+  const text = `${serverIcon} · <b>${serverName}</b> is back online`;
   sendMessage(text);
 }
 
