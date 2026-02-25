@@ -8,6 +8,7 @@ import History from './pages/History';
 import Users from './pages/Users';
 import UserDetails from './pages/UserDetails';
 import Settings from './pages/Settings';
+import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Setup from './pages/Setup';
 
@@ -114,6 +115,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <UserDetails />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Profile />
             </Layout>
           </ProtectedRoute>
         }

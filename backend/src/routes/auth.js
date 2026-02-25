@@ -1,6 +1,9 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
 import rateLimit from 'express-rate-limit';
+import multer from 'multer';
+import { existsSync, mkdirSync, unlinkSync, writeFileSync, createReadStream } from 'fs';
+import { join, dirname } from 'path';
 import { db } from '../database/init.js';
 import {
   generateAccessToken,
@@ -20,6 +23,30 @@ import {
 
 const router = express.Router();
 const SALT_ROUNDS = 12;
+
+// Avatar upload directory (resolved lazily to avoid issues in test environments)
+const dbPath = process.env.DB_PATH || '/app/data/opsdec.db';
+const dataDir = dirname(dbPath);
+const avatarDir = join(dataDir, 'avatars');
+
+function ensureAvatarDir() {
+  if (!existsSync(avatarDir)) {
+    mkdirSync(avatarDir, { recursive: true });
+  }
+}
+
+// Multer config for avatar uploads (memory storage, resize on save)
+const avatarUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
 
 // Rate limiting for auth endpoints to prevent brute force attacks
 const authLimiter = rateLimit({
@@ -282,13 +309,16 @@ router.post('/logout', (req, res) => {
 router.get('/me', authenticateToken, (req, res) => {
   try {
     const user = db.prepare(`
-      SELECT id, username, email, is_admin, last_login, created_at
+      SELECT id, username, email, is_admin, avatar, last_login, created_at
       FROM auth_users WHERE id = ?
     `).get(req.user.id);
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
+
+    user.avatar_url = user.avatar ? `/api/auth/avatar/${user.id}` : null;
+    delete user.avatar;
 
     res.json({ user });
   } catch (error) {
@@ -358,6 +388,136 @@ router.put('/password', authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * PUT /auth/profile
+ * Update current user's email
+ */
+router.put('/profile', authenticateToken, (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Check if email is taken by another user
+    if (email) {
+      const existing = db.prepare('SELECT id FROM auth_users WHERE email = ? AND id != ?').get(email, req.user.id);
+      if (existing) {
+        return res.status(400).json({ error: 'Email already registered' });
+      }
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    db.prepare('UPDATE auth_users SET email = ?, updated_at = ? WHERE id = ?')
+      .run(email || null, now, req.user.id);
+
+    res.json({ message: 'Profile updated successfully' });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+/**
+ * POST /auth/avatar
+ * Upload avatar image
+ */
+router.post('/avatar', authenticateToken, (req, res) => {
+  ensureAvatarDir();
+  avatarUpload.single('avatar')(req, res, (err) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: 'File too large. Maximum size is 2MB.' });
+      }
+      return res.status(400).json({ error: err.message });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    try {
+      const ext = req.file.mimetype === 'image/png' ? 'png' : 'jpg';
+      const filename = `${req.user.id}.${ext}`;
+      const filePath = join(avatarDir, filename);
+
+      // Remove old avatar if exists with different extension
+      const otherExt = ext === 'png' ? 'jpg' : 'png';
+      const oldPath = join(avatarDir, `${req.user.id}.${otherExt}`);
+      if (existsSync(oldPath)) {
+        unlinkSync(oldPath);
+      }
+
+      writeFileSync(filePath, req.file.buffer);
+
+      // Update database
+      const now = Math.floor(Date.now() / 1000);
+      db.prepare('UPDATE auth_users SET avatar = ?, updated_at = ? WHERE id = ?')
+        .run(filename, now, req.user.id);
+
+      res.json({
+        message: 'Avatar uploaded successfully',
+        avatar_url: `/api/auth/avatar/${req.user.id}`
+      });
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      res.status(500).json({ error: 'Failed to upload avatar' });
+    }
+  });
+});
+
+/**
+ * DELETE /auth/avatar
+ * Remove current user's avatar
+ */
+router.delete('/avatar', authenticateToken, (req, res) => {
+  try {
+    const user = db.prepare('SELECT avatar FROM auth_users WHERE id = ?').get(req.user.id);
+    if (user?.avatar) {
+      const filePath = join(avatarDir, user.avatar);
+      if (existsSync(filePath)) {
+        unlinkSync(filePath);
+      }
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    db.prepare('UPDATE auth_users SET avatar = NULL, updated_at = ? WHERE id = ?')
+      .run(now, req.user.id);
+
+    res.json({ message: 'Avatar removed successfully' });
+  } catch (error) {
+    console.error('Error removing avatar:', error);
+    res.status(500).json({ error: 'Failed to remove avatar' });
+  }
+});
+
+/**
+ * GET /auth/avatar/:id
+ * Serve avatar image (no auth required for display)
+ */
+router.get('/avatar/:id', (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const user = db.prepare('SELECT avatar FROM auth_users WHERE id = ?').get(userId);
+
+    if (!user?.avatar) {
+      return res.status(404).json({ error: 'No avatar found' });
+    }
+
+    const filePath = join(avatarDir, user.avatar);
+    if (!existsSync(filePath)) {
+      return res.status(404).json({ error: 'Avatar file not found' });
+    }
+
+    const ext = user.avatar.split('.').pop();
+    const contentType = ext === 'png' ? 'image/png' : 'image/jpeg';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+
+    createReadStream(filePath).pipe(res);
+  } catch (error) {
+    console.error('Error serving avatar:', error);
+    res.status(500).json({ error: 'Failed to serve avatar' });
+  }
+});
+
 // Admin-only user management routes
 
 /**
@@ -367,10 +527,14 @@ router.put('/password', authenticateToken, async (req, res) => {
 router.get('/users', authenticateToken, requireAdmin, (req, res) => {
   try {
     const users = db.prepare(`
-      SELECT id, username, email, is_admin, is_active, last_login, created_at
+      SELECT id, username, email, is_admin, is_active, avatar, last_login, created_at
       FROM auth_users
       ORDER BY created_at DESC
-    `).all();
+    `).all().map(u => ({
+      ...u,
+      avatar_url: u.avatar ? `/api/auth/avatar/${u.id}` : null,
+      avatar: undefined
+    }));
 
     res.json({ users });
   } catch (error) {

@@ -154,11 +154,22 @@ export const uploadBackup = (file) => {
   });
 };
 
+// Profile management
+export const updateProfile = (data) => api.put('/auth/profile', data);
+export const uploadAvatar = (file) => {
+  const formData = new FormData();
+  formData.append('avatar', file);
+  return api.post('/auth/avatar', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+};
+export const deleteAvatar = () => api.delete('/auth/avatar');
+export const changePassword = (currentPassword, newPassword) =>
+  api.put('/auth/password', { currentPassword, newPassword });
+
 // Auth user management (admin only)
 export const getAuthUsers = () => api.get('/auth/users');
 export const createAuthUser = (userData) => api.post('/auth/users', userData);
 export const deleteAuthUser = (id) => api.delete(`/auth/users/${id}`);
-export const changePassword = (currentPassword, newPassword) =>
-  api.put('/auth/password', { currentPassword, newPassword });
 
 export default api;

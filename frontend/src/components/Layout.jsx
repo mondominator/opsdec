@@ -1,12 +1,13 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
-import { Home, History, Users, Settings, Menu, ChevronDown, LogOut, Shield, Play, Film, Headphones, TrendingUp } from 'lucide-react';
+import { Home, History, Users, Settings, Menu, ChevronDown, LogOut, Shield, Play, Film, Headphones, TrendingUp, User } from 'lucide-react';
 import { getDashboardStats, getServerHealth } from '../utils/api';
 import { formatDuration } from '../utils/format';
 import { useAuth } from '../contexts/AuthContext';
 
 function Layout({ children }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [stats, setStats] = useState(null);
   const [serverHealth, setServerHealth] = useState([]);
@@ -172,11 +173,18 @@ function Layout({ children }) {
                 <div className="absolute right-0 mt-2 w-72 bg-dark-800 border border-dark-700 rounded-lg shadow-xl z-50">
                   {/* User Info */}
                   {user && (
-                    <div className="px-4 py-3 border-b border-dark-700">
+                    <div
+                      className="px-4 py-3 border-b border-dark-700 cursor-pointer hover:bg-dark-700 transition-colors"
+                      onClick={() => { setIsDropdownOpen(false); navigate('/profile'); }}
+                    >
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                          {user.username.charAt(0).toUpperCase()}
-                        </div>
+                        {user.avatar_url ? (
+                          <img src={user.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
+                        ) : (
+                          <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                            {user.username.charAt(0).toUpperCase()}
+                          </div>
+                        )}
                         <div className="flex-1 min-w-0">
                           <div className="text-white font-medium truncate">{user.username}</div>
                           {user.is_admin ? (
@@ -210,6 +218,16 @@ function Layout({ children }) {
                         </Link>
                       );
                     })}
+                    <Link
+                      to="/profile"
+                      onClick={() => setIsDropdownOpen(false)}
+                      className={`flex items-center space-x-3 px-4 py-2.5 hover:bg-dark-700 transition-colors ${
+                        isActive('/profile') ? 'bg-primary-500/10 text-primary-400' : 'text-gray-300'
+                      }`}
+                    >
+                      <User className="w-4 h-4" />
+                      <span>Profile</span>
+                    </Link>
                   </div>
 
                   {/* Logout */}

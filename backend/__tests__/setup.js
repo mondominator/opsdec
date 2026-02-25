@@ -133,6 +133,7 @@ export function createTestDatabase() {
       password_hash TEXT NOT NULL,
       is_admin INTEGER DEFAULT 0,
       is_active INTEGER DEFAULT 1,
+      avatar TEXT,
       last_login INTEGER,
       created_at INTEGER DEFAULT (strftime('%s', 'now')),
       updated_at INTEGER DEFAULT (strftime('%s', 'now'))

@@ -415,6 +415,14 @@ export function initDatabase() {
       console.log('🔧 Adding last_healthy_at column to servers...');
       db.exec('ALTER TABLE servers ADD COLUMN last_healthy_at INTEGER');
     }
+
+    // Add avatar column to auth_users table
+    const authUserColumns = db.prepare('PRAGMA table_info(auth_users)').all();
+    const authUserColumnNames = authUserColumns.map(col => col.name);
+    if (!authUserColumnNames.includes('avatar')) {
+      console.log('🔧 Adding avatar column to auth_users...');
+      db.exec('ALTER TABLE auth_users ADD COLUMN avatar TEXT');
+    }
   } catch (error) {
     console.error('Migration error:', error.message);
   }
