@@ -349,111 +349,105 @@ class AudiobookshelfService {
   }
 
   async getActivePlaybackSessions() {
-    try {
-      const sessions = await this.getPlaybackSessions();
-      const activeStreams = [];
-      const now = Date.now();
+    const sessions = await this.getPlaybackSessions();
+    const activeStreams = [];
+    const now = Date.now();
 
-      console.log(`📊 Analyzing ${sessions.length} open Audiobookshelf sessions...`);
+    console.log(`📊 Analyzing ${sessions.length} open Audiobookshelf sessions...`);
 
-      // NEW APPROACH: Use updatedAt timestamp and playMethod as primary indicators
-      // Group sessions by user to find the most recently active one per user
-      const sessionsByUser = new Map();
+    // Use updatedAt timestamp and playMethod as primary indicators
+    // Group sessions by user to find the most recently active one per user
+    const sessionsByUser = new Map();
 
-      for (const session of sessions) {
-        if (!session || !session.id || !session.libraryItemId || session.currentTime === undefined) {
-          continue;
-        }
-
-        const userId = session.userId;
-        const updatedAt = session.updatedAt ? new Date(session.updatedAt).getTime() : 0;
-        const playMethod = session.playMethod;
-        const mediaPlayer = session.mediaPlayer;
-
-        // Calculate how recent this session is
-        const ageMs = now - updatedAt;
-        const ageMinutes = Math.floor(ageMs / 1000 / 60);
-        const hasActivePlayer = playMethod !== null && playMethod !== undefined;
-
-        console.log(`   ${session.displayTitle || 'Unknown'} (${session.user?.username || 'Unknown'})`);
-        console.log(`      updatedAt: ${ageMinutes}m ago | playMethod: ${playMethod ?? 'null'} | mediaPlayer: ${mediaPlayer || 'null'}`);
-
-        // Skip sessions that are too old AND don't have an active player
-        // If playMethod is set, keep it regardless of age (it means a player is open)
-        const MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
-        if (ageMs > MAX_AGE_MS && !hasActivePlayer) {
-          console.log(`      ⏭️  Skipping: Too old (${ageMinutes}m) with no active player`);
-          continue;
-        }
-
-        // For each user, keep track of their sessions
-        if (!sessionsByUser.has(userId)) {
-          sessionsByUser.set(userId, []);
-        }
-        sessionsByUser.get(userId).push({
-          session,
-          updatedAt,
-          playMethod,
-          mediaPlayer,
-          ageMs,
-          hasActivePlayer
-        });
+    for (const session of sessions) {
+      if (!session || !session.id || !session.libraryItemId || session.currentTime === undefined) {
+        continue;
       }
 
-      // For each user, pick the MOST RECENTLY UPDATED session with an active player
-      const activeSessions = [];
-      for (const [, userSessions] of sessionsByUser) {
-        // Sort to prioritize:
-        // 1. Sessions with playMethod set (active player) first
-        // 2. Then by most recent updatedAt
-        userSessions.sort((a, b) => {
-          if (a.hasActivePlayer !== b.hasActivePlayer) {
-            return b.hasActivePlayer - a.hasActivePlayer; // Active players first
-          }
-          return b.updatedAt - a.updatedAt; // Most recent first
-        });
+      const userId = session.userId;
+      const updatedAt = session.updatedAt ? new Date(session.updatedAt).getTime() : 0;
+      const playMethod = session.playMethod;
+      const mediaPlayer = session.mediaPlayer;
 
-        const mostRecentSession = userSessions[0]; // Take the first after sorting
+      // Calculate how recent this session is
+      const ageMs = now - updatedAt;
+      const ageMinutes = Math.floor(ageMs / 1000 / 60);
+      const hasActivePlayer = playMethod !== null && playMethod !== undefined;
 
-        // RELAXED: Accept sessions with recent updatedAt, even if playMethod is null/unknown
-        // Some clients don't properly set playMethod but still update the session
-        // updatedAt indicates the session is actively being updated (not stale)
-        const STRICT_AGE_LIMIT = 2 * 60 * 1000; // 2 minutes - sessions older than this are considered inactive
-        const isRecentlyActive = mostRecentSession.ageMs < STRICT_AGE_LIMIT;
+      console.log(`   ${session.displayTitle || 'Unknown'} (${session.user?.username || 'Unknown'})`);
+      console.log(`      updatedAt: ${ageMinutes}m ago | playMethod: ${playMethod ?? 'null'} | mediaPlayer: ${mediaPlayer || 'null'}`);
 
-        if (isRecentlyActive) {
-          const ageMinutes = Math.floor(mostRecentSession.ageMs / 1000 / 60);
-          const ageSeconds = Math.floor((mostRecentSession.ageMs % 60000) / 1000);
-          const playMethodInfo = mostRecentSession.playMethod ?? 'unknown';
-          console.log(`   ▶️  ACTIVE: ${mostRecentSession.session.displayTitle} - playMethod=${playMethodInfo} (${ageMinutes}m ${ageSeconds}s old)`);
-          activeSessions.push(mostRecentSession.session);
-        } else {
-          const ageMinutes = Math.floor(mostRecentSession.ageMs / 1000 / 60);
-          const ageSeconds = Math.floor((mostRecentSession.ageMs % 60000) / 1000);
-          console.log(`   ⏸️  PAUSED: ${mostRecentSession.session.displayTitle} - too old (${ageMinutes}m ${ageSeconds}s)`);
-        }
+      // Skip sessions that are too old AND don't have an active player
+      // If playMethod is set, keep it regardless of age (it means a player is open)
+      const MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
+      if (ageMs > MAX_AGE_MS && !hasActivePlayer) {
+        console.log(`      ⏭️  Skipping: Too old (${ageMinutes}m) with no active player`);
+        continue;
       }
 
-      console.log(`Found ${activeSessions.length} active Audiobookshelf sessions (based on recent updatedAt)`);
-
-      // Convert to activity format
-      for (const session of activeSessions) {
-        const activity = await this.parsePlaybackSession(session);
-        if (activity) {
-          activeStreams.push(activity);
-        }
+      // For each user, keep track of their sessions
+      if (!sessionsByUser.has(userId)) {
+        sessionsByUser.set(userId, []);
       }
-
-      // Cleanup stale sessions in database if db is available
-      if (this.db) {
-        this.cleanupStaleSessions(activeStreams);
-      }
-
-      return activeStreams;
-    } catch (error) {
-      console.error('Error getting active playback sessions:', error.message);
-      return [];
+      sessionsByUser.get(userId).push({
+        session,
+        updatedAt,
+        playMethod,
+        mediaPlayer,
+        ageMs,
+        hasActivePlayer
+      });
     }
+
+    // For each user, pick the MOST RECENTLY UPDATED session with an active player
+    const activeSessions = [];
+    for (const [, userSessions] of sessionsByUser) {
+      // Sort to prioritize:
+      // 1. Sessions with playMethod set (active player) first
+      // 2. Then by most recent updatedAt
+      userSessions.sort((a, b) => {
+        if (a.hasActivePlayer !== b.hasActivePlayer) {
+          return b.hasActivePlayer - a.hasActivePlayer; // Active players first
+        }
+        return b.updatedAt - a.updatedAt; // Most recent first
+      });
+
+      const mostRecentSession = userSessions[0]; // Take the first after sorting
+
+      // Accept sessions with recent updatedAt, even if playMethod is null/unknown
+      // Some clients don't properly set playMethod but still update the session
+      const STRICT_AGE_LIMIT = 2 * 60 * 1000; // 2 minutes
+      const isRecentlyActive = mostRecentSession.ageMs < STRICT_AGE_LIMIT;
+
+      if (isRecentlyActive) {
+        const ageMinutes = Math.floor(mostRecentSession.ageMs / 1000 / 60);
+        const ageSeconds = Math.floor((mostRecentSession.ageMs % 60000) / 1000);
+        const playMethodInfo = mostRecentSession.playMethod ?? 'unknown';
+        console.log(`   ▶️  ACTIVE: ${mostRecentSession.session.displayTitle} - playMethod=${playMethodInfo} (${ageMinutes}m ${ageSeconds}s old)`);
+        activeSessions.push(mostRecentSession.session);
+      } else {
+        const ageMinutes = Math.floor(mostRecentSession.ageMs / 1000 / 60);
+        const ageSeconds = Math.floor((mostRecentSession.ageMs % 60000) / 1000);
+        console.log(`   ⏸️  PAUSED: ${mostRecentSession.session.displayTitle} - too old (${ageMinutes}m ${ageSeconds}s)`);
+      }
+    }
+
+    console.log(`Found ${activeSessions.length} active Audiobookshelf sessions (based on recent updatedAt)`);
+
+    // Convert to activity format
+    for (const session of activeSessions) {
+      const activity = await this.parsePlaybackSession(session);
+      if (activity) {
+        activeStreams.push(activity);
+      }
+    }
+
+    // Cleanup stale sessions in database if db is available
+    if (this.db) {
+      this.cleanupStaleSessions(activeStreams);
+    }
+
+    return activeStreams;
   }
 
   async parsePlaybackSession(session) {
