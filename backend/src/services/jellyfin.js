@@ -256,12 +256,13 @@ class JellyfinService {
         libraries.filter(l => (l.name || '').toLowerCase() === 'youtube').map(l => l.id)
       );
 
-      // Fetch from all libraries, including YouTube (Video type)
+      // Fetch movies, series, episodes, and videos — episodes are needed to catch
+      // new content added to existing series
       const response = await this.client.get('/Users/' + userId + '/Items', {
         params: {
-          Limit: limit,
-          Fields: 'DateCreated,ProductionYear,Path,ImageTags',
-          IncludeItemTypes: 'Movie,Series,Video',
+          Limit: limit * 3,
+          Fields: 'DateCreated,ProductionYear,Path,ImageTags,SeriesId,SeriesPrimaryImageTag',
+          IncludeItemTypes: 'Movie,Series,Episode,Video',
           SortBy: 'DateCreated',
           SortOrder: 'Descending',
           Recursive: true,
@@ -274,20 +275,58 @@ class JellyfinService {
       const youtubeSeriesIds = new Set();
       for (const item of items) {
         if (item.Type === 'Series' && youtubeLibIds.size > 0) {
-          // Check if this series' path contains youtube
           if (item.Path && item.Path.toLowerCase().includes('/youtube')) {
             youtubeSeriesIds.add(item.Id);
           }
         }
       }
 
-      return items.map(item => {
-        // Check if item is from a YouTube library
+      // Group episodes by series — use series-level entry with most recent episode's addedAt
+      const seriesMap = new Map();
+      const nonEpisodes = [];
+
+      for (const item of items) {
+        if (item.Type === 'Episode' && item.SeriesId) {
+          const existing = seriesMap.get(item.SeriesId);
+          if (!existing || new Date(item.DateCreated) > new Date(existing.DateCreated)) {
+            seriesMap.set(item.SeriesId, item);
+          }
+        } else {
+          // Skip Series entries if we already have episodes for that series
+          if (item.Type === 'Series' && seriesMap.has(item.Id)) continue;
+          nonEpisodes.push(item);
+        }
+      }
+
+      // Remove Series entries that duplicate a grouped episode series
+      const filteredNonEpisodes = nonEpisodes.filter(item => {
+        if (item.Type === 'Series' && seriesMap.has(item.Id)) return false;
+        return true;
+      });
+
+      // Convert grouped episodes to series-level entries
+      const episodeGroups = [...seriesMap.entries()].map(([seriesId, episode]) => ({
+        Id: seriesId,
+        Name: episode.SeriesName || episode.Name,
+        Type: 'Series',
+        ProductionYear: episode.ProductionYear,
+        SeriesName: episode.SeriesName,
+        DateCreated: episode.DateCreated,
+        ImageTags: episode.SeriesPrimaryImageTag ? { Primary: episode.SeriesPrimaryImageTag } : {},
+        Path: episode.Path,
+        _isEpisodeGroup: true,
+      }));
+
+      // Merge and sort by date
+      const merged = [...filteredNonEpisodes, ...episodeGroups]
+        .sort((a, b) => new Date(b.DateCreated) - new Date(a.DateCreated))
+        .slice(0, limit);
+
+      return merged.map(item => {
         const isYoutube = youtubeSeriesIds.has(item.Id) ||
           youtubeSeriesIds.has(item.SeriesId) ||
           (item.Path && item.Path.toLowerCase().includes('/youtube'));
 
-        // For YouTube, use channel image (series/parent); otherwise standard poster
         let thumb = null;
         if (isYoutube && item.SeriesId) {
           thumb = `${this.baseUrl}/Items/${item.SeriesId}/Images/Primary?api_key=${this.apiKey}`;

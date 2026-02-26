@@ -250,9 +250,9 @@ class EmbyService {
 
       const response = await this.client.get('/Users/' + userId + '/Items', {
         params: {
-          Limit: limit,
-          Fields: 'DateCreated,ProductionYear',
-          IncludeItemTypes: 'Movie,Series',
+          Limit: limit * 3,
+          Fields: 'DateCreated,ProductionYear,ImageTags,SeriesId,SeriesPrimaryImageTag',
+          IncludeItemTypes: 'Movie,Series,Episode',
           SortBy: 'DateCreated',
           SortOrder: 'Descending',
           Recursive: true,
@@ -260,7 +260,44 @@ class EmbyService {
       });
 
       const items = response.data.Items || [];
-      return items.map(item => ({
+
+      // Group episodes by series — use series-level entry with most recent episode's addedAt
+      const seriesMap = new Map();
+      const nonEpisodes = [];
+
+      for (const item of items) {
+        if (item.Type === 'Episode' && item.SeriesId) {
+          const existing = seriesMap.get(item.SeriesId);
+          if (!existing || new Date(item.DateCreated) > new Date(existing.DateCreated)) {
+            seriesMap.set(item.SeriesId, item);
+          }
+        } else {
+          nonEpisodes.push(item);
+        }
+      }
+
+      // Remove Series entries that duplicate a grouped episode series
+      const filteredNonEpisodes = nonEpisodes.filter(item => {
+        if (item.Type === 'Series' && seriesMap.has(item.Id)) return false;
+        return true;
+      });
+
+      // Convert grouped episodes to series-level entries
+      const episodeGroups = [...seriesMap.entries()].map(([seriesId, episode]) => ({
+        Id: seriesId,
+        Name: episode.SeriesName || episode.Name,
+        Type: 'Series',
+        ProductionYear: episode.ProductionYear,
+        DateCreated: episode.DateCreated,
+        ImageTags: episode.SeriesPrimaryImageTag ? { Primary: episode.SeriesPrimaryImageTag } : {},
+      }));
+
+      // Merge and sort by date
+      const merged = [...filteredNonEpisodes, ...episodeGroups]
+        .sort((a, b) => new Date(b.DateCreated) - new Date(a.DateCreated))
+        .slice(0, limit);
+
+      return merged.map(item => ({
         id: item.Id,
         name: item.Name,
         type: item.Type,
