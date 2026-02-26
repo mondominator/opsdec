@@ -506,7 +506,7 @@ function Dashboard() {
                         iconSize="w-3 h-3"
                       />
                     )}
-                    <div className={`absolute bottom-0.5 right-0.5 w-2 h-2 rounded-full ${getServerDotColor(item.server_type)} ring-1 ring-black/50`} title={item.server_type} />
+                    <div className={`absolute bottom-0.5 right-0.5 w-1 h-1 rounded-full ${getServerDotColor(item.server_type)} ring-1 ring-black/50`} title={item.server_type} />
                     {item.count > 1 && (
                       <div className="absolute top-0.5 right-0.5 bg-indigo-500 text-white text-[7px] font-bold rounded-full w-3 h-3 flex items-center justify-center shadow">
                         {item.count}
