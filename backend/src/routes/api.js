@@ -9,6 +9,36 @@ import multer from 'multer';
 
 const router = express.Router();
 
+// Register metadata refresher so telegram can re-fetch posters/thumbs at send time
+telegram.setMetadataRefresher(async (items) => {
+  const serviceMap = { plex: plexService, emby: embyService, jellyfin: jellyfinService, audiobookshelf: audiobookshelfService, sappho: sapphoService };
+  const serverTypes = [...new Set(items.map(i => i.server_type))];
+
+  // Re-fetch recently added from each relevant server
+  const freshByKey = new Map();
+  await Promise.all(serverTypes.map(async (type) => {
+    const svc = serviceMap[type];
+    if (!svc) return;
+    try {
+      const fresh = await svc.getRecentlyAdded(50);
+      for (const item of fresh) {
+        freshByKey.set(`${type}|${item.id}`, item);
+      }
+    } catch {
+      // If a server is unreachable, keep original data for its items
+    }
+  }));
+
+  // Merge fresh metadata into buffered items
+  return items.map(item => {
+    const fresh = freshByKey.get(`${item.server_type}|${item.id}`);
+    if (fresh) {
+      return { ...item, thumb: fresh.thumb || item.thumb, name: fresh.name || item.name };
+    }
+    return item;
+  });
+});
+
 // Configure multer for backup file uploads
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {

@@ -139,10 +139,15 @@ function notifyNewUser(username, serverType) {
   sendMessage(text);
 }
 
-// Buffer for recently added items — waits 2 minutes to batch episodes of the same show
+// Buffer for recently added items — waits 5 minutes to batch episodes and let metadata settle
 let recentlyAddedBuffer = [];
 let recentlyAddedTimer = null;
-const RECENTLY_ADDED_DELAY = 2 * 60 * 1000; // 2 minutes
+let metadataRefresher = null;
+const RECENTLY_ADDED_DELAY = 5 * 60 * 1000; // 5 minutes
+
+function setMetadataRefresher(fn) {
+  metadataRefresher = fn;
+}
 
 function notifyRecentlyAdded(items) {
   if (!isEnabled() || getSetting('telegram_notify_recently_added') !== 'true') return;
@@ -165,6 +170,15 @@ async function flushRecentlyAdded() {
   // Filter by allowed servers if configured
   items = items.filter(i => isServerAllowed(i.server_type, 'telegram_recently_added_servers'));
   if (items.length === 0) return;
+
+  // Re-fetch metadata from servers — posters/thumbs may not have been ready at detection time
+  if (metadataRefresher) {
+    try {
+      items = await metadataRefresher(items);
+    } catch {
+      // If refresh fails, proceed with original data
+    }
+  }
 
   // Group episodes/tracks by their series/show name, keep standalone items separate
   const groups = new Map();
@@ -219,4 +233,4 @@ function notifyServerRecovered(serverName, serverType) {
   sendMessage(text);
 }
 
-export default { isEnabled, sendMessage, testConnection, notifyPlaybackStarted, notifyPlaybackCompleted, notifyNewUser, notifyRecentlyAdded, notifyServerDown, notifyServerRecovered };
+export default { isEnabled, sendMessage, testConnection, notifyPlaybackStarted, notifyPlaybackCompleted, notifyNewUser, notifyRecentlyAdded, setMetadataRefresher, notifyServerDown, notifyServerRecovered };
