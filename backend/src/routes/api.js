@@ -4,40 +4,9 @@ import { embyService, plexService, audiobookshelfService, sapphoService, jellyfi
 import { getJobs, runJob, updateJob } from '../services/jobs.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { encrypt, decrypt } from '../utils/crypto.js';
-import telegram from '../services/telegram.js';
 import multer from 'multer';
 
 const router = express.Router();
-
-// Register metadata refresher so telegram can re-fetch posters/thumbs at send time
-telegram.setMetadataRefresher(async (items) => {
-  const serviceMap = { plex: plexService, emby: embyService, jellyfin: jellyfinService, audiobookshelf: audiobookshelfService, sappho: sapphoService };
-  const serverTypes = [...new Set(items.map(i => i.server_type))];
-
-  // Re-fetch recently added from each relevant server
-  const freshByKey = new Map();
-  await Promise.all(serverTypes.map(async (type) => {
-    const svc = serviceMap[type];
-    if (!svc) return;
-    try {
-      const fresh = await svc.getRecentlyAdded(50);
-      for (const item of fresh) {
-        freshByKey.set(`${type}|${item.id}`, item);
-      }
-    } catch {
-      // If a server is unreachable, keep original data for its items
-    }
-  }));
-
-  // Merge fresh metadata into buffered items
-  return items.map(item => {
-    const fresh = freshByKey.get(`${item.server_type}|${item.id}`);
-    if (fresh) {
-      return { ...item, thumb: fresh.thumb || item.thumb, name: fresh.name || item.name };
-    }
-    return item;
-  });
-});
 
 // Configure multer for backup file uploads
 const storage = multer.diskStorage({
@@ -1459,23 +1428,6 @@ router.get('/stats/recently-added', async (req, res) => {
       .filter(i => i.addedAt && new Date(i.addedAt) >= cutoff)
       .sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt))
       .slice(0, limit);
-
-    // Check for new items using persistent DB tracking and send telegram notification
-    const notifiedCount = db.prepare('SELECT COUNT(*) AS cnt FROM notified_recently_added').get().cnt;
-    const notified = new Set(
-      db.prepare('SELECT server_type || \'|\' || media_id AS key FROM notified_recently_added').all().map(r => r.key)
-    );
-    const newItems = recentItems.filter(i => !notified.has(i.server_type + '|' + i.id));
-    if (newItems.length > 0) {
-      // Only notify if the table was already seeded — first run just seeds without notifying
-      if (notifiedCount > 0) {
-        telegram.notifyRecentlyAdded(newItems);
-      }
-      const insert = db.prepare('INSERT OR IGNORE INTO notified_recently_added (server_type, media_id, title) VALUES (?, ?, ?)');
-      for (const item of newItems) {
-        insert.run(item.server_type, item.id, item.name);
-      }
-    }
 
     res.json({ success: true, data: { recentItems } });
   } catch (error) {

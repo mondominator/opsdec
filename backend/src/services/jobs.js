@@ -1,9 +1,16 @@
 import cron from 'node-cron';
 import { db } from '../database/init.js';
 import imageCache from './imageCache.js';
+import telegram from './telegram.js';
 
 // Job definitions
 const jobDefinitions = {
+  'check-recently-added': {
+    name: 'Check Recently Added',
+    description: 'Poll media servers for new content and send Telegram notifications',
+    cronSchedule: '*/5 * * * *', // Every 5 minutes
+    handler: null // Will be set when at least one service is available
+  },
   'repair-covers': {
     name: 'Repair Covers',
     description: 'Fix stale cover URLs for moved/reimported items across all media servers',
@@ -35,31 +42,65 @@ let audiobookshelfServiceRef = null;
 let plexServiceRef = null;
 let embyServiceRef = null;
 let jellyfinServiceRef = null;
+let sapphoServiceRef = null;
 
 export function setAudiobookshelfService(service) {
   audiobookshelfServiceRef = service;
-  updateRepairCoversHandler();
+  updateServiceDependentHandlers();
 }
 
 export function setPlexService(service) {
   plexServiceRef = service;
-  updateRepairCoversHandler();
+  updateServiceDependentHandlers();
 }
 
 export function setEmbyService(service) {
   embyServiceRef = service;
-  updateRepairCoversHandler();
+  updateServiceDependentHandlers();
 }
 
 export function setJellyfinService(service) {
   jellyfinServiceRef = service;
-  updateRepairCoversHandler();
+  updateServiceDependentHandlers();
 }
 
-function updateRepairCoversHandler() {
+export function setSapphoService(service) {
+  sapphoServiceRef = service;
+  updateServiceDependentHandlers();
+}
+
+function updateServiceDependentHandlers() {
   // Enable repair-covers job if at least one service is configured
   if (audiobookshelfServiceRef || plexServiceRef || embyServiceRef || jellyfinServiceRef) {
     jobDefinitions['repair-covers'].handler = repairCoversJob;
+  }
+  // Enable check-recently-added job if at least one service is configured
+  if (audiobookshelfServiceRef || plexServiceRef || embyServiceRef || jellyfinServiceRef || sapphoServiceRef) {
+    jobDefinitions['check-recently-added'].handler = checkRecentlyAddedJob;
+
+    // Register metadata refresher so telegram can re-fetch posters/thumbs at send time
+    telegram.setMetadataRefresher(async (items) => {
+      const serviceMap = { plex: plexServiceRef, emby: embyServiceRef, jellyfin: jellyfinServiceRef, audiobookshelf: audiobookshelfServiceRef, sappho: sapphoServiceRef };
+      const serverTypes = [...new Set(items.map(i => i.server_type))];
+      const freshByKey = new Map();
+      await Promise.all(serverTypes.map(async (type) => {
+        const svc = serviceMap[type];
+        if (!svc) return;
+        try {
+          const fresh = await svc.getRecentlyAdded(50);
+          for (const item of fresh) {
+            freshByKey.set(`${type}|${item.id}`, item);
+          }
+        } catch {
+          // If a server is unreachable, keep original data for its items
+        }
+      }));
+      return items.map(item => {
+        const fresh = freshByKey.get(`${item.server_type}|${item.id}`);
+        if (fresh) return { ...item, thumb: fresh.thumb || item.thumb, name: fresh.name || item.name };
+        return item;
+      });
+    });
   }
 }
 
@@ -249,6 +290,75 @@ function getNextCronRun(cronSchedule) {
 }
 
 // Job handlers
+
+async function checkRecentlyAddedJob() {
+  const limit = 30;
+
+  // Check preferred server settings
+  const videoRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('recently_added_video_server');
+  const bookRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('recently_added_book_server');
+  const preferredVideo = videoRow?.value || '';
+  const preferredBook = bookRow?.value || '';
+
+  const serviceMap = {
+    plex: plexServiceRef,
+    emby: embyServiceRef,
+    jellyfin: jellyfinServiceRef,
+    audiobookshelf: audiobookshelfServiceRef,
+    sappho: sapphoServiceRef
+  };
+
+  const serversToQuery = new Set();
+  const videoServers = ['plex', 'emby', 'jellyfin'];
+  const bookServers = ['audiobookshelf', 'sappho'];
+
+  if (preferredVideo && serviceMap[preferredVideo]) {
+    serversToQuery.add(preferredVideo);
+  } else {
+    videoServers.forEach(s => serversToQuery.add(s));
+  }
+
+  if (preferredBook && serviceMap[preferredBook]) {
+    serversToQuery.add(preferredBook);
+  } else {
+    bookServers.forEach(s => serversToQuery.add(s));
+  }
+
+  const promises = [];
+  for (const type of serversToQuery) {
+    const svc = serviceMap[type];
+    if (svc) promises.push(svc.getRecentlyAdded(limit).then(items => items.map(i => ({ ...i, server_type: type }))));
+  }
+
+  const results = await Promise.all(promises);
+  const allItems = results.flat();
+
+  // Only items from last 14 days
+  const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+  const recentItems = allItems
+    .filter(i => i.addedAt && new Date(i.addedAt) >= cutoff)
+    .sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt))
+    .slice(0, limit);
+
+  // Check for new items
+  const notifiedCount = db.prepare('SELECT COUNT(*) AS cnt FROM notified_recently_added').get().cnt;
+  const notified = new Set(
+    db.prepare('SELECT server_type || \'|\' || media_id AS key FROM notified_recently_added').all().map(r => r.key)
+  );
+  const newItems = recentItems.filter(i => !notified.has(i.server_type + '|' + i.id));
+
+  if (newItems.length > 0) {
+    if (notifiedCount > 0) {
+      telegram.notifyRecentlyAdded(newItems);
+    }
+    const insert = db.prepare('INSERT OR IGNORE INTO notified_recently_added (server_type, media_id, title) VALUES (?, ?, ?)');
+    for (const item of newItems) {
+      insert.run(item.server_type, item.id, item.name);
+    }
+  }
+
+  return { checked: recentItems.length, newItems: newItems.length, notified: notifiedCount > 0 && newItems.length > 0 };
+}
 
 // Check if item title from server matches what's in history
 function titleMatchesHistory(itemInfo, entry) {

@@ -12,8 +12,8 @@ import { dirname, join } from 'path';
 import { existsSync } from 'fs';
 import { parse as parseUrl } from 'url';
 import { initDatabase, db } from './database/init.js';
-import { startActivityMonitor, audiobookshelfService, plexService, embyService, jellyfinService } from './services/monitor.js';
-import { initializeJobs, setAudiobookshelfService, setPlexService, setEmbyService, setJellyfinService } from './services/jobs.js';
+import { startActivityMonitor, audiobookshelfService, plexService, embyService, jellyfinService, sapphoService } from './services/monitor.js';
+import { initializeJobs, setAudiobookshelfService, setPlexService, setEmbyService, setJellyfinService, setSapphoService } from './services/jobs.js';
 import apiRouter from './routes/api.js';
 import authRouter from './routes/auth.js';
 import { authenticateToken, verifyToken } from './middleware/auth.js';
@@ -269,6 +269,9 @@ server.listen(PORT, () => {
   }
   if (jellyfinService) {
     setJellyfinService(jellyfinService);
+  }
+  if (sapphoService) {
+    setSapphoService(sapphoService);
   }
   initializeJobs();
 });

@@ -153,6 +153,7 @@ function notifyRecentlyAdded(items) {
   if (!isEnabled() || getSetting('telegram_notify_recently_added') !== 'true') return;
   if (!items || items.length === 0) return;
 
+  console.log(`[Telegram] Buffering ${items.length} recently added items (buffer now: ${recentlyAddedBuffer.length + items.length})`);
   recentlyAddedBuffer.push(...items);
 
   // Reset the timer each time new items arrive
@@ -165,18 +166,26 @@ async function flushRecentlyAdded() {
   recentlyAddedBuffer = [];
   recentlyAddedTimer = null;
 
+  console.log(`[Telegram] Flushing recently added buffer (${items.length} items)`);
+
   if (items.length === 0) return;
 
   // Filter by allowed servers if configured
   items = items.filter(i => isServerAllowed(i.server_type, 'telegram_recently_added_servers'));
-  if (items.length === 0) return;
+  if (items.length === 0) {
+    console.log('[Telegram] All items filtered out by server allowlist');
+    return;
+  }
 
   // Re-fetch metadata from servers — posters/thumbs may not have been ready at detection time
   if (metadataRefresher) {
     try {
-      items = await metadataRefresher(items);
-    } catch {
-      // If refresh fails, proceed with original data
+      console.log('[Telegram] Re-fetching metadata from servers...');
+      const refreshTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 15000));
+      items = await Promise.race([metadataRefresher(items), refreshTimeout]);
+      console.log(`[Telegram] Metadata refresh complete (${items.length} items)`);
+    } catch (err) {
+      console.error('[Telegram] Metadata refresh failed, using original data:', err.message);
     }
   }
 
@@ -202,6 +211,7 @@ async function flushRecentlyAdded() {
   const toSend = [...groups.values(), ...standalone];
 
   // Send each as an individual photo message with a small delay between
+  console.log(`[Telegram] Sending ${toSend.length} recently added notifications`);
   for (const item of toSend) {
     const serverIcon = getServerEmoji(item.server_type);
     const caption = `${serverIcon} · <b>${item.name}</b>`;
