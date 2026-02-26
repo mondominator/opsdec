@@ -247,40 +247,41 @@ function Dashboard() {
   const renderMediaRows = (section) =>
     section.items.slice(0, section.count).map((item, index) => {
       const isExpanded = expandedItems[`${section.category}-${index}`];
+      const userCount = item.users?.length || item.unique_users || item.plays;
       return (
         <div key={index}>
           <div
-            className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-white/[0.03] transition-colors cursor-pointer"
+            className="flex items-start gap-2.5 px-3 py-1.5 hover:bg-white/[0.03] transition-colors cursor-pointer"
             onClick={() => toggleExpanded(section.category, index)}
           >
-            <span className="flex-shrink-0 w-4 text-center text-gray-600 text-[11px] font-mono">{index + 1}</span>
-            <div className={`flex-shrink-0 ${section.bookMode ? 'w-10 h-10' : 'w-7 h-10'} rounded overflow-hidden bg-dark-700`}>
-              <MediaThumbnail
-                src={item.thumb}
-                alt={item.title}
-                title={item.title}
-                serverType={section.bookMode ? 'audiobookshelf' : item.server_type}
-                className="w-full h-full"
-                iconSize="w-3 h-3"
-              />
+            <span className="flex-shrink-0 w-4 text-center text-gray-600 text-[11px] font-mono mt-1">{index + 1}</span>
+            <div className="flex-shrink-0 flex flex-col items-center">
+              <div className={`${section.bookMode ? 'w-10 h-10' : 'w-7 h-10'} rounded overflow-hidden bg-dark-700`}>
+                <MediaThumbnail
+                  src={item.thumb}
+                  alt={item.title}
+                  title={item.title}
+                  serverType={section.bookMode ? 'audiobookshelf' : item.server_type}
+                  className="w-full h-full"
+                  iconSize="w-3 h-3"
+                />
+              </div>
+              <div className="w-14 text-[10px] text-gray-400 truncate text-center mt-0.5" title={item.title}>{item.title}</div>
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-white text-[13px] truncate" title={item.title}>{item.title}</div>
+            <div className="flex-1 min-w-0 flex items-center gap-2 text-[11px] text-gray-500 mt-1">
+              <span className="flex items-center gap-0.5">
+                <Users className="w-2.5 h-2.5" />
+                {userCount} {userCount === 1 ? 'user' : 'users'}
+              </span>
+              <span className="flex items-center gap-0.5">
+                <Play className="w-2.5 h-2.5" />
+                {item.plays} {item.plays === 1 ? 'play' : 'plays'}
+              </span>
             </div>
-            <ChevronDown className={`flex-shrink-0 w-3 h-3 text-gray-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`flex-shrink-0 w-3 h-3 text-gray-600 transition-transform mt-1 ${isExpanded ? 'rotate-180' : ''}`} />
           </div>
           {isExpanded && (
             <div className="px-3 py-1 bg-dark-900/30">
-              <div className="flex items-center gap-3 pl-6 py-1 text-[10px] text-gray-500">
-                <span className="flex items-center gap-0.5">
-                  <Users className="w-2.5 h-2.5" />
-                  {item.users?.length || item.unique_users || item.plays} {(item.users?.length || item.unique_users || item.plays) === 1 ? 'user' : 'users'}
-                </span>
-                <span className="flex items-center gap-0.5">
-                  <Play className="w-2.5 h-2.5" />
-                  {item.plays} {item.plays === 1 ? 'play' : 'plays'}
-                </span>
-              </div>
               {item.users?.length > 0 && <div className="space-y-0.5 pl-6">
                 {item.users.map((user, ui) => (
                   <div
