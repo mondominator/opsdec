@@ -244,68 +244,77 @@ function Dashboard() {
 
   const recentItems = recentlyAdded?.recentItems || [];
 
-  const renderMediaRows = (section) =>
-    section.items.slice(0, section.count).map((item, index) => {
-      const isExpanded = expandedItems[`${section.category}-${index}`];
-      const userCount = item.users?.length || item.unique_users || item.plays;
-      return (
-        <div key={index}>
-          <div
-            className="flex items-start gap-2.5 px-3 py-1.5 hover:bg-white/[0.03] transition-colors cursor-pointer"
-            onClick={() => toggleExpanded(section.category, index)}
-          >
-            <span className="flex-shrink-0 w-4 text-center text-gray-600 text-[11px] font-mono mt-1">{index + 1}</span>
-            <div className="flex-shrink-0 flex flex-col items-center">
-              <div className={`${section.bookMode ? 'w-10 h-10' : 'w-7 h-10'} rounded overflow-hidden bg-dark-700`}>
-                <MediaThumbnail
-                  src={item.thumb}
-                  alt={item.title}
-                  title={item.title}
-                  serverType={section.bookMode ? 'audiobookshelf' : item.server_type}
-                  className="w-full h-full"
-                  iconSize="w-3 h-3"
-                />
-              </div>
-              <div className="w-14 text-[10px] text-gray-400 truncate text-center mt-0.5" title={item.title}>{item.title}</div>
-            </div>
-            <div className="flex-1" />
-            <ChevronDown className={`flex-shrink-0 w-3 h-3 text-gray-600 transition-transform mt-1 ${isExpanded ? 'rotate-180' : ''}`} />
-          </div>
-          {isExpanded && (
-            <div className="px-3 py-1 bg-dark-900/30">
-              <div className="flex items-center gap-3 pl-6 py-1 text-[10px] text-gray-500">
-                <span className="flex items-center gap-0.5">
-                  <Users className="w-2.5 h-2.5" />
-                  {userCount} {userCount === 1 ? 'user' : 'users'}
-                </span>
-                <span className="flex items-center gap-0.5">
-                  <Play className="w-2.5 h-2.5" />
-                  {item.plays} {item.plays === 1 ? 'play' : 'plays'}
-                </span>
-              </div>
-              {item.users?.length > 0 && <div className="space-y-0.5 pl-6">
-                {item.users.map((user, ui) => (
-                  <div
-                    key={ui}
-                    onClick={(e) => { e.stopPropagation(); user.user_id && navigate(`/users/${user.user_id}`); }}
-                    className="flex items-center gap-1.5 cursor-pointer hover:bg-white/[0.03] px-1.5 py-0.5 rounded transition-colors"
-                  >
-                    {user.thumb ? (
-                      <img src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`} alt={user.username} className="w-4 h-4 rounded-full object-cover" />
-                    ) : (
-                      <div className="w-4 h-4 rounded-full bg-primary-600 flex items-center justify-center">
-                        <span className="text-[9px] text-white font-semibold">{user.username.charAt(0).toUpperCase()}</span>
-                      </div>
-                    )}
-                    <span className="text-[11px] text-white truncate">{user.username}</span>
+  const renderMediaRows = (section) => {
+    const items = section.items.slice(0, section.count);
+    const expandedIndex = items.findIndex((_, i) => expandedItems[`${section.category}-${i}`]);
+    const expandedItem = expandedIndex >= 0 ? items[expandedIndex] : null;
+    const expandedUserCount = expandedItem ? (expandedItem.users?.length || expandedItem.unique_users || expandedItem.plays) : 0;
+    return (
+      <>
+        <div className="flex flex-wrap gap-1.5 px-2 py-1.5">
+          {items.map((item, index) => {
+            const isExpanded = expandedItems[`${section.category}-${index}`];
+            return (
+              <div
+                key={index}
+                className={`flex flex-col items-center cursor-pointer transition-colors rounded p-1 hover:bg-white/[0.03] ${isExpanded ? 'bg-white/[0.05]' : ''}`}
+                style={{ width: section.bookMode ? '3.2rem' : '2.8rem' }}
+                onClick={() => toggleExpanded(section.category, index)}
+              >
+                <div className="relative w-full">
+                  <span className="absolute -top-0.5 -left-0.5 text-[8px] text-gray-600 font-mono z-10">{index + 1}</span>
+                  <div className={`w-full ${section.bookMode ? 'aspect-square' : 'aspect-[2/3]'} rounded overflow-hidden bg-dark-700`}>
+                    <MediaThumbnail
+                      src={item.thumb}
+                      alt={item.title}
+                      title={item.title}
+                      serverType={section.bookMode ? 'audiobookshelf' : item.server_type}
+                      className="w-full h-full"
+                      iconSize="w-3 h-3"
+                    />
                   </div>
-                ))}
-              </div>}
-            </div>
-          )}
+                </div>
+                <div className="w-full text-[8px] text-gray-500 truncate text-center mt-0.5 leading-tight" title={item.title}>{item.title}</div>
+              </div>
+            );
+          })}
         </div>
-      );
-    });
+        {expandedItem && (
+          <div className="px-3 py-1 bg-dark-900/30">
+            <div className="flex items-center gap-3 py-1 text-[10px] text-gray-500">
+              <span className="text-white text-[11px] truncate">{expandedItem.title}</span>
+              <span className="flex items-center gap-0.5 flex-shrink-0">
+                <Users className="w-2.5 h-2.5" />
+                {expandedUserCount} {expandedUserCount === 1 ? 'user' : 'users'}
+              </span>
+              <span className="flex items-center gap-0.5 flex-shrink-0">
+                <Play className="w-2.5 h-2.5" />
+                {expandedItem.plays} {expandedItem.plays === 1 ? 'play' : 'plays'}
+              </span>
+            </div>
+            {expandedItem.users?.length > 0 && <div className="space-y-0.5">
+              {expandedItem.users.map((user, ui) => (
+                <div
+                  key={ui}
+                  onClick={(e) => { e.stopPropagation(); user.user_id && navigate(`/users/${user.user_id}`); }}
+                  className="flex items-center gap-1.5 cursor-pointer hover:bg-white/[0.03] px-1.5 py-0.5 rounded transition-colors"
+                >
+                  {user.thumb ? (
+                    <img src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`} alt={user.username} className="w-4 h-4 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-4 h-4 rounded-full bg-primary-600 flex items-center justify-center">
+                      <span className="text-[9px] text-white font-semibold">{user.username.charAt(0).toUpperCase()}</span>
+                    </div>
+                  )}
+                  <span className="text-[11px] text-white truncate">{user.username}</span>
+                </div>
+              ))}
+            </div>}
+          </div>
+        )}
+      </>
+    );
+  };
 
   const renderUserRows = (section) =>
     section.users.slice(0, section.count).map((user, index) => {
