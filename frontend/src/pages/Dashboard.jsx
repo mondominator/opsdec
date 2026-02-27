@@ -268,20 +268,21 @@ function Dashboard() {
               </div>
               <div className="w-14 text-[10px] text-gray-400 truncate text-center mt-0.5" title={item.title}>{item.title}</div>
             </div>
-            <div className="flex-1 min-w-0 flex items-center gap-2 text-[11px] text-gray-500 mt-1">
-              <span className="flex items-center gap-0.5">
-                <Users className="w-2.5 h-2.5" />
-                {userCount} {userCount === 1 ? 'user' : 'users'}
-              </span>
-              <span className="flex items-center gap-0.5">
-                <Play className="w-2.5 h-2.5" />
-                {item.plays} {item.plays === 1 ? 'play' : 'plays'}
-              </span>
-            </div>
+            <div className="flex-1" />
             <ChevronDown className={`flex-shrink-0 w-3 h-3 text-gray-600 transition-transform mt-1 ${isExpanded ? 'rotate-180' : ''}`} />
           </div>
           {isExpanded && (
             <div className="px-3 py-1 bg-dark-900/30">
+              <div className="flex items-center gap-3 pl-6 py-1 text-[10px] text-gray-500">
+                <span className="flex items-center gap-0.5">
+                  <Users className="w-2.5 h-2.5" />
+                  {userCount} {userCount === 1 ? 'user' : 'users'}
+                </span>
+                <span className="flex items-center gap-0.5">
+                  <Play className="w-2.5 h-2.5" />
+                  {item.plays} {item.plays === 1 ? 'play' : 'plays'}
+                </span>
+              </div>
               {item.users?.length > 0 && <div className="space-y-0.5 pl-6">
                 {item.users.map((user, ui) => (
                   <div
