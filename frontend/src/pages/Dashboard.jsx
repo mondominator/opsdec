@@ -278,7 +278,6 @@ function Dashboard() {
                     />
                   </div>
                 </div>
-                <div className="w-full text-[8px] text-gray-500 truncate text-center mt-0.5 leading-tight" title={item.title}>{item.title}</div>
               </div>
             );
           })}
