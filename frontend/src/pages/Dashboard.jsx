@@ -251,14 +251,18 @@ function Dashboard() {
     const expandedUserCount = expandedItem ? (expandedItem.users?.length || expandedItem.unique_users || expandedItem.plays) : 0;
     return (
       <>
-        <div className="flex flex-wrap gap-1.5 px-2 py-1.5">
+        <div className="flex flex-wrap justify-center items-end gap-1.5 px-2 py-1.5">
           {items.map((item, index) => {
             const isExpanded = expandedItems[`${section.category}-${index}`];
+            const total = items.length;
+            const baseSize = section.bookMode ? 5.5 : 5;
+            const minSize = section.bookMode ? 3 : 2.5;
+            const size = total > 1 ? baseSize - ((baseSize - minSize) * index / (total - 1)) : baseSize;
             return (
               <div
                 key={index}
                 className={`flex flex-col items-center cursor-pointer transition-colors rounded p-1 hover:bg-white/[0.03] ${isExpanded ? 'bg-white/[0.05]' : ''}`}
-                style={{ width: section.bookMode ? '3.2rem' : '2.8rem' }}
+                style={{ width: `${size}rem` }}
                 onClick={() => toggleExpanded(section.category, index)}
               >
                 <div className="relative w-full">
