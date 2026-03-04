@@ -17,6 +17,8 @@ let audiobookshelfService = null;
 let sapphoService = null;
 let jellyfinService = null;
 let seerrService = null;
+let seerrServerInfo = null; // { id, name } — stored at init for periodic health checks
+let seerrHealthInterval = null;
 let cronJob = null;
 // Track server health based on poll results (server_id -> { healthy, lastChecked, error, failCount })
 const serverHealthMap = new Map();
@@ -136,16 +138,17 @@ export function initServices() {
           console.log(`✅ ${server.name} (Jellyfin) initialized from database`);
         } else if (server.type === 'seerr') {
           seerrService = new SeerrService(server.url, apiKey);
+          seerrServerInfo = { id: server.id, name: server.name };
           // Seerr does not join the polling loop (no playback sessions)
           // Test connection to mark health
           seerrService.testConnection().then(result => {
-            serverHealthMap.set(server.id, { healthy: result.success, lastChecked: Date.now() });
+            serverHealthMap.set(server.id, { healthy: result.success, lastChecked: Date.now(), failCount: 0 });
             if (result.success) {
               const now = Math.floor(Date.now() / 1000);
               try { db.prepare('UPDATE servers SET last_healthy_at = ? WHERE id = ?').run(now, server.id); } catch { /* non-critical */ }
             }
           }).catch(() => {
-            serverHealthMap.set(server.id, { healthy: false, lastChecked: Date.now() });
+            serverHealthMap.set(server.id, { healthy: false, lastChecked: Date.now(), failCount: 0 });
           });
           console.log(`✅ ${server.name} (Seerr) initialized from database`);
         }
@@ -1576,6 +1579,41 @@ export function startActivityMonitor() {
   cronJob = cron.schedule('*/60 * * * * *', () => {
     checkActivity(services);
   });
+
+  // Periodic Seerr health check — Seerr has no playback sessions so it's excluded from
+  // the services polling array, but we still want to track its up/down status.
+  if (seerrService && seerrServerInfo) {
+    console.log('🎬 Setting up Seerr health check (every 5 minutes)...');
+    seerrHealthInterval = setInterval(async () => {
+      const { id, name } = seerrServerInfo;
+      const prevHealth = serverHealthMap.get(id);
+      try {
+        const result = await seerrService.testConnection();
+        if (result.success) {
+          serverHealthMap.set(id, { healthy: true, lastChecked: Date.now(), failCount: 0 });
+          if (prevHealth && !prevHealth.healthy) {
+            telegram.notifyServerRecovered(name, 'seerr');
+          }
+          const now = Math.floor(Date.now() / 1000);
+          try { db.prepare('UPDATE servers SET last_healthy_at = ? WHERE id = ?').run(now, id); } catch { /* non-critical */ }
+        } else {
+          const failCount = (prevHealth?.failCount || 0) + 1;
+          serverHealthMap.set(id, { healthy: false, lastChecked: Date.now(), error: result.error, failCount });
+          if (failCount === 2) {
+            telegram.notifyServerDown(name, 'seerr', result.error);
+          }
+          console.warn(`⚠️ Seerr health check failed: ${result.error}`);
+        }
+      } catch (error) {
+        const failCount = (prevHealth?.failCount || 0) + 1;
+        serverHealthMap.set(id, { healthy: false, lastChecked: Date.now(), error: error.message, failCount });
+        if (failCount === 2) {
+          telegram.notifyServerDown(name, 'seerr', error.message);
+        }
+        console.error(`⚠️ Seerr health check error: ${error.message}`);
+      }
+    }, 5 * 60 * 1000);
+  }
 }
 
 export function getServerHealthStatus(serverId) {
@@ -1614,6 +1652,13 @@ export function restartMonitoring() {
 
   // Note: Audiobookshelf doesn't use real-time connections - history is imported on a schedule
 
+  // Stop Seerr health check interval
+  if (seerrHealthInterval) {
+    clearInterval(seerrHealthInterval);
+    seerrHealthInterval = null;
+    console.log('   Stopped Seerr health check');
+  }
+
   // Clear existing services
   embyService = null;
   plexService = null;
@@ -1621,6 +1666,7 @@ export function restartMonitoring() {
   sapphoService = null;
   jellyfinService = null;
   seerrService = null;
+  seerrServerInfo = null;
 
   // Restart monitoring
   startActivityMonitor();

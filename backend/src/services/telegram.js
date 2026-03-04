@@ -28,11 +28,17 @@ async function sendMessage(text, { botToken, chatId } = {}) {
   if (!token || !chat) return;
 
   try {
-    await axios.post(`${TELEGRAM_API}${token}/sendMessage`, {
+    const response = await axios.post(`${TELEGRAM_API}${token}/sendMessage`, {
       chat_id: chat,
       text,
       parse_mode: 'HTML',
     }, { timeout: 5000 });
+    if (!response.data?.ok) {
+      console.error(`[Telegram] sendMessage API error: ${JSON.stringify(response.data)}`);
+    } else {
+      const preview = text.replace(/<[^>]+>/g, '').slice(0, 80);
+      console.log(`[Telegram] Message sent: "${preview}${text.length > 80 ? '…' : ''}"`);
+    }
   } catch (error) {
     console.error('Telegram sendMessage error:', error.message);
   }
@@ -43,6 +49,7 @@ async function sendPhoto(photoUrl, caption) {
   const chat = getSetting('telegram_chat_id');
   if (!token || !chat) return;
 
+  const captionPreview = caption.replace(/<[^>]+>/g, '').slice(0, 80);
   try {
     // Fetch via local image proxy to handle auth headers for media servers
     const proxyUrl = `http://localhost:${process.env.PORT || 3001}/proxy/image?url=${encodeURIComponent(photoUrl)}`;
@@ -54,12 +61,17 @@ async function sendPhoto(photoUrl, caption) {
     form.append('parse_mode', 'HTML');
     form.append('photo', Buffer.from(imgResponse.data), { filename: 'cover.jpg', contentType: imgResponse.headers['content-type'] || 'image/jpeg' });
 
-    await axios.post(`${TELEGRAM_API}${token}/sendPhoto`, form, {
+    const response = await axios.post(`${TELEGRAM_API}${token}/sendPhoto`, form, {
       headers: form.getHeaders(),
       timeout: 15000,
     });
-  } catch {
-    // If photo fails, fall back to text-only message
+    if (!response.data?.ok) {
+      console.error(`[Telegram] sendPhoto API error for "${captionPreview}": ${JSON.stringify(response.data)}`);
+    } else {
+      console.log(`[Telegram] Photo sent: "${captionPreview}"`);
+    }
+  } catch (error) {
+    console.error(`[Telegram] sendPhoto failed for "${captionPreview}": ${error.message} — falling back to text`);
     await sendMessage(caption);
   }
 }
@@ -153,7 +165,8 @@ function notifyRecentlyAdded(items) {
   if (!isEnabled() || getSetting('telegram_notify_recently_added') !== 'true') return;
   if (!items || items.length === 0) return;
 
-  console.log(`[Telegram] Buffering ${items.length} recently added items (buffer now: ${recentlyAddedBuffer.length + items.length})`);
+  const titles = items.map(i => i.name || 'Unknown').join(', ');
+  console.log(`[Telegram] Buffering ${items.length} recently added items: ${titles} (buffer now: ${recentlyAddedBuffer.length + items.length})`);
   recentlyAddedBuffer.push(...items);
 
   // Reset the timer each time new items arrive
@@ -166,7 +179,8 @@ async function flushRecentlyAdded() {
   recentlyAddedBuffer = [];
   recentlyAddedTimer = null;
 
-  console.log(`[Telegram] Flushing recently added buffer (${items.length} items)`);
+  const bufferTitles = items.map(i => i.name || 'Unknown').join(', ');
+  console.log(`[Telegram] Flushing recently added buffer (${items.length} items): ${bufferTitles}`);
 
   if (items.length === 0) return;
 
@@ -176,6 +190,7 @@ async function flushRecentlyAdded() {
     console.log('[Telegram] All items filtered out by server allowlist');
     return;
   }
+  console.log(`[Telegram] After server filter: ${items.length} items — ${items.map(i => i.name || 'Unknown').join(', ')}`);
 
   // Re-fetch metadata from servers — posters/thumbs may not have been ready at detection time
   if (metadataRefresher) {
@@ -211,7 +226,8 @@ async function flushRecentlyAdded() {
   const toSend = [...groups.values(), ...standalone];
 
   // Send each as an individual photo message with a small delay between
-  console.log(`[Telegram] Sending ${toSend.length} recently added notifications`);
+  const sendTitles = toSend.map(i => i.name || 'Unknown').join(', ');
+  console.log(`[Telegram] Sending ${toSend.length} recently added notifications: ${sendTitles}`);
   for (const item of toSend) {
     const serverIcon = getServerEmoji(item.server_type);
     const caption = `${serverIcon} · <b>${item.name}</b>`;
