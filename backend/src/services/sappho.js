@@ -148,11 +148,12 @@ class SapphoService {
         currentTime = Math.round(currentTime / 1000);
       }
 
-      // Calculate progress percent if not provided
+      // Calculate progress percent if not provided, clamped to 0-100
       let progressPercent = session.progressPercent || 0;
       if (!progressPercent && duration && currentTime) {
         progressPercent = Math.round((currentTime / duration) * 100);
       }
+      progressPercent = Math.min(100, Math.max(0, progressPercent));
 
       // Determine state - Sappho may use different conventions
       // Check for explicit state field, or paused/isPaused boolean fields

@@ -825,16 +825,16 @@ export default function Settings() {
           <p className="text-gray-500">Add a server to start monitoring your media</p>
         </div>
       ) : (
-        <div className="bg-dark-800 border border-dark-700 rounded-lg overflow-hidden">
-          <table className="w-full">
+        <div className="bg-dark-800 border border-dark-700 rounded-lg overflow-x-auto">
+          <table className="w-full min-w-[480px]">
             <thead>
               <tr className="border-b border-dark-700 text-left">
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">URL</th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Version</th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Status</th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                <th className="px-3 sm:px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                <th className="px-3 sm:px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th className="px-3 sm:px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">URL</th>
+                <th className="px-3 sm:px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Version</th>
+                <th className="px-3 sm:px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Status</th>
+                <th className="px-3 sm:px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-dark-700">
@@ -842,23 +842,23 @@ export default function Settings() {
                 const typeInfo = getServerTypeLabel(server.type);
                 return (
                   <tr key={server.id} className={`hover:bg-dark-750 transition-colors ${server.from_env ? 'opacity-80' : ''}`}>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
+                    <td className="px-3 sm:px-4 py-3">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
                         {getServerIcon(server.type)}
-                        <span className={`text-xs ${typeInfo.color} px-1.5 py-0.5 rounded`}>{typeInfo.name}</span>
+                        <span className={`text-xs ${typeInfo.color} px-1.5 py-0.5 rounded whitespace-nowrap`}>{typeInfo.name}</span>
                         {server.from_env && <span className="text-xs text-blue-400">ENV</span>}
                       </div>
                     </td>
-                    <td className="px-4 py-3">
-                      <span className="text-sm font-medium text-white">{server.name}</span>
+                    <td className="px-3 sm:px-4 py-3">
+                      <span className="text-sm font-medium text-white whitespace-nowrap">{server.name}</span>
                     </td>
-                    <td className="px-4 py-3 hidden md:table-cell">
+                    <td className="px-3 sm:px-4 py-3 hidden md:table-cell">
                       <span className="text-sm text-gray-400 font-mono truncate block max-w-[300px]">{server.url}</span>
                     </td>
-                    <td className="px-4 py-3 hidden lg:table-cell">
+                    <td className="px-3 sm:px-4 py-3 hidden lg:table-cell">
                       <span className="text-sm text-gray-400">{serverVersions[server.id] && serverVersions[server.id] !== 'Unknown' ? serverVersions[server.id] : '—'}</span>
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-3 sm:px-4 py-3 text-center">
                       {testResults[server.id] ? (
                         testResults[server.id].success ? (
                           <Check className="w-4 h-4 text-green-400 inline" />
@@ -869,7 +869,7 @@ export default function Settings() {
                         <div className={`w-2 h-2 rounded-full inline-block ${server.enabled === 1 ? 'bg-green-500' : 'bg-gray-500'}`} />
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-3 sm:px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => handleTest(server.id)}

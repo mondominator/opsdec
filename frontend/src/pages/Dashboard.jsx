@@ -605,7 +605,7 @@ function Dashboard() {
                     {/* Progress */}
                     <div>
                       <div className="bg-dark-600 rounded-full h-1.5 overflow-hidden">
-                        <div className="bg-primary-500 h-1.5 rounded-full transition-all duration-300" style={{ width: `${session.progress_percent}%` }} />
+                        <div className="bg-primary-500 h-1.5 rounded-full transition-all duration-300" style={{ width: `${Math.min(100, Math.max(0, session.progress_percent))}%` }} />
                       </div>
                       <div className="flex justify-between text-[9px] text-gray-500 mt-0.5">
                         <span>
@@ -613,7 +613,7 @@ function Dashboard() {
                             ? `${formatDuration(session.current_time, session.server_type === 'sappho')} / ${formatDuration(session.duration, session.server_type === 'sappho')}`
                             : session.duration ? formatDuration(session.duration, session.server_type === 'sappho') : ''}
                         </span>
-                        <span>{session.progress_percent}%</span>
+                        <span>{Math.min(100, Math.max(0, session.progress_percent))}%</span>
                       </div>
                     </div>
 

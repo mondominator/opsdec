@@ -464,10 +464,10 @@ function History() {
                     <div className="flex-1 bg-dark-600 rounded-full h-1.5">
                       <div
                         className="bg-primary-500 h-1.5 rounded-full"
-                        style={{ width: `${item.percent_complete}%` }}
+                        style={{ width: `${Math.min(100, Math.max(0, item.percent_complete))}%` }}
                       />
                     </div>
-                    <span className="text-xs text-gray-400">{item.percent_complete}%</span>
+                    <span className="text-xs text-gray-400">{Math.min(100, Math.max(0, item.percent_complete))}%</span>
                   </div>
                 </div>
 
@@ -630,10 +630,10 @@ function History() {
                           <div className="flex-1 bg-dark-600 rounded-full h-2 min-w-0">
                             <div
                               className="bg-primary-500 h-2 rounded-full"
-                              style={{ width: `${item.percent_complete}%` }}
+                              style={{ width: `${Math.min(100, Math.max(0, item.percent_complete))}%` }}
                             />
                           </div>
-                          <span className="text-xs text-gray-400 flex-shrink-0">{item.percent_complete}%</span>
+                          <span className="text-xs text-gray-400 flex-shrink-0">{Math.min(100, Math.max(0, item.percent_complete))}%</span>
                         </div>
                       </td>
                       <td className="px-4 py-4">
