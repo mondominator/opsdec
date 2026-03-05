@@ -15,16 +15,31 @@ class GeolocationService {
   /**
    * Check if an IP address is private/local
    */
+  /**
+   * Check if an IP is a proxy/Docker artifact rather than a real client IP.
+   * These get reported when the media server is behind a reverse proxy or
+   * running in a container — they should be treated as "unknown", not "Local Network".
+   */
+  isProxyIP(ip) {
+    if (!ip) return false;
+    const proxyPatterns = [
+      /^127\./,          // 127.0.0.0/8 (loopback — server talking to itself)
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./, // 172.16.0.0/12 (Docker bridge network)
+      /^::1$/,           // IPv6 localhost
+    ];
+    return proxyPatterns.some(p => p.test(ip));
+  }
+
   isPrivateIP(ip) {
     if (!ip) return true;
 
-    // Check for private IP ranges
+    // Proxy/Docker IPs are not real client IPs — don't classify as LAN
+    if (this.isProxyIP(ip)) return false;
+
+    // Real private/LAN IP ranges
     const privateRanges = [
-      /^127\./,          // 127.0.0.0/8 (localhost)
       /^10\./,           // 10.0.0.0/8 (private)
-      /^172\.(1[6-9]|2[0-9]|3[0-1])\./, // 172.16.0.0/12 (private)
       /^192\.168\./,     // 192.168.0.0/16 (private)
-      /^::1$/,           // IPv6 localhost
       /^fe80:/,          // IPv6 link-local
       /^fc00:/,          // IPv6 unique local
     ];
@@ -41,7 +56,12 @@ class GeolocationService {
       return this.getLocalNetworkLocation();
     }
 
-    // Check if it's a private IP
+    // Proxy/Docker IPs are not real client IPs — treat as unknown
+    if (this.isProxyIP(ipAddress)) {
+      return this.getUnknownLocation();
+    }
+
+    // Check if it's a real private/LAN IP
     if (this.isPrivateIP(ipAddress)) {
       return this.getLocalNetworkLocation();
     }
