@@ -402,7 +402,7 @@ function Dashboard() {
   };
 
   const renderRequestRows = (section) => (
-    <div className="flex flex-wrap items-stretch">
+    <div className="flex flex-wrap items-stretch justify-center">
       {section.requests.slice(0, section.count).map((request) => {
         const timeAgo = request.createdAt ? (() => {
           const diff = Math.floor((Date.now() - new Date(request.createdAt).getTime()) / 1000);
@@ -414,7 +414,7 @@ function Dashboard() {
         const status = getRequestStatus(request);
 
         return (
-          <div key={request.id} className="flex-1 min-w-[200px] px-3 py-2 border-r border-dark-700 last:border-r-0">
+          <div key={request.id} className="w-[260px] flex-shrink-0 flex-grow-0 px-3 py-2 border-r border-dark-700 last:border-r-0">
             <div className="flex items-center gap-2.5">
               <div className="flex-shrink-0 w-8 h-12 rounded overflow-hidden bg-dark-700">
                 {request.posterUrl ? (
