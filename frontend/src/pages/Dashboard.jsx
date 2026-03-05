@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getDashboardStats, getActivity, getWsToken, getRecentlyAdded, getRecentRequests } from '../utils/api';
 import { formatDuration } from '../utils/format';
-import { Users, Headphones, ChevronDown, Book, Play, MapPin, Film, Tv, Clock, Check } from 'lucide-react';
+import { Users, Headphones, Book, Play, MapPin, Film, Tv, Clock, Check } from 'lucide-react';
 
 function MediaThumbnail({ src, alt, title, serverType, className = "w-full h-full", iconSize = "w-8 h-8" }) {
   const [hasError, setHasError] = useState(false);
@@ -319,17 +319,32 @@ function Dashboard() {
     );
   };
 
-  const renderUserRows = (section) =>
-    section.users.slice(0, section.count).map((user, index) => {
-      const userKey = `user-${user.username}`;
-      const isExpanded = expandedItems[userKey];
+  const UserRing = ({ percent, color, size = 20 }) => {
+    const r = (size - 3) / 2;
+    const circumference = 2 * Math.PI * r;
+    const offset = circumference - (percent / 100) * circumference;
+    return (
+      <svg width={size} height={size} className="flex-shrink-0 -rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeWidth={2} className="text-dark-600" />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={2}
+          strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" />
+      </svg>
+    );
+  };
+
+  const renderUserRows = (section) => {
+    const totalDuration = section.users.reduce((sum, u) => sum + (u.total_duration || 0), 0);
+    const ringColor = section.accent?.includes('emerald') ? '#34d399' : '#fb7185';
+
+    return section.users.slice(0, section.count).map((user) => {
+      const percent = totalDuration > 0 ? Math.round((user.total_duration || 0) / totalDuration * 100) : 0;
       return (
         <div key={user.username}>
           <div
             className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-white/[0.03] transition-colors cursor-pointer"
-            onClick={() => setExpandedItems(prev => ({ ...prev, [userKey]: !prev[userKey] }))}
+            onClick={() => user.user_id && navigate(`/users/${user.user_id}`)}
           >
-            <span className="flex-shrink-0 w-4 text-center text-gray-600 text-[11px] font-mono">{index + 1}</span>
+            <UserRing percent={percent} color={ringColor} />
             {user.thumb ? (
               <img
                 src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`}
@@ -344,24 +359,16 @@ function Dashboard() {
             <div className="flex-1 min-w-0">
               <span className="text-white text-[13px] truncate block">{user.username}</span>
             </div>
-            <ChevronDown className={`flex-shrink-0 w-3 h-3 text-gray-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-          </div>
-          {isExpanded && (
-            <div className="px-3 py-1 bg-dark-900/30">
-              <div className="flex items-center gap-3 pl-6 py-1 text-[10px] text-gray-500">
-                <span className="flex items-center gap-0.5">
-                  <Play className="w-2.5 h-2.5" />
-                  {formatDuration(user.total_duration)}
-                </span>
-                <span className="flex items-center gap-0.5">
-                  {user.plays || user.total_plays || 0} plays
-                </span>
-              </div>
+            <div className="flex items-center gap-2 text-[10px] text-gray-500 flex-shrink-0">
+              <span>{formatDuration(user.total_duration)}</span>
+              <span className="text-gray-600">·</span>
+              <span>{user.plays || user.total_plays || 0} <Play className="w-2 h-2 inline" /></span>
             </div>
-          )}
+          </div>
         </div>
       );
     });
+  };
 
   const renderLocationRows = (section) => (
     <div className="flex flex-wrap items-stretch">
@@ -486,7 +493,7 @@ function Dashboard() {
   const renderSection = (section) => {
     const Icon = section.icon;
     return (
-      <div key={section.label} className={`bg-dark-800 rounded-lg overflow-hidden ${section.span}`}>
+      <div key={section.label} className={`bg-dark-800 rounded-lg overflow-hidden w-full sm:w-[220px] ${section.span}`}>
         <div className={`flex items-center gap-2 px-3 py-1.5 border-l-2 ${section.accent} bg-dark-700/30`}>
           <Icon className={`w-3 h-3 ${section.iconColor}`} />
           <span className="text-[11px] font-medium tracking-wider uppercase text-gray-500">{section.label}</span>
@@ -692,7 +699,7 @@ function Dashboard() {
 
       {/* Stats grid */}
       {sections.filter(s => s.type !== 'location' && s.type !== 'request').length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2 items-start">
+        <div className="flex flex-wrap justify-center gap-2 items-start">
           {sections.filter(s => s.type !== 'location' && s.type !== 'request').map(renderSection)}
         </div>
       )}
