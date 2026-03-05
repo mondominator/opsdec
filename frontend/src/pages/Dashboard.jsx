@@ -233,7 +233,7 @@ function Dashboard() {
       icon: Headphones, label: 'Top Listeners', accent: 'border-rose-400', iconColor: 'text-rose-400/70',
     },
     recentRequests?.length > 0 && {
-      type: 'request', requests: recentRequests, count: 5, span: '',
+      type: 'request', requests: recentRequests, count: 10, span: '',
       icon: Clock, label: 'Requests', accent: 'border-teal-400', iconColor: 'text-teal-400/70',
     },
     stats.topLocations?.length > 0 && {
@@ -421,69 +421,72 @@ function Dashboard() {
     return { label: 'Pending', color: 'bg-gray-500', textColor: 'text-gray-400', progress: 0 };
   };
 
-  const renderRequestRows = (section) =>
-    section.requests.slice(0, section.count).map((request) => {
-      const timeAgo = request.createdAt ? (() => {
-        const diff = Math.floor((Date.now() - new Date(request.createdAt).getTime()) / 1000);
-        if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-        if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-        return `${Math.floor(diff / 86400)}d ago`;
-      })() : '';
+  const renderRequestRows = (section) => (
+    <div className="flex flex-wrap items-stretch">
+      {section.requests.slice(0, section.count).map((request) => {
+        const timeAgo = request.createdAt ? (() => {
+          const diff = Math.floor((Date.now() - new Date(request.createdAt).getTime()) / 1000);
+          if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+          if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+          return `${Math.floor(diff / 86400)}d ago`;
+        })() : '';
 
-      const status = getRequestStatus(request);
+        const status = getRequestStatus(request);
 
-      return (
-        <div key={request.id}>
-          <div className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-white/[0.03] transition-colors">
-            <div className="flex-shrink-0 w-7 h-10 rounded overflow-hidden bg-dark-700">
-              {request.posterUrl ? (
-                <img
-                  src={`/proxy/image?url=${encodeURIComponent(request.posterUrl)}`}
-                  alt={request.title}
-                  className="w-full h-full object-cover rounded"
-                  loading="lazy"
-                  onError={(e) => { e.target.style.display = 'none'; }}
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <Film className="w-3 h-3 text-gray-500" />
-                </div>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-white text-[13px] truncate" title={request.title}>
-                {request.title}
-                {request.year && <span className="text-gray-500 ml-1">({request.year})</span>}
-              </div>
-              <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
-                {request.requestedBy?.avatar ? (
-                  <img src={`/proxy/image?url=${encodeURIComponent(request.requestedBy.avatar)}`} alt="" className="w-3 h-3 rounded-full" />
+        return (
+          <div key={request.id} className="w-[200px] flex-shrink-0 flex-grow-0 px-3 py-2 border-r border-dark-700 last:border-r-0">
+            <div className="flex items-center gap-2.5">
+              <div className="flex-shrink-0 w-8 h-12 rounded overflow-hidden bg-dark-700">
+                {request.posterUrl ? (
+                  <img
+                    src={`/proxy/image?url=${encodeURIComponent(request.posterUrl)}`}
+                    alt={request.title}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
                 ) : (
-                  <div className="w-3 h-3 rounded-full bg-teal-600 flex items-center justify-center">
-                    <span className="text-[7px] text-white font-semibold">
-                      {(request.requestedBy?.username || '?').charAt(0).toUpperCase()}
-                    </span>
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Film className="w-3.5 h-3.5 text-gray-500" />
                   </div>
                 )}
-                <span className="truncate">{request.requestedBy?.username}</span>
-                <span className="text-gray-600">·</span>
-                <span>{timeAgo}</span>
               </div>
-              <div className="flex items-center gap-2 mt-1">
-                <div className="flex-1 h-1 bg-dark-600 rounded-full overflow-hidden">
-                  <div className={`h-full ${status.color} rounded-full transition-all`} style={{ width: `${status.progress}%` }} />
+              <div className="flex-1 min-w-0">
+                <div className="text-white text-[13px] font-medium truncate" title={request.title}>
+                  {request.title}
+                  {request.year && <span className="text-gray-500 font-normal ml-1">({request.year})</span>}
                 </div>
-                {status.progress === 100 ? (
-                  <Check className="w-3 h-3 text-green-400 flex-shrink-0" />
-                ) : (
-                  <span className={`text-[9px] ${status.textColor} flex-shrink-0 font-medium`}>{status.label}</span>
-                )}
+                <div className="flex items-center gap-1.5 text-[10px] text-gray-500 mt-0.5">
+                  {request.requestedBy?.avatar ? (
+                    <img src={`/proxy/image?url=${encodeURIComponent(request.requestedBy.avatar)}`} alt="" className="w-3 h-3 rounded-full" />
+                  ) : (
+                    <div className="w-3 h-3 rounded-full bg-teal-600 flex items-center justify-center">
+                      <span className="text-[7px] text-white font-semibold">
+                        {(request.requestedBy?.username || '?').charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                  <span className="truncate">{request.requestedBy?.username}</span>
+                  <span className="text-gray-600">·</span>
+                  <span>{timeAgo}</span>
+                </div>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <div className="flex-1 h-1 bg-dark-600 rounded-full overflow-hidden">
+                    <div className={`h-full ${status.color} rounded-full transition-all`} style={{ width: `${status.progress}%` }} />
+                  </div>
+                  {status.progress === 100 ? (
+                    <Check className="w-3 h-3 text-green-400 flex-shrink-0" />
+                  ) : (
+                    <span className={`text-[9px] ${status.textColor} flex-shrink-0 font-medium`}>{status.label}</span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      );
-    });
+        );
+      })}
+    </div>
+  );
 
   const recentBookTypes = ['audiobook', 'book', 'track', 'podcast'];
 
@@ -695,11 +698,14 @@ function Dashboard() {
       )}
 
       {/* Stats grid */}
-      {sections.filter(s => s.type !== 'location').length > 0 && (
+      {sections.filter(s => s.type !== 'location' && s.type !== 'request').length > 0 && (
         <div className="flex flex-wrap justify-center gap-2 items-start">
-          {sections.filter(s => s.type !== 'location').map(renderSection)}
+          {sections.filter(s => s.type !== 'location' && s.type !== 'request').map(renderSection)}
         </div>
       )}
+
+      {/* Requests — full-width horizontal bar */}
+      {sections.filter(s => s.type === 'request').map(renderSection)}
 
       {/* Top Locations — full-width horizontal bar */}
       {sections.filter(s => s.type === 'location').map(renderSection)}
