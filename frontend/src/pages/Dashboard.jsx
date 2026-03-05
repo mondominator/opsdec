@@ -493,7 +493,7 @@ function Dashboard() {
   const renderSection = (section) => {
     const Icon = section.icon;
     return (
-      <div key={section.label} className={`bg-dark-800 rounded-lg overflow-hidden w-full sm:w-[260px] ${section.span}`}>
+      <div key={section.label} className={`bg-dark-800 rounded-lg overflow-hidden ${section.type === 'location' || section.type === 'request' ? 'w-full' : 'w-full sm:w-[260px]'} ${section.span}`}>
         <div className={`flex items-center gap-2 px-3 py-1.5 border-l-2 ${section.accent} bg-dark-700/30`}>
           <Icon className={`w-3 h-3 ${section.iconColor}`} />
           <span className="text-[11px] font-medium tracking-wider uppercase text-gray-500">{section.label}</span>

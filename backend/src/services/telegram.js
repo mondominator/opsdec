@@ -231,19 +231,20 @@ async function flushRecentlyAdded() {
   for (const item of toSend) {
     const serverIcon = getServerEmoji(item.server_type);
     let caption = `${serverIcon} · <b>${item.name}</b>`;
-    if (item.year) caption += ` (${item.year})`;
-    if (item.rating) caption += `  ·  ⭐ ${item.rating}`;
     if (item.overview) {
       const maxOverview = 500;
       const overview = item.overview.length > maxOverview ? item.overview.slice(0, maxOverview) + '…' : item.overview;
       caption += `\n\n${overview}`;
     }
+    const details = [];
     if (item.runtime) {
       const hours = Math.floor(item.runtime / 60);
       const mins = item.runtime % 60;
-      const runtimeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-      caption += `\n\n${runtimeStr}`;
+      details.push(hours > 0 ? `${hours}h ${mins}m` : `${mins}m`);
     }
+    if (item.year) details.push(String(item.year));
+    if (item.rating) details.push(`⭐ ${item.rating}`);
+    if (details.length > 0) caption += `\n\n<i>${details.join('  ·  ')}</i>`;
 
     if (item.thumb) {
       await sendPhoto(item.thumb, caption);
