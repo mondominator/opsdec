@@ -88,6 +88,9 @@ class SapphoService {
           seriesName: book.series || null,
           addedAt: book.created_at ? new Date(book.created_at).toISOString() : null,
           thumb: book.id ? `${this.baseUrl}/api/audiobooks/${book.id}/cover` : null,
+          overview: book.description || null,
+          rating: book.rating || null,
+          runtime: book.duration ? Math.round(book.duration / 60) : null,
         }));
     } catch (error) {
       console.error('Error fetching Sappho recently added:', error.message);

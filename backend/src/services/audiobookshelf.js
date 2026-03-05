@@ -153,6 +153,7 @@ class AudiobookshelfService {
         const libraryItems = response.data.results || [];
         for (const item of libraryItems) {
           const metadata = item.media?.metadata || {};
+          const durationSec = item.media?.duration || metadata.duration;
           items.push({
             id: item.id,
             name: metadata.title || 'Unknown',
@@ -161,6 +162,9 @@ class AudiobookshelfService {
             seriesName: metadata.seriesName || (metadata.series?.length > 0 ? metadata.series[0].name : null),
             addedAt: item.addedAt ? new Date(item.addedAt * 1000).toISOString() : null,
             thumb: `${this.baseUrl}/api/items/${item.id}/cover`,
+            overview: metadata.description || null,
+            rating: metadata.rating || null,
+            runtime: durationSec ? Math.round(durationSec / 60) : null,
           });
         }
       }

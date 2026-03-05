@@ -261,7 +261,7 @@ class JellyfinService {
       const response = await this.client.get('/Users/' + userId + '/Items', {
         params: {
           Limit: limit * 3,
-          Fields: 'DateCreated,ProductionYear,Path,ImageTags,SeriesId,SeriesPrimaryImageTag',
+          Fields: 'DateCreated,ProductionYear,Path,ImageTags,SeriesId,SeriesPrimaryImageTag,Overview,CommunityRating,RunTimeTicks',
           IncludeItemTypes: 'Movie,Series,Episode,Video',
           SortBy: 'DateCreated',
           SortOrder: 'Descending',
@@ -314,6 +314,9 @@ class JellyfinService {
         DateCreated: episode.DateCreated,
         ImageTags: episode.SeriesPrimaryImageTag ? { Primary: episode.SeriesPrimaryImageTag } : {},
         Path: episode.Path,
+        Overview: episode.Overview,
+        CommunityRating: episode.CommunityRating,
+        RunTimeTicks: episode.RunTimeTicks,
         _isEpisodeGroup: true,
       }));
 
@@ -343,6 +346,9 @@ class JellyfinService {
           addedAt: item.DateCreated,
           thumb,
           isYoutube,
+          overview: item.Overview || null,
+          rating: item.CommunityRating || null,
+          runtime: item.RunTimeTicks ? Math.round(item.RunTimeTicks / 600000000) : null,
         };
       });
     } catch (error) {

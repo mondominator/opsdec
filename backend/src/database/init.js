@@ -242,6 +242,14 @@ export function initDatabase() {
     )
   `);
 
+  // Add added_at column to track when content was last added (for detecting new episodes in existing series)
+  {
+    const cols = db.prepare("PRAGMA table_info(notified_recently_added)").all().map(c => c.name);
+    if (!cols.includes('added_at')) {
+      db.exec('ALTER TABLE notified_recently_added ADD COLUMN added_at TEXT');
+    }
+  }
+
   // Purge notifications older than 30 days
   db.exec(`DELETE FROM notified_recently_added WHERE notified_at < datetime('now', '-30 days')`);
 

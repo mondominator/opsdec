@@ -230,7 +230,20 @@ async function flushRecentlyAdded() {
   console.log(`[Telegram] Sending ${toSend.length} recently added notifications: ${sendTitles}`);
   for (const item of toSend) {
     const serverIcon = getServerEmoji(item.server_type);
-    const caption = `${serverIcon} · <b>${item.name}</b>`;
+    let caption = `${serverIcon} · <b>${item.name}</b>`;
+    if (item.year) caption += ` (${item.year})`;
+    if (item.rating) caption += `  ·  ⭐ ${item.rating}`;
+    if (item.overview) {
+      const maxOverview = 500;
+      const overview = item.overview.length > maxOverview ? item.overview.slice(0, maxOverview) + '…' : item.overview;
+      caption += `\n\n${overview}`;
+    }
+    if (item.runtime) {
+      const hours = Math.floor(item.runtime / 60);
+      const mins = item.runtime % 60;
+      const runtimeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+      caption += `\n\n${runtimeStr}`;
+    }
 
     if (item.thumb) {
       await sendPhoto(item.thumb, caption);

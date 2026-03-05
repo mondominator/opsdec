@@ -251,7 +251,7 @@ class EmbyService {
       const response = await this.client.get('/Users/' + userId + '/Items', {
         params: {
           Limit: limit * 3,
-          Fields: 'DateCreated,ProductionYear,ImageTags,SeriesId,SeriesPrimaryImageTag',
+          Fields: 'DateCreated,ProductionYear,ImageTags,SeriesId,SeriesPrimaryImageTag,Overview,CommunityRating,RunTimeTicks',
           IncludeItemTypes: 'Movie,Series,Episode',
           SortBy: 'DateCreated',
           SortOrder: 'Descending',
@@ -290,6 +290,9 @@ class EmbyService {
         ProductionYear: episode.ProductionYear,
         DateCreated: episode.DateCreated,
         ImageTags: episode.SeriesPrimaryImageTag ? { Primary: episode.SeriesPrimaryImageTag } : {},
+        Overview: episode.Overview,
+        CommunityRating: episode.CommunityRating,
+        RunTimeTicks: episode.RunTimeTicks,
       }));
 
       // Merge and sort by date
@@ -305,6 +308,9 @@ class EmbyService {
         seriesName: item.SeriesName,
         addedAt: item.DateCreated,
         thumb: item.ImageTags?.Primary ? `${this.baseUrl}/Items/${item.Id}/Images/Primary?api_key=${this.apiKey}` : null,
+        overview: item.Overview || null,
+        rating: item.CommunityRating || null,
+        runtime: item.RunTimeTicks ? Math.round(item.RunTimeTicks / 600000000) : null,
       }));
     } catch (error) {
       console.error('Error fetching Emby recently added:', error.message);

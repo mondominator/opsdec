@@ -372,6 +372,7 @@ async function updateSession(activity, serverType) {
       );
 
       console.log(`📺 New session created for resumed viewing: ${activity.username} resumed ${activity.title}`);
+      telegram.notifyPlaybackStarted({ username: activity.username, title: activity.title, serverType, mediaType: activity.mediaType });
       return;
     }
     // Check if media changed (new episode/movie in same session)
@@ -437,6 +438,7 @@ async function updateSession(activity, serverType) {
         );
 
         console.log(`📺 New session created: ${activity.username} watching ${activity.title} (${serverType})`);
+        telegram.notifyPlaybackStarted({ username: activity.username, title: activity.title, serverType, mediaType: activity.mediaType });
         return;
       }
 
@@ -592,6 +594,7 @@ async function updateSession(activity, serverType) {
       );
 
       console.log(`📺 New session created: ${activity.username} now watching ${activity.title} (${serverType})`);
+      telegram.notifyPlaybackStarted({ username: activity.username, title: activity.title, serverType, mediaType: activity.mediaType });
     } else {
       // Same media, just update progress and stream info
       // Calculate playback_time based on elapsed time while playing

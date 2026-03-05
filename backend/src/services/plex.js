@@ -204,6 +204,9 @@ class PlexService {
         seriesName: item.type === 'season' ? item.title : item.grandparentTitle,
         addedAt: item.addedAt ? new Date(item.addedAt * 1000).toISOString() : null,
         thumb: item.thumb ? `${this.baseUrl}${item.thumb}?X-Plex-Token=${this.token}` : null,
+        overview: item.summary || null,
+        rating: item.rating || null,
+        runtime: item.duration ? Math.round(item.duration / 60000) : null,
       }));
     } catch (error) {
       console.error('Error fetching recently added:', error.message);

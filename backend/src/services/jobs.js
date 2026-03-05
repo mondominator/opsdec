@@ -97,7 +97,7 @@ function updateServiceDependentHandlers() {
       }));
       return items.map(item => {
         const fresh = freshByKey.get(`${item.server_type}|${item.id}`);
-        if (fresh) return { ...item, thumb: fresh.thumb || item.thumb, name: fresh.name || item.name };
+        if (fresh) return { ...item, thumb: fresh.thumb || item.thumb, name: fresh.name || item.name, overview: fresh.overview || item.overview, rating: fresh.rating || item.rating, runtime: fresh.runtime || item.runtime };
         return item;
       });
     });
@@ -340,20 +340,30 @@ async function checkRecentlyAddedJob() {
     .sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt))
     .slice(0, limit);
 
-  // Check for new items
+  // Check for new items — also detect updated addedAt (new episodes in existing series)
   const notifiedCount = db.prepare('SELECT COUNT(*) AS cnt FROM notified_recently_added').get().cnt;
-  const notified = new Set(
-    db.prepare('SELECT server_type || \'|\' || media_id AS key FROM notified_recently_added').all().map(r => r.key)
-  );
-  const newItems = recentItems.filter(i => !notified.has(i.server_type + '|' + i.id));
+  const notifiedRows = db.prepare('SELECT server_type, media_id, added_at FROM notified_recently_added').all();
+  const notifiedMap = new Map();
+  for (const row of notifiedRows) {
+    notifiedMap.set(row.server_type + '|' + row.media_id, row.added_at);
+  }
+
+  const newItems = recentItems.filter(i => {
+    const key = i.server_type + '|' + i.id;
+    const storedAddedAt = notifiedMap.get(key);
+    if (storedAddedAt === undefined) return true; // Never seen before
+    // If addedAt changed (new episode added to existing series), treat as new
+    if (i.addedAt && storedAddedAt && i.addedAt !== storedAddedAt) return true;
+    return false;
+  });
 
   if (newItems.length > 0) {
     if (notifiedCount > 0) {
       telegram.notifyRecentlyAdded(newItems);
     }
-    const insert = db.prepare('INSERT OR IGNORE INTO notified_recently_added (server_type, media_id, title) VALUES (?, ?, ?)');
+    const upsert = db.prepare('INSERT INTO notified_recently_added (server_type, media_id, title, added_at) VALUES (?, ?, ?, ?) ON CONFLICT(server_type, media_id) DO UPDATE SET title = excluded.title, added_at = excluded.added_at, notified_at = datetime(\'now\')');
     for (const item of newItems) {
-      insert.run(item.server_type, item.id, item.name);
+      upsert.run(item.server_type, item.id, item.name, item.addedAt || null);
     }
   }
 
