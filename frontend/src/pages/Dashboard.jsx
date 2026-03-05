@@ -319,56 +319,36 @@ function Dashboard() {
     );
   };
 
-  const UserRing = ({ percent, color, size = 20 }) => {
-    const r = (size - 3) / 2;
-    const circumference = 2 * Math.PI * r;
-    const offset = circumference - (percent / 100) * circumference;
-    return (
-      <svg width={size} height={size} className="flex-shrink-0 -rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeWidth={2} className="text-dark-600" />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={2}
-          strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" />
-      </svg>
-    );
-  };
-
-  const renderUserRows = (section) => {
-    const totalDuration = section.users.reduce((sum, u) => sum + (u.total_duration || 0), 0);
-    const ringColor = section.accent?.includes('emerald') ? '#34d399' : '#fb7185';
-
-    return section.users.slice(0, section.count).map((user) => {
-      const percent = totalDuration > 0 ? Math.round((user.total_duration || 0) / totalDuration * 100) : 0;
-      return (
-        <div key={user.username}>
-          <div
-            className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-white/[0.03] transition-colors cursor-pointer"
-            onClick={() => user.user_id && navigate(`/users/${user.user_id}`)}
-          >
-            <UserRing percent={percent} color={ringColor} />
-            {user.thumb ? (
-              <img
-                src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`}
-                alt={user.username}
-                className="flex-shrink-0 w-6 h-6 rounded-full object-cover"
-              />
-            ) : (
-              <div className="flex-shrink-0 w-6 h-6 bg-primary-600 rounded-full flex items-center justify-center text-white text-[10px] font-medium">
-                {user.username.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <span className="text-white text-[13px] truncate block">{user.username}</span>
+  const renderUserRows = (section) =>
+    section.users.slice(0, section.count).map((user, index) => (
+      <div key={user.username}>
+        <div
+          className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-white/[0.03] transition-colors cursor-pointer"
+          onClick={() => user.user_id && navigate(`/users/${user.user_id}`)}
+        >
+          <span className="flex-shrink-0 w-4 text-center text-gray-600 text-[11px] font-mono">{index + 1}</span>
+          {user.thumb ? (
+            <img
+              src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`}
+              alt={user.username}
+              className="flex-shrink-0 w-6 h-6 rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex-shrink-0 w-6 h-6 bg-primary-600 rounded-full flex items-center justify-center text-white text-[10px] font-medium">
+              {user.username.charAt(0).toUpperCase()}
             </div>
-            <div className="flex items-center gap-2 text-[10px] text-gray-500 flex-shrink-0">
-              <span>{formatDuration(user.total_duration)}</span>
-              <span className="text-gray-600">·</span>
-              <span>{user.plays || user.total_plays || 0} <Play className="w-2 h-2 inline" /></span>
-            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <span className="text-white text-[13px] truncate block">{user.username}</span>
+          </div>
+          <div className="flex items-center gap-2 text-[10px] text-gray-500 flex-shrink-0">
+            <span>{formatDuration(user.total_duration)}</span>
+            <span className="text-gray-600">·</span>
+            <span>{user.total_plays || 0} <Play className="w-2 h-2 inline" /></span>
           </div>
         </div>
-      );
-    });
-  };
+      </div>
+    ));
 
   const renderLocationRows = (section) => (
     <div className="flex flex-wrap items-stretch">
@@ -434,7 +414,7 @@ function Dashboard() {
         const status = getRequestStatus(request);
 
         return (
-          <div key={request.id} className="w-[200px] flex-shrink-0 flex-grow-0 px-3 py-2 border-r border-dark-700 last:border-r-0">
+          <div key={request.id} className="w-[260px] flex-shrink-0 flex-grow-0 px-3 py-2 border-r border-dark-700 last:border-r-0">
             <div className="flex items-center gap-2.5">
               <div className="flex-shrink-0 w-8 h-12 rounded overflow-hidden bg-dark-700">
                 {request.posterUrl ? (

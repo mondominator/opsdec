@@ -722,7 +722,8 @@ router.get('/stats/dashboard', (req, res) => {
       SELECT
         h.username,
         h.server_type,
-        CAST(SUM(h.stream_duration) AS INTEGER) as total_duration
+        CAST(SUM(h.stream_duration) AS INTEGER) as total_duration,
+        COUNT(*) as total_plays
       FROM history h
       WHERE h.media_type IN ('movie', 'episode')
       GROUP BY h.username, h.server_type
@@ -736,10 +737,12 @@ router.get('/stats/dashboard', (req, res) => {
         watchersByPrimary[primaryUsername] = {
           username: primaryUsername,
           total_duration: 0,
+          total_plays: 0,
           thumb: null
         };
       }
       watchersByPrimary[primaryUsername].total_duration += row.total_duration;
+      watchersByPrimary[primaryUsername].total_plays += row.total_plays;
     });
 
     // Convert to array and sort
@@ -762,7 +765,8 @@ router.get('/stats/dashboard', (req, res) => {
       SELECT
         h.username,
         h.server_type,
-        CAST(SUM(h.stream_duration) AS INTEGER) as total_duration
+        CAST(SUM(h.stream_duration) AS INTEGER) as total_duration,
+        COUNT(*) as total_plays
       FROM history h
       WHERE h.media_type IN ('audiobook', 'track', 'book', 'music')
       GROUP BY h.username, h.server_type
@@ -776,10 +780,12 @@ router.get('/stats/dashboard', (req, res) => {
         listenersByPrimary[primaryUsername] = {
           username: primaryUsername,
           total_duration: 0,
+          total_plays: 0,
           thumb: null
         };
       }
       listenersByPrimary[primaryUsername].total_duration += row.total_duration;
+      listenersByPrimary[primaryUsername].total_plays += row.total_plays;
     });
 
     // Convert to array and sort
