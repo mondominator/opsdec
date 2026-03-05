@@ -28,7 +28,7 @@ class SeerrService {
     }
   }
 
-  async getRecentRequests(limit = 5) {
+  async getRecentRequests(limit = 10) {
     const response = await this.client.get('/api/v1/request', {
       params: { take: limit, sort: 'added', skip: 0 },
     });
@@ -72,6 +72,17 @@ class SeerrService {
 
         const requestedBy = req.requestedBy || {};
 
+        // Media availability: 1=unknown, 2=pending, 3=processing, 4=partially available, 5=available
+        const mediaStatus = media.status || 1;
+
+        // Download progress from active downloads
+        const downloads = media.downloadStatus || [];
+        let downloadProgress = null;
+        if (downloads.length > 0) {
+          const totalProgress = downloads.reduce((sum, d) => sum + (d.progress || 0), 0);
+          downloadProgress = Math.round(totalProgress / downloads.length);
+        }
+
         return {
           id: req.id,
           title,
@@ -83,6 +94,8 @@ class SeerrService {
             avatar: requestedBy.avatar || null,
           },
           status: req.status,
+          mediaStatus,
+          downloadProgress,
           createdAt: req.createdAt,
         };
       })
