@@ -616,6 +616,19 @@ router.put('/users/:userId/history-enabled', (req, res) => {
 // Get dashboard stats
 router.get('/stats/dashboard', (req, res) => {
   try {
+    // Compute timezone offset in seconds for the configured timezone
+    const tzRow = db.prepare("SELECT value FROM settings WHERE key = 'timezone'").get();
+    const tz = tzRow?.value || 'UTC';
+    const now = new Date();
+    const localStr = now.toLocaleString('en-US', { timeZone: tz });
+    const utcStr = now.toLocaleString('en-US', { timeZone: 'UTC' });
+    const tzOffsetSec = Math.round((new Date(localStr) - new Date(utcStr)) / 1000);
+
+    // Start of today in the user's timezone, as a UTC epoch
+    const localNow = new Date(localStr);
+    localNow.setHours(0, 0, 0, 0);
+    const startOfTodayEpoch = Math.floor(localNow.getTime() / 1000) - tzOffsetSec;
+
     const totalPlays = db.prepare('SELECT COUNT(*) as count FROM history').get();
     // Count unique primary users (considering user mappings)
     const totalUsers = db.prepare(`
@@ -645,16 +658,16 @@ router.get('/stats/dashboard', (req, res) => {
     const watchDuration = watchDurationResult?.total || 0;
     const listenDuration = listenDurationResult?.total || 0;
 
-    // Plays by day (last 30 days)
+    // Plays by day (last 30 days) — offset timestamps to user's timezone before grouping
     const playsByDay = db.prepare(`
       SELECT
-        DATE(watched_at, 'unixepoch') as date,
+        DATE(watched_at + ?, 'unixepoch') as date,
         COUNT(*) as plays
       FROM history
       WHERE watched_at > strftime('%s', 'now', '-30 days')
       GROUP BY date
       ORDER BY date ASC
-    `).all();
+    `).all(tzOffsetSec);
 
     // Calculate averages
     const thirtyDayTotal = db.prepare(`
@@ -669,11 +682,12 @@ router.get('/stats/dashboard', (req, res) => {
     `).get();
     const weeklyAverage = sevenDayTotal.count > 0 ? Math.round(sevenDayTotal.count / 7) : 0;
 
-    const oneDayTotal = db.prepare(`
+    // Plays today — since midnight in user's timezone
+    const todayTotal = db.prepare(`
       SELECT COUNT(*) as count FROM history
-      WHERE watched_at > strftime('%s', 'now', '-1 day')
-    `).get();
-    const dailyAverage = oneDayTotal.count;
+      WHERE watched_at >= ?
+    `).get(startOfTodayEpoch);
+    const dailyAverage = todayTotal.count;
 
     // Average active monthly users (unique primary users in last 30 days, considering user mappings)
     const activeMonthlyUsers = db.prepare(`
@@ -683,10 +697,10 @@ router.get('/stats/dashboard', (req, res) => {
       WHERE h.watched_at > strftime('%s', 'now', '-30 days')
     `).get();
 
-    // Peak day of week (0 = Sunday, 6 = Saturday)
+    // Peak day of week — offset timestamps to user's timezone
     const peakDayResult = db.prepare(`
       SELECT
-        CASE CAST(strftime('%w', watched_at, 'unixepoch') AS INTEGER)
+        CASE CAST(strftime('%w', watched_at + ?, 'unixepoch') AS INTEGER)
           WHEN 0 THEN 'Sunday'
           WHEN 1 THEN 'Monday'
           WHEN 2 THEN 'Tuesday'
@@ -698,23 +712,23 @@ router.get('/stats/dashboard', (req, res) => {
         COUNT(*) as count
       FROM history
       WHERE watched_at > strftime('%s', 'now', '-30 days')
-      GROUP BY strftime('%w', watched_at, 'unixepoch')
+      GROUP BY strftime('%w', watched_at + ?, 'unixepoch')
       ORDER BY count DESC
       LIMIT 1
-    `).get();
+    `).get(tzOffsetSec, tzOffsetSec);
     const peakDay = peakDayResult ? peakDayResult.day_name : 'N/A';
 
-    // Peak hour (0-23)
+    // Peak hour (0-23) — offset timestamps to user's timezone
     const peakHourResult = db.prepare(`
       SELECT
-        strftime('%H', watched_at, 'unixepoch', 'localtime') as hour,
+        strftime('%H', watched_at + ?, 'unixepoch') as hour,
         COUNT(*) as count
       FROM history
       WHERE watched_at > strftime('%s', 'now', '-30 days')
       GROUP BY hour
       ORDER BY count DESC
       LIMIT 1
-    `).get();
+    `).get(tzOffsetSec);
     const peakHour = peakHourResult ? `${parseInt(peakHourResult.hour)}:00` : 'N/A';
 
     // Top watchers (video content: movies + episodes)
