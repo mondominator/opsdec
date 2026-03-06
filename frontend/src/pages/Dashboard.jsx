@@ -452,7 +452,7 @@ function Dashboard() {
                 </div>
                 <div className="flex items-center gap-2 mt-1.5">
                   <div className="flex-1 h-1 bg-dark-600 rounded-full overflow-hidden">
-                    <div className={`h-full ${status.color} rounded-full transition-all`} style={{ width: `${status.progress}%` }} />
+                    <div className={`h-full ${status.color} rounded-full transition-all duration-700 ease-out`} style={{ width: `${status.progress}%` }} />
                   </div>
                   {status.progress === 100 ? (
                     <Check className="w-3 h-3 text-green-400 flex-shrink-0" />
@@ -571,7 +571,7 @@ function Dashboard() {
                         iconSize="w-5 h-5"
                       />
                       <span className={`absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full ${
-                        session.state === 'playing' ? 'bg-green-500' : session.state === 'paused' ? 'bg-yellow-500' : 'bg-gray-500'
+                        session.state === 'playing' ? 'bg-green-500 health-dot-healthy' : session.state === 'paused' ? 'bg-yellow-500' : 'bg-gray-500'
                       }`} />
                     </div>
                   </div>
@@ -615,7 +615,7 @@ function Dashboard() {
                     {/* Progress */}
                     <div>
                       <div className="bg-dark-600 rounded-full h-1.5 overflow-hidden">
-                        <div className="bg-primary-500 h-1.5 rounded-full transition-all duration-300" style={{ width: `${Math.min(100, Math.max(0, session.progress_percent))}%` }} />
+                        <div className="bg-primary-500 h-1.5 rounded-full transition-all duration-700 ease-out" style={{ width: `${Math.min(100, Math.max(0, session.progress_percent))}%` }} />
                       </div>
                       <div className="flex justify-between text-[9px] text-gray-500 mt-0.5">
                         <span>

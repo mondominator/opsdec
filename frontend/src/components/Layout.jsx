@@ -5,6 +5,27 @@ import { getDashboardStats, getServerHealth } from '../utils/api';
 import { formatDuration } from '../utils/format';
 import { useAuth } from '../contexts/AuthContext';
 
+function AnimatedStat({ value }) {
+  const [flash, setFlash] = useState(false);
+  const prevRef = useRef(value);
+
+  useEffect(() => {
+    if (prevRef.current !== value && prevRef.current !== undefined) {
+      setFlash(true);
+      const timer = setTimeout(() => setFlash(false), 800);
+      prevRef.current = value;
+      return () => clearTimeout(timer);
+    }
+    prevRef.current = value;
+  }, [value]);
+
+  return (
+    <span className={`text-xs font-bold text-white tabular-nums ${flash ? 'stat-updated' : ''}`}>
+      {value}
+    </span>
+  );
+}
+
 function Layout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -113,33 +134,33 @@ function Layout({ children }) {
                 <div className="flex items-center gap-1.5">
                   <Play className="w-3 h-3 text-gray-500" />
                   <span className="text-[11px] text-gray-400">Today</span>
-                  <span className="text-xs font-bold text-white">{stats.dailyAverage ?? 0}</span>
+                  <AnimatedStat value={stats.dailyAverage ?? 0} />
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Film className="w-3 h-3 text-gray-500" />
                   <span className="text-[11px] text-gray-400">Watch</span>
-                  <span className="text-xs font-bold text-white">{formatDuration(stats.watchDuration)}</span>
+                  <AnimatedStat value={formatDuration(stats.watchDuration)} />
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Headphones className="w-3 h-3 text-gray-500" />
                   <span className="text-[11px] text-gray-400">Listen</span>
-                  <span className="text-xs font-bold text-white">{formatDuration(stats.listenDuration)}</span>
+                  <AnimatedStat value={formatDuration(stats.listenDuration)} />
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Users className="w-3 h-3 text-gray-500" />
                   <span className="text-[11px] text-gray-400">Users</span>
-                  <span className="text-xs font-bold text-white">{stats.activeMonthlyUsers ?? 0}</span>
+                  <AnimatedStat value={stats.activeMonthlyUsers ?? 0} />
                 </div>
                 <div className="flex items-center gap-1.5">
                   <TrendingUp className="w-3 h-3 text-gray-500" />
                   <span className="text-[11px] text-gray-400">Avg/day</span>
-                  <span className="text-xs font-bold text-white">{stats.weeklyAverage ?? 0}</span>
+                  <AnimatedStat value={stats.weeklyAverage ?? 0} />
                 </div>
                 {serverHealth.length > 0 && (
                   <div className="flex items-center gap-2 ml-1 pl-4 border-l border-dark-700">
                     {sortedServerHealth.map((server) => (
                       <div key={server.id} className="flex items-center gap-1" title={`${server.name}: ${server.healthy ? 'Healthy' : server.enabled ? 'Unreachable' : 'Disabled'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${server.healthy ? 'bg-green-500' : server.enabled ? 'bg-red-500' : 'bg-gray-600'}`} />
+                        <span className={`w-1.5 h-1.5 rounded-full ${server.healthy ? 'bg-green-500 health-dot-healthy' : server.enabled ? 'bg-red-500 health-dot-unhealthy' : 'bg-gray-600'}`} />
                         {getServerIcon(server.type)}
                       </div>
                     ))}
@@ -152,7 +173,7 @@ function Layout({ children }) {
               <div className="flex md:hidden items-center gap-2">
                 {sortedServerHealth.map((server) => (
                   <div key={server.id} className="flex items-center gap-1" title={`${server.name}: ${server.healthy ? 'Healthy' : 'Inactive'}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${server.healthy ? 'bg-green-500' : server.enabled ? 'bg-red-500' : 'bg-gray-600'}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full ${server.healthy ? 'bg-green-500 health-dot-healthy' : server.enabled ? 'bg-red-500 health-dot-unhealthy' : 'bg-gray-600'}`} />
                     {getServerIcon(server.type)}
                   </div>
                 ))}

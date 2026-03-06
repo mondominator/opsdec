@@ -95,6 +95,30 @@
   animation: pulse-glow 3s ease-in-out infinite;
 }
 
+/* Soft pulsing for health check dots */
+@keyframes health-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.health-dot-healthy {
+  animation: health-pulse 3s ease-in-out infinite;
+}
+
+.health-dot-unhealthy {
+  animation: health-pulse 1.5s ease-in-out infinite;
+}
+
+/* Brief highlight flash when a stat value updates */
+@keyframes stat-flash {
+  0% { color: rgb(96, 165, 250); }
+  100% { color: white; }
+}
+
+.stat-updated {
+  animation: stat-flash 800ms ease-out forwards;
+}
+
 /* Hidden scrollbar for horizontal poster rows */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
