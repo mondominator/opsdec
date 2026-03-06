@@ -119,6 +119,12 @@
   animation: stat-flash 800ms ease-out forwards;
 }
 
+/* Indeterminate progress bar shimmer */
+@keyframes indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
 /* Hidden scrollbar for horizontal poster rows */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;

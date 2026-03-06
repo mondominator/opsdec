@@ -394,8 +394,8 @@ function Dashboard() {
     // mediaStatus: 1=unknown, 2=pending, 3=processing, 4=partially available, 5=available
     // status: 1=pending, 2=approved, 3=declined
     if (request.mediaStatus === 5) return { label: 'Available', color: 'bg-green-500', textColor: 'text-green-400', progress: 100 };
-    if (request.mediaStatus === 4) return { label: `${request.downloadProgress || 50}%`, color: 'bg-blue-500', textColor: 'text-blue-400', progress: request.downloadProgress || 50 };
-    if (request.mediaStatus === 3) return { label: `${request.downloadProgress || 0}%`, color: 'bg-blue-500', textColor: 'text-blue-400', progress: request.downloadProgress || 0 };
+    if (request.mediaStatus === 4) return { label: request.downloadProgress ? `${request.downloadProgress}%` : 'Partial', color: 'bg-blue-500', textColor: 'text-blue-400', progress: request.downloadProgress || 50, indeterminate: !request.downloadProgress };
+    if (request.mediaStatus === 3) return { label: request.downloadProgress ? `${request.downloadProgress}%` : 'Processing', color: 'bg-blue-500', textColor: 'text-blue-400', progress: request.downloadProgress || 0, indeterminate: !request.downloadProgress };
     if (request.status === 2) return { label: 'Approved', color: 'bg-teal-500', textColor: 'text-teal-400', progress: 0 };
     if (request.status === 3) return { label: 'Declined', color: 'bg-red-500', textColor: 'text-red-400', progress: 0 };
     return { label: 'Pending', color: 'bg-gray-500', textColor: 'text-gray-400', progress: 0 };
@@ -452,7 +452,11 @@ function Dashboard() {
                 </div>
                 <div className="flex items-center gap-2 mt-1.5">
                   <div className="flex-1 h-1 bg-dark-600 rounded-full overflow-hidden">
-                    <div className={`h-full ${status.color} rounded-full transition-all duration-700 ease-out`} style={{ width: `${status.progress}%` }} />
+                    {status.indeterminate ? (
+                      <div className={`h-full w-1/3 ${status.color} rounded-full animate-[indeterminate_1.5s_ease-in-out_infinite]`} />
+                    ) : (
+                      <div className={`h-full ${status.color} rounded-full transition-all duration-700 ease-out`} style={{ width: `${status.progress}%` }} />
+                    )}
                   </div>
                   {status.progress === 100 ? (
                     <Check className="w-3 h-3 text-green-400 flex-shrink-0" />
