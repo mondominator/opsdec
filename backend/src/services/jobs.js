@@ -335,10 +335,15 @@ async function checkRecentlyAddedJob() {
 
   // Only items from last 14 days
   const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+  const beforeFilter = allItems.length;
+  const noAddedAt = allItems.filter(i => !i.addedAt).length;
   const recentItems = allItems
     .filter(i => i.addedAt && new Date(i.addedAt) >= cutoff)
     .sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt))
     .slice(0, limit);
+  if (noAddedAt > 0 || recentItems.length !== beforeFilter) {
+    console.log(`[Recently Added] Fetched ${beforeFilter} items, ${noAddedAt} missing addedAt, ${beforeFilter - noAddedAt - recentItems.length} outside 14-day window, ${recentItems.length} remain`);
+  }
 
   // Check for new items — also detect updated addedAt (new episodes in existing series)
   const notifiedCount = db.prepare('SELECT COUNT(*) AS cnt FROM notified_recently_added').get().cnt;
@@ -348,16 +353,33 @@ async function checkRecentlyAddedJob() {
     notifiedMap.set(row.server_type + '|' + row.media_id, row.added_at);
   }
 
-  const newItems = recentItems.filter(i => {
+  // Separate truly new items from items that need addedAt backfilled
+  const newItems = [];
+  const backfillItems = [];
+
+  for (const i of recentItems) {
     const key = i.server_type + '|' + i.id;
     const storedAddedAt = notifiedMap.get(key);
-    if (storedAddedAt === undefined) return true; // Never seen before
-    // If addedAt changed (new episode added to existing series), treat as new
-    if (i.addedAt && storedAddedAt && i.addedAt !== storedAddedAt) return true;
-    return false;
-  });
+    if (storedAddedAt === undefined) {
+      newItems.push(i); // Never seen before
+    } else if (!storedAddedAt && i.addedAt) {
+      backfillItems.push(i); // Known but missing addedAt — backfill without notifying
+    } else if (storedAddedAt && i.addedAt && i.addedAt !== storedAddedAt) {
+      newItems.push(i); // addedAt changed — new episode in existing series
+    }
+  }
+
+  // Backfill stored addedAt for old rows that were missing it
+  if (backfillItems.length > 0) {
+    const backfill = db.prepare('UPDATE notified_recently_added SET added_at = ? WHERE server_type = ? AND media_id = ?');
+    for (const item of backfillItems) {
+      backfill.run(item.addedAt, item.server_type, item.id);
+    }
+    console.log(`[Recently Added] Backfilled addedAt for ${backfillItems.length} items`);
+  }
 
   if (newItems.length > 0) {
+    console.log(`[Recently Added] ${newItems.length} new items: ${newItems.map(i => i.name).join(', ')}`);
     if (notifiedCount > 0) {
       telegram.notifyRecentlyAdded(newItems);
     }
