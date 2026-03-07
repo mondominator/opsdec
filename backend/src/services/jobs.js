@@ -347,35 +347,34 @@ async function checkRecentlyAddedJob() {
 
   // Check for new items — also detect updated addedAt (new episodes in existing series)
   const notifiedCount = db.prepare('SELECT COUNT(*) AS cnt FROM notified_recently_added').get().cnt;
-  const notifiedRows = db.prepare('SELECT server_type, media_id, added_at FROM notified_recently_added').all();
+  const notifiedRows = db.prepare('SELECT server_type, media_id, added_at, notified_at FROM notified_recently_added').all();
   const notifiedMap = new Map();
   for (const row of notifiedRows) {
-    notifiedMap.set(row.server_type + '|' + row.media_id, row.added_at);
+    notifiedMap.set(row.server_type + '|' + row.media_id, { addedAt: row.added_at, notifiedAt: row.notified_at });
   }
 
-  // Separate truly new items from items that need addedAt backfilled
   const newItems = [];
-  const backfillItems = [];
 
   for (const i of recentItems) {
     const key = i.server_type + '|' + i.id;
-    const storedAddedAt = notifiedMap.get(key);
-    if (storedAddedAt === undefined) {
+    const stored = notifiedMap.get(key);
+    if (!stored) {
       newItems.push(i); // Never seen before
-    } else if (!storedAddedAt && i.addedAt) {
-      backfillItems.push(i); // Known but missing addedAt — backfill without notifying
-    } else if (storedAddedAt && i.addedAt && i.addedAt !== storedAddedAt) {
+    } else if (stored.addedAt && i.addedAt && i.addedAt !== stored.addedAt) {
       newItems.push(i); // addedAt changed — new episode in existing series
+    } else if (!stored.addedAt && i.addedAt) {
+      // Missing stored addedAt — check if content is newer than last notification
+      const notifiedDate = stored.notifiedAt ? new Date(stored.notifiedAt + 'Z') : null;
+      const addedDate = new Date(i.addedAt);
+      if (notifiedDate && (addedDate - notifiedDate) > 24 * 60 * 60 * 1000) {
+        // addedAt is >24h newer than notification — likely new episodes were missed
+        newItems.push(i);
+      } else {
+        // Close enough — just backfill silently
+        db.prepare('UPDATE notified_recently_added SET added_at = ? WHERE server_type = ? AND media_id = ?')
+          .run(i.addedAt, i.server_type, i.id);
+      }
     }
-  }
-
-  // Backfill stored addedAt for old rows that were missing it
-  if (backfillItems.length > 0) {
-    const backfill = db.prepare('UPDATE notified_recently_added SET added_at = ? WHERE server_type = ? AND media_id = ?');
-    for (const item of backfillItems) {
-      backfill.run(item.addedAt, item.server_type, item.id);
-    }
-    console.log(`[Recently Added] Backfilled addedAt for ${backfillItems.length} items`);
   }
 
   if (newItems.length > 0) {
