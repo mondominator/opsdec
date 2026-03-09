@@ -211,11 +211,11 @@ async function flushRecentlyAdded() {
   for (const item of items) {
     const type = (item.type || '').toLowerCase();
     const isEpisode = type === 'episode' || type === 'series' || type === 'youtube';
-    // If it looks like a show (series/episode), group by name
     if (isEpisode && items.filter(i => i.name === item.name).length > 1) {
-      // Multiple items with same show name — already deduplicated at show level, skip dupes
       if (!groups.has(item.name)) {
-        groups.set(item.name, item);
+        groups.set(item.name, { item, count: 1 });
+      } else {
+        groups.get(item.name).count++;
       }
     } else {
       standalone.push(item);
@@ -223,28 +223,37 @@ async function flushRecentlyAdded() {
   }
 
   // Merge: grouped shows + standalone items
-  const toSend = [...groups.values(), ...standalone];
+  const toSend = [...[...groups.values()].map(({ item, count }) => ({ ...item, _groupCount: count })), ...standalone];
 
   // Send each as an individual photo message with a small delay between
   const sendTitles = toSend.map(i => i.name || 'Unknown').join(', ');
   console.log(`[Telegram] Sending ${toSend.length} recently added notifications: ${sendTitles}`);
   for (const item of toSend) {
     const serverIcon = getServerEmoji(item.server_type);
-    let caption = `${serverIcon} · <b>${item.name}</b>`;
-    if (item.overview) {
-      const maxOverview = 500;
-      const overview = item.overview.length > maxOverview ? item.overview.slice(0, maxOverview) + '…' : item.overview;
-      caption += `\n\n${overview}`;
+    let caption;
+
+    if (item._groupCount && item._groupCount > 1) {
+      // Grouped episodes — simple consolidated message
+      caption = `${serverIcon} · <b>${item.name}</b>\n\n${item._groupCount} episodes are ready to stream`;
+      if (item.year) caption += `\n\n<i>${item.year}</i>`;
+    } else {
+      // Standalone item — full details
+      caption = `${serverIcon} · <b>${item.name}</b>`;
+      if (item.overview) {
+        const maxOverview = 500;
+        const overview = item.overview.length > maxOverview ? item.overview.slice(0, maxOverview) + '…' : item.overview;
+        caption += `\n\n${overview}`;
+      }
+      const details = [];
+      if (item.runtime) {
+        const hours = Math.floor(item.runtime / 60);
+        const mins = item.runtime % 60;
+        details.push(hours > 0 ? `${hours}h ${mins}m` : `${mins}m`);
+      }
+      if (item.year) details.push(String(item.year));
+      if (item.rating) details.push(`⭐ ${item.rating}`);
+      if (details.length > 0) caption += `\n\n<i>${details.join('  ·  ')}</i>`;
     }
-    const details = [];
-    if (item.runtime) {
-      const hours = Math.floor(item.runtime / 60);
-      const mins = item.runtime % 60;
-      details.push(hours > 0 ? `${hours}h ${mins}m` : `${mins}m`);
-    }
-    if (item.year) details.push(String(item.year));
-    if (item.rating) details.push(`⭐ ${item.rating}`);
-    if (details.length > 0) caption += `\n\n<i>${details.join('  ·  ')}</i>`;
 
     if (item.thumb) {
       await sendPhoto(item.thumb, caption);
