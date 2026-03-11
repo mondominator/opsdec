@@ -174,6 +174,35 @@ function notifyRecentlyAdded(items) {
   recentlyAddedTimer = setTimeout(() => flushRecentlyAdded(), RECENTLY_ADDED_DELAY);
 }
 
+// Format episode list compactly: "S01E01 – E05" for consecutive, "S01E01, S01E03" otherwise
+function formatEpisodeList(eps) {
+  if (eps.length === 0) return 'New episodes';
+  // Group by season
+  const bySeason = new Map();
+  for (const ep of eps) {
+    const s = ep.s || 0;
+    if (!bySeason.has(s)) bySeason.set(s, []);
+    bySeason.get(s).push(ep.e || 0);
+  }
+  const parts = [];
+  for (const [s, epNums] of bySeason) {
+    epNums.sort((a, b) => a - b);
+    const sStr = s > 0 ? `S${String(s).padStart(2, '0')}` : '';
+    if (epNums.length === 1) {
+      parts.push(`${sStr}E${String(epNums[0]).padStart(2, '0')}`);
+    } else {
+      // Check if consecutive
+      const isConsecutive = epNums.every((n, i) => i === 0 || n === epNums[i - 1] + 1);
+      if (isConsecutive) {
+        parts.push(`${sStr}E${String(epNums[0]).padStart(2, '0')} – E${String(epNums[epNums.length - 1]).padStart(2, '0')}`);
+      } else {
+        parts.push(epNums.map(n => `${sStr}E${String(n).padStart(2, '0')}`).join(', '));
+      }
+    }
+  }
+  return parts.join(', ');
+}
+
 async function flushRecentlyAdded() {
   let items = recentlyAddedBuffer;
   recentlyAddedBuffer = [];
@@ -213,9 +242,10 @@ async function flushRecentlyAdded() {
     const isEpisode = type === 'episode' || type === 'series' || type === 'youtube';
     if (isEpisode && items.filter(i => i.name === item.name).length > 1) {
       if (!groups.has(item.name)) {
-        groups.set(item.name, { item, count: 1 });
-      } else {
-        groups.get(item.name).count++;
+        groups.set(item.name, { item, episodes: [] });
+      }
+      if (item.seasonNumber || item.episodeNumber) {
+        groups.get(item.name).episodes.push({ s: item.seasonNumber, e: item.episodeNumber });
       }
     } else {
       standalone.push(item);
@@ -223,7 +253,7 @@ async function flushRecentlyAdded() {
   }
 
   // Merge: grouped shows + standalone items
-  const toSend = [...[...groups.values()].map(({ item, count }) => ({ ...item, _groupCount: count })), ...standalone];
+  const toSend = [...[...groups.values()].map(({ item, episodes }) => ({ ...item, _episodes: episodes })), ...standalone];
 
   // Send each as an individual photo message with a small delay between
   const sendTitles = toSend.map(i => i.name || 'Unknown').join(', ');
@@ -232,13 +262,36 @@ async function flushRecentlyAdded() {
     const serverIcon = getServerEmoji(item.server_type);
     let caption;
 
-    if (item._groupCount && item._groupCount > 1) {
-      // Grouped episodes — simple consolidated message
-      caption = `${serverIcon} · <b>${item.name}</b>\n\n${item._groupCount} episodes are ready to stream`;
+    if (item._episodes && item._episodes.length > 1) {
+      // Grouped episodes — consolidated message with episode numbers
+      caption = `${serverIcon} · <b>${item.name}</b>\n\n`;
+      // Format episode list (e.g. "S01E01 – E05" or "S01E01, S01E03, S02E01")
+      const eps = item._episodes
+        .sort((a, b) => (a.s || 0) - (b.s || 0) || (a.e || 0) - (b.e || 0));
+      const formatted = formatEpisodeList(eps);
+      caption += `${formatted} ready to stream`;
       if (item.year) caption += `\n\n<i>${item.year}</i>`;
+    } else if (item._episodes) {
+      // Single episode that was grouped (only 1 in group) — show with episode number
+      caption = `${serverIcon} · <b>${item.name}</b>`;
+      if (item._episodes.length === 1 && item._episodes[0].s) {
+        caption += `\n\nS${String(item._episodes[0].s).padStart(2, '0')}E${String(item._episodes[0].e || 0).padStart(2, '0')} ready to stream`;
+      }
+      if (item.overview) {
+        const maxOverview = 500;
+        const overview = item.overview.length > maxOverview ? item.overview.slice(0, maxOverview) + '…' : item.overview;
+        caption += `\n\n${overview}`;
+      }
+      const details = [];
+      if (item.year) details.push(String(item.year));
+      if (item.rating) details.push(`⭐ ${item.rating}`);
+      if (details.length > 0) caption += `\n\n<i>${details.join('  ·  ')}</i>`;
     } else {
       // Standalone item — full details
       caption = `${serverIcon} · <b>${item.name}</b>`;
+      if (item.seasonNumber && item.episodeNumber) {
+        caption += ` · S${String(item.seasonNumber).padStart(2, '0')}E${String(item.episodeNumber).padStart(2, '0')}`;
+      }
       if (item.overview) {
         const maxOverview = 500;
         const overview = item.overview.length > maxOverview ? item.overview.slice(0, maxOverview) + '…' : item.overview;

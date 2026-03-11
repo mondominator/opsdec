@@ -317,6 +317,8 @@ class JellyfinService {
         Overview: episode.Overview,
         CommunityRating: episode.CommunityRating,
         RunTimeTicks: episode.RunTimeTicks,
+        ParentIndexNumber: episode.ParentIndexNumber,
+        IndexNumber: episode.IndexNumber,
         _isEpisodeGroup: true,
       }));
 
@@ -349,6 +351,8 @@ class JellyfinService {
           overview: item.Overview || null,
           rating: item.CommunityRating || null,
           runtime: item.RunTimeTicks ? Math.round(item.RunTimeTicks / 600000000) : null,
+          seasonNumber: item.ParentIndexNumber || null,
+          episodeNumber: item.IndexNumber || null,
         };
       });
     } catch (error) {
