@@ -274,9 +274,6 @@ async function flushRecentlyAdded() {
     } else if (item._episodes) {
       // Single episode that was grouped (only 1 in group) — show with episode number
       caption = `${serverIcon} · <b>${item.name}</b>`;
-      if (item._episodes.length === 1 && item._episodes[0].s) {
-        caption += `\n\nS${String(item._episodes[0].s).padStart(2, '0')}E${String(item._episodes[0].e || 0).padStart(2, '0')} ready to stream`;
-      }
       if (item.overview) {
         const maxOverview = 500;
         const overview = item.overview.length > maxOverview ? item.overview.slice(0, maxOverview) + '…' : item.overview;
@@ -286,12 +283,12 @@ async function flushRecentlyAdded() {
       if (item.year) details.push(String(item.year));
       if (item.rating) details.push(`⭐ ${item.rating}`);
       if (details.length > 0) caption += `\n\n<i>${details.join('  ·  ')}</i>`;
+      if (item._episodes.length === 1 && item._episodes[0].s) {
+        caption += `\n\nS${String(item._episodes[0].s).padStart(2, '0')}E${String(item._episodes[0].e || 0).padStart(2, '0')}`;
+      }
     } else {
       // Standalone item — full details
       caption = `${serverIcon} · <b>${item.name}</b>`;
-      if (item.seasonNumber && item.episodeNumber) {
-        caption += ` · S${String(item.seasonNumber).padStart(2, '0')}E${String(item.episodeNumber).padStart(2, '0')}`;
-      }
       if (item.overview) {
         const maxOverview = 500;
         const overview = item.overview.length > maxOverview ? item.overview.slice(0, maxOverview) + '…' : item.overview;
@@ -306,6 +303,9 @@ async function flushRecentlyAdded() {
       if (item.year) details.push(String(item.year));
       if (item.rating) details.push(`⭐ ${item.rating}`);
       if (details.length > 0) caption += `\n\n<i>${details.join('  ·  ')}</i>`;
+      if (item.seasonNumber && item.episodeNumber) {
+        caption += `\n\nS${String(item.seasonNumber).padStart(2, '0')}E${String(item.episodeNumber).padStart(2, '0')}`;
+      }
     }
 
     if (item.thumb) {
