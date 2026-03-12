@@ -1619,6 +1619,30 @@ export default function Settings() {
               </div>
             </div>
 
+            {/* Notification Delay */}
+            <div className="border-t border-dark-600 pt-4 mt-4">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Recently added notification delay (minutes)
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="60"
+                value={settings.telegram_recently_added_delay || '5'}
+                onChange={async (e) => {
+                  const val = e.target.value;
+                  try {
+                    await updateSetting('telegram_recently_added_delay', val);
+                    setSettings({ ...settings, telegram_recently_added_delay: val });
+                  } catch {
+                    alert('Failed to update setting');
+                  }
+                }}
+                className="w-24 px-4 py-2 bg-dark-700 border border-dark-600 rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="mt-1 text-xs text-gray-500">How long to wait before sending recently added notifications. Batches episodes added within this window into a single message.</p>
+            </div>
+
             {/* Test Connection Button */}
             <div className="border-t border-dark-600 pt-4 mt-4">
               <button

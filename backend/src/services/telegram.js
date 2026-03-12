@@ -151,11 +151,16 @@ function notifyNewUser(username, serverType) {
   sendMessage(text);
 }
 
-// Buffer for recently added items — waits 5 minutes to batch episodes and let metadata settle
+// Buffer for recently added items — waits to batch episodes and let metadata settle
 let recentlyAddedBuffer = [];
 let recentlyAddedTimer = null;
 let metadataRefresher = null;
-const RECENTLY_ADDED_DELAY = 5 * 60 * 1000; // 5 minutes
+const DEFAULT_RECENTLY_ADDED_DELAY = 5; // minutes
+
+function getRecentlyAddedDelay() {
+  const val = parseInt(getSetting('telegram_recently_added_delay'), 10);
+  return (val > 0 ? val : DEFAULT_RECENTLY_ADDED_DELAY) * 60 * 1000;
+}
 
 function setMetadataRefresher(fn) {
   metadataRefresher = fn;
@@ -171,7 +176,7 @@ function notifyRecentlyAdded(items) {
 
   // Reset the timer each time new items arrive
   if (recentlyAddedTimer) clearTimeout(recentlyAddedTimer);
-  recentlyAddedTimer = setTimeout(() => flushRecentlyAdded(), RECENTLY_ADDED_DELAY);
+  recentlyAddedTimer = setTimeout(() => flushRecentlyAdded(), getRecentlyAddedDelay());
 }
 
 // Format episode list compactly: "S01E01 – E05" for consecutive, "S01E01, S01E03" otherwise

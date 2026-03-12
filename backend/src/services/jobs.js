@@ -353,22 +353,22 @@ async function checkRecentlyAddedJob() {
     notifiedMap.set(row.server_type + '|' + row.media_id, { addedAt: row.added_at, notifiedAt: row.notified_at });
   }
 
-  const newItems = [];
+  const candidates = [];
 
   for (const i of recentItems) {
     const key = i.server_type + '|' + i.id;
     const stored = notifiedMap.get(key);
     if (!stored) {
-      newItems.push(i); // Never seen before
+      candidates.push(i); // Never seen before
     } else if (stored.addedAt && i.addedAt && i.addedAt !== stored.addedAt) {
-      newItems.push(i); // addedAt changed — new episode in existing series
+      candidates.push(i); // addedAt changed — new episode in existing series
     } else if (!stored.addedAt && i.addedAt) {
       // Missing stored addedAt — check if content is newer than last notification
       const notifiedDate = stored.notifiedAt ? new Date(stored.notifiedAt + 'Z') : null;
       const addedDate = new Date(i.addedAt);
       if (notifiedDate && (addedDate - notifiedDate) > 24 * 60 * 60 * 1000) {
         // addedAt is >24h newer than notification — likely new episodes were missed
-        newItems.push(i);
+        candidates.push(i);
       } else {
         // Close enough — just backfill silently
         db.prepare('UPDATE notified_recently_added SET added_at = ? WHERE server_type = ? AND media_id = ?')
@@ -376,6 +376,25 @@ async function checkRecentlyAddedJob() {
       }
     }
   }
+
+  // Filter out quality upgrades — if the title already exists in history, it's not new content
+  const newItems = candidates.filter(item => {
+    const name = (item.name || '').toLowerCase();
+    if (!name) return true;
+    // For episodes/series, check by series name (stored as grandparent_title in history)
+    // For movies, check by title
+    const inHistory = db.prepare(
+      'SELECT 1 FROM history WHERE LOWER(title) = ? OR LOWER(grandparent_title) = ? LIMIT 1'
+    ).get(name, name);
+    if (inHistory) {
+      console.log(`[Recently Added] Skipping "${item.name}" — already exists in watch history (likely quality upgrade)`);
+      // Still record it so we don't re-check every poll
+      db.prepare('INSERT INTO notified_recently_added (server_type, media_id, title, added_at) VALUES (?, ?, ?, ?) ON CONFLICT(server_type, media_id) DO UPDATE SET title = excluded.title, added_at = excluded.added_at, notified_at = datetime(\'now\')')
+        .run(item.server_type, item.id, item.name, item.addedAt || null);
+      return false;
+    }
+    return true;
+  });
 
   if (newItems.length > 0) {
     console.log(`[Recently Added] ${newItems.length} new items: ${newItems.map(i => i.name).join(', ')}`);
