@@ -108,7 +108,7 @@ class GeolocationService {
 
       const location = {
         city: response.data.city || null,
-        region: response.data.regionName || null,
+        region: response.data.region || null,
         country: response.data.country || null,
         countryCode: response.data.countryCode || null,
         timezone: response.data.timezone || null,

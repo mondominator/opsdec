@@ -94,7 +94,7 @@ app.get('/proxy/image', async (req, res) => {
     const cached = imageCache.get(imageUrl);
     if (cached) {
       res.set('Content-Type', cached.contentType);
-      res.set('Cache-Control', 'public, max-age=86400');
+      res.set('Cache-Control', 'public, max-age=3600');
       res.set('X-Cache', 'HIT');
       return res.send(cached.data);
     }
@@ -160,7 +160,7 @@ app.get('/proxy/image', async (req, res) => {
     imageCache.put(imageUrl, Buffer.from(response.data), contentType);
 
     res.set('Content-Type', contentType);
-    res.set('Cache-Control', 'public, max-age=86400');
+    res.set('Cache-Control', 'public, max-age=3600');
     res.set('X-Cache', 'MISS');
     res.send(response.data);
   } catch (error) {

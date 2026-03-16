@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, Save, Trash2, RefreshCw, Check, X, Server, AlertCircle, Users as UsersIcon, Database, Download, Upload, Archive, Clock, Play, Pause, Calendar, Shield, UserPlus, Bell, Send, Eye, EyeOff } from 'lucide-react';
-import api, { getSettings, updateSetting, getUserMappings, createUserMapping, deleteUserMapping, getUsersByServer, purgeDatabase, createBackup, getBackups, restoreBackup, deleteBackup, uploadBackup, getAuthUsers, createAuthUser, deleteAuthUser } from '../utils/api';
+import { Plus, Save, Trash2, RefreshCw, Check, X, Server, AlertCircle, Users as UsersIcon, Database, Download, Upload, Archive, Clock, Play, Pause, Calendar, Shield, UserPlus, Bell, Send, Eye, EyeOff, Image } from 'lucide-react';
+import api, { getSettings, updateSetting, getUserMappings, createUserMapping, deleteUserMapping, getUsersByServer, purgeDatabase, createBackup, getBackups, restoreBackup, deleteBackup, uploadBackup, getAuthUsers, createAuthUser, deleteAuthUser, clearImageCache } from '../utils/api';
 import { useTimezone } from '../contexts/TimezoneContext';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -18,6 +18,7 @@ export default function Settings() {
   const [settings, setSettings] = useState({ timezone: 'UTC' });
   const [savingSettings, setSavingSettings] = useState(false);
   const [purgingDatabase, setPurgingDatabase] = useState(false);
+  const [clearingImageCache, setClearingImageCache] = useState(false);
 
   // Telegram notification state
   const [telegramTesting, setTelegramTesting] = useState(false);
@@ -457,6 +458,18 @@ export default function Settings() {
       alert(`Failed to update timezone: ${error.response?.data?.error || error.message}`);
     } finally {
       setSavingSettings(false);
+    }
+  };
+
+  const handleClearImageCache = async () => {
+    setClearingImageCache(true);
+    try {
+      const response = await clearImageCache();
+      alert(`Cover art cache cleared: ${response.data.cleared} images removed.`);
+    } catch (error) {
+      alert(`Failed to clear cache: ${error.response?.data?.error || error.message}`);
+    } finally {
+      setClearingImageCache(false);
     }
   };
 
@@ -2037,6 +2050,29 @@ export default function Settings() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Cover Art Cache */}
+      <div className="bg-dark-800 rounded-lg p-4 sm:p-6 mt-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-100 flex items-center gap-2">
+              <Image className="w-5 h-5 text-primary-400" />
+              Cover Art Cache
+            </h2>
+            <p className="text-sm text-gray-400 mt-1">
+              Clear cached cover art to force fresh downloads from media servers.
+            </p>
+          </div>
+          <button
+            onClick={handleClearImageCache}
+            disabled={clearingImageCache}
+            className="px-4 py-2 bg-primary-600 hover:bg-primary-500 disabled:bg-primary-700 disabled:opacity-50 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 whitespace-nowrap text-sm"
+          >
+            <RefreshCw className={`w-4 h-4 ${clearingImageCache ? 'animate-spin' : ''}`} />
+            {clearingImageCache ? 'Clearing...' : 'Clear Cache'}
+          </button>
+        </div>
       </div>
 
       {/* Danger Zone */}

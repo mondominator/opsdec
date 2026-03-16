@@ -171,5 +171,6 @@ export const changePassword = (currentPassword, newPassword) =>
 export const getAuthUsers = () => api.get('/auth/users');
 export const createAuthUser = (userData) => api.post('/auth/users', userData);
 export const deleteAuthUser = (id) => api.delete(`/auth/users/${id}`);
+export const clearImageCache = () => api.post('/image-cache/clear');
 
 export default api;

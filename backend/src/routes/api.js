@@ -4,6 +4,7 @@ import { embyService, plexService, audiobookshelfService, sapphoService, jellyfi
 import { getJobs, runJob, updateJob } from '../services/jobs.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { encrypt, decrypt } from '../utils/crypto.js';
+import imageCache from '../services/imageCache.js';
 import multer from 'multer';
 
 const router = express.Router();
@@ -2237,6 +2238,19 @@ router.delete('/database/backups/:filename', requireAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('Delete backup error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Clear cover art cache
+router.post('/image-cache/clear', requireAdmin, (req, res) => {
+  try {
+    const stats = imageCache.getStats();
+    imageCache.clearAll();
+    console.log(`Cover art cache cleared: ${stats.entries} entries, ${(stats.totalSizeBytes / 1024 / 1024).toFixed(1)} MB freed`);
+    res.json({ success: true, cleared: stats.entries, freedBytes: stats.totalSizeBytes });
+  } catch (error) {
+    console.error('Error clearing image cache:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
