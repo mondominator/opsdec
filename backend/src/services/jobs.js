@@ -377,18 +377,17 @@ async function checkRecentlyAddedJob() {
     }
   }
 
-  // Filter out quality upgrades — if the title already exists in history, it's not new content
+  // Filter out quality upgrades — only for movies; TV shows/seasons getting new episodes is normal
   const newItems = candidates.filter(item => {
     const name = (item.name || '').toLowerCase();
     if (!name) return true;
-    // For episodes/series, check by series name (stored as grandparent_title in history)
-    // For movies, check by title
+    // Skip quality upgrade check for TV content — new episodes of watched shows are expected
+    if (item.type === 'season' || item.type === 'episode' || item.type === 'series' || item.type === 'Series' || item.type === 'Episode' || item.type === 'Season') return true;
     const inHistory = db.prepare(
-      'SELECT 1 FROM history WHERE LOWER(title) = ? OR LOWER(grandparent_title) = ? LIMIT 1'
-    ).get(name, name);
+      'SELECT 1 FROM history WHERE LOWER(title) = ? LIMIT 1'
+    ).get(name);
     if (inHistory) {
       console.log(`[Recently Added] Skipping "${item.name}" — already exists in watch history (likely quality upgrade)`);
-      // Still record it so we don't re-check every poll
       db.prepare('INSERT INTO notified_recently_added (server_type, media_id, title, added_at) VALUES (?, ?, ?, ?) ON CONFLICT(server_type, media_id) DO UPDATE SET title = excluded.title, added_at = excluded.added_at, notified_at = datetime(\'now\')')
         .run(item.server_type, item.id, item.name, item.addedAt || null);
       return false;
