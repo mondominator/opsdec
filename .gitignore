@@ -47,3 +47,4 @@ coverage/
 *.pid
 *.seed
 *.pid.lock
+data/
