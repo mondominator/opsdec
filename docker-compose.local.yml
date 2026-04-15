@@ -15,14 +15,11 @@ services:
       - TZ=UTC
       - PUID=1000
       - PGID=1000
-      - EMBY_URL=http://your-emby-server:8096
-      - EMBY_API_KEY=your_emby_api_key_here
-      - PLEX_URL=http://your-plex-server:32400
-      - PLEX_TOKEN=your_plex_token_here
-      - AUDIOBOOKSHELF_URL=http://your-audiobookshelf-server:13378
-      - AUDIOBOOKSHELF_API_KEY=your_audiobookshelf_token_here
-      - SAPPHO_URL=http://your-sappho-server:3000
-      - SAPPHO_API_KEY=your_sappho_api_key_here
+      # Servers are configured via the UI — no env vars needed
+      # - EMBY_URL=
+      # - PLEX_URL=
+      # - AUDIOBOOKSHELF_URL=
+      # - SAPPHO_URL=
       - POLL_INTERVAL=30
     networks:
       - opsdec

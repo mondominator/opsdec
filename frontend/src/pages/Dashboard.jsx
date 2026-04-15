@@ -350,134 +350,176 @@ function Dashboard() {
       </div>
     ));
 
-  const renderLocationRows = (section) => (
-    <div className="flex flex-wrap items-stretch">
-      {section.locations.slice(0, section.count).map((location, index) => (
-        <div key={index} className="flex-1 min-w-[100px] px-3 py-2 text-center border-r border-dark-700 last:border-r-0">
-          <div className="text-white text-[13px] font-medium truncate" title={
-            location.city === 'Local Network'
-              ? 'Local Network'
-              : `${location.city}${location.region ? `, ${location.region}` : ''}`
-          }>
-            {location.city === 'Local Network'
-              ? 'Local Network'
-              : location.city}
-          </div>
-          {location.city !== 'Local Network' && location.region && (
-            <div className="text-[10px] text-gray-500 truncate">{location.region}</div>
-          )}
-          <div className="text-[10px] text-sky-400/70 mt-0.5">
-            {location.streams} {location.streams === 1 ? 'stream' : 'streams'}
-          </div>
-          {location.users?.length > 0 && (
-            <div className="flex items-center justify-center gap-1 mt-1">
-              {location.users.slice(0, 3).map((user, ui) => (
-                user.thumb ? (
-                  <img key={ui} src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`} alt={user.username} title={user.username} className="w-4 h-4 rounded-full object-cover" />
-                ) : (
-                  <div key={ui} className="w-4 h-4 rounded-full bg-primary-600 flex items-center justify-center" title={user.username}>
-                    <span className="text-[8px] text-white font-semibold">{user.username.charAt(0).toUpperCase()}</span>
-                  </div>
-                )
-              ))}
-              {location.users.length > 3 && (
-                <span className="text-[9px] text-gray-500">+{location.users.length - 3}</span>
+  // Horizontal bar chart — bars sized proportionally by stream count
+  const renderLocationRows = (section) => {
+    const locations = section.locations.slice(0, section.count);
+    const maxStreams = Math.max(...locations.map(l => l.streams), 1);
+
+    return (
+      <div className="px-3 py-1.5 space-y-1">
+        {locations.map((location, index) => {
+          const barPercent = Math.max((location.streams / maxStreams) * 100, 8); // min 8% so tiny bars are visible
+          const isLocal = location.city === 'Local Network';
+          const label = isLocal ? 'Local Network' : location.city;
+          const sub = !isLocal && location.region ? location.region : null;
+
+          return (
+            <div key={index} className="flex items-center gap-2.5">
+              {/* Rank */}
+              <span className="flex-shrink-0 w-3 text-right text-gray-600 text-[10px] font-mono">{index + 1}</span>
+
+              {/* City + region */}
+              <div className="flex-shrink-0 w-[100px]">
+                <div className="text-white text-[11px] font-medium truncate" title={sub ? `${label}, ${sub}` : label}>
+                  {isLocal ? '🏠' : ''} {label}
+                </div>
+                {sub && <div className="text-[9px] text-gray-500 truncate">{sub}</div>}
+              </div>
+
+              {/* Bar */}
+              <div className="flex-1 h-4 bg-dark-700/50 rounded-sm overflow-hidden relative">
+                <div
+                  className={`h-full rounded-sm transition-all duration-500 ease-out ${isLocal ? 'bg-sky-600/50' : 'bg-sky-500/40'}`}
+                  style={{ width: `${barPercent}%` }}
+                />
+                <span className="absolute inset-0 flex items-center px-1.5 text-[9px] text-sky-300/80 font-medium">
+                  {location.streams} {location.streams === 1 ? 'stream' : 'streams'}
+                </span>
+              </div>
+
+              {/* User avatars */}
+              {location.users?.length > 0 && (
+                <div className="flex items-center -space-x-1 flex-shrink-0">
+                  {location.users.slice(0, 3).map((user, ui) => (
+                    user.thumb ? (
+                      <img key={ui} src={`/proxy/image?url=${encodeURIComponent(user.thumb)}`} alt={user.username} title={user.username} className="w-4 h-4 rounded-full object-cover ring-1 ring-dark-800" />
+                    ) : (
+                      <div key={ui} className="w-4 h-4 rounded-full bg-primary-600 flex items-center justify-center ring-1 ring-dark-800" title={user.username}>
+                        <span className="text-[8px] text-white font-semibold">{user.username.charAt(0).toUpperCase()}</span>
+                      </div>
+                    )
+                  ))}
+                  {location.users.length > 3 && (
+                    <span className="text-[9px] text-gray-500 pl-1.5">+{location.users.length - 3}</span>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
+          );
+        })}
+      </div>
+    );
+  };
 
   const getRequestStatus = (request) => {
     // mediaStatus: 1=unknown, 2=pending, 3=processing, 4=partially available, 5=available
     // status: 1=pending, 2=approved, 3=declined
-    if (request.mediaStatus === 5) return { label: 'Available', color: 'bg-green-500', textColor: 'text-green-400', progress: 100 };
-    if (request.mediaStatus === 4) return { label: request.downloadProgress ? `${request.downloadProgress}%` : 'Partial', color: 'bg-blue-500', textColor: 'text-blue-400', progress: request.downloadProgress || 50, indeterminate: !request.downloadProgress };
-    if (request.mediaStatus === 3) return { label: request.downloadProgress ? `${request.downloadProgress}%` : 'Processing', color: 'bg-blue-500', textColor: 'text-blue-400', progress: request.downloadProgress || 0, indeterminate: !request.downloadProgress };
-    if (request.status === 2) return { label: 'Approved', color: 'bg-teal-500', textColor: 'text-teal-400', progress: 0 };
-    if (request.status === 3) return { label: 'Declined', color: 'bg-red-500', textColor: 'text-red-400', progress: 0 };
-    return { label: 'Pending', color: 'bg-gray-500', textColor: 'text-gray-400', progress: 0 };
+    if (request.mediaStatus === 5) return { label: 'Available', ring: 'ring-green-500/80', dot: 'bg-green-500', textColor: 'text-green-400', progress: 100 };
+    if (request.mediaStatus === 4) return { label: request.downloadProgress ? `${request.downloadProgress}%` : 'Partial', ring: 'ring-blue-500/80', dot: 'bg-blue-500', textColor: 'text-blue-400', progress: request.downloadProgress || 50, pulse: true };
+    if (request.mediaStatus === 3) return { label: request.downloadProgress ? `${request.downloadProgress}%` : 'Processing', ring: 'ring-blue-500/60', dot: 'bg-blue-500', textColor: 'text-blue-400', progress: request.downloadProgress || 0, pulse: true };
+    if (request.status === 2) return { label: 'Approved', ring: 'ring-teal-500/60', dot: 'bg-teal-500', textColor: 'text-teal-400', progress: 0 };
+    if (request.status === 3) return { label: 'Declined', ring: 'ring-red-500/60', dot: 'bg-red-500', textColor: 'text-red-400', progress: 0 };
+    return { label: 'Pending', ring: 'ring-gray-500/40', dot: 'bg-gray-500', textColor: 'text-gray-400', progress: 0 };
   };
 
-  const renderRequestRows = (section) => (
-    <div className="flex flex-wrap items-stretch justify-center">
-      {section.requests.slice(0, section.count).map((request) => {
-        const timeAgo = request.createdAt ? (() => {
-          const diff = Math.floor((Date.now() - new Date(request.createdAt).getTime()) / 1000);
-          if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-          if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-          return `${Math.floor(diff / 86400)}d ago`;
-        })() : '';
+  // Poster-grid with status rings — matches media section visual language
+  const renderRequestRows = (section) => {
+    const items = section.requests.slice(0, section.count);
+    const expandedIndex = items.findIndex((_, i) => expandedItems[`request-${i}`]);
+    const expandedItem = expandedIndex >= 0 ? items[expandedIndex] : null;
 
-        const status = getRequestStatus(request);
+    return (
+      <>
+        <div className="flex flex-wrap justify-center items-end gap-1.5 px-2 py-1.5">
+          {items.map((request, index) => {
+            const isExpanded = expandedItems[`request-${index}`];
+            const status = getRequestStatus(request);
+            const total = items.length;
+            const baseSize = 5;
+            const minSize = 2.5;
+            const size = total > 1 ? baseSize - ((baseSize - minSize) * index / (total - 1)) : baseSize;
 
-        return (
-          <div key={request.id} className="w-[260px] flex-shrink-0 flex-grow-0 px-3 py-2 border-r border-dark-700 last:border-r-0">
-            <div className="flex items-center gap-2.5">
-              <div className="flex-shrink-0 w-8 h-12 rounded overflow-hidden bg-dark-700">
-                {request.posterUrl ? (
-                  <img
-                    src={`/proxy/image?url=${encodeURIComponent(request.posterUrl)}`}
-                    alt={request.title}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                    onError={(e) => { e.target.style.display = 'none'; }}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Film className="w-3.5 h-3.5 text-gray-500" />
-                  </div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-white text-[13px] font-medium truncate" title={request.title}>
-                  {request.title}
-                  {request.year && <span className="text-gray-500 font-normal ml-1">({request.year})</span>}
-                </div>
-                <div className="flex items-center gap-1.5 text-[10px] text-gray-500 mt-0.5">
-                  {request.requestedBy?.avatar ? (
-                    <img src={`/proxy/image?url=${encodeURIComponent(request.requestedBy.avatar)}`} alt="" className="w-3 h-3 rounded-full" />
-                  ) : (
-                    <div className="w-3 h-3 rounded-full bg-teal-600 flex items-center justify-center">
-                      <span className="text-[7px] text-white font-semibold">
-                        {(request.requestedBy?.username || '?').charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-                  <span className="truncate">{request.requestedBy?.username}</span>
-                  <span className="text-gray-600">·</span>
-                  <span>{timeAgo}</span>
-                </div>
-                <div className="flex items-center gap-2 mt-1.5">
-                  <div className="flex-1 h-1 bg-dark-600 rounded-full overflow-hidden">
-                    {status.indeterminate ? (
-                      <div className={`h-full w-1/3 ${status.color} rounded-full animate-[indeterminate_1.5s_ease-in-out_infinite]`} />
+            return (
+              <div
+                key={request.id}
+                className={`flex flex-col items-center cursor-pointer transition-colors rounded p-1 hover:bg-white/[0.03] ${isExpanded ? 'bg-white/[0.05]' : ''}`}
+                style={{ width: `${size}rem` }}
+                onClick={() => toggleExpanded('request', index)}
+              >
+                <div className="relative w-full">
+                  <div className={`w-full aspect-[2/3] rounded overflow-hidden bg-dark-700 ring-2 ${status.ring} ${status.pulse ? 'animate-pulse' : ''}`}>
+                    {request.posterUrl ? (
+                      <img
+                        src={`/proxy/image?url=${encodeURIComponent(request.posterUrl)}`}
+                        alt={request.title}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                      />
                     ) : (
-                      <div className={`h-full ${status.color} rounded-full transition-all duration-700 ease-out`} style={{ width: `${status.progress}%` }} />
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Film className="w-3 h-3 text-gray-500" />
+                      </div>
                     )}
                   </div>
+                  {/* Status dot — bottom right */}
                   {status.progress === 100 ? (
-                    <Check className="w-3 h-3 text-green-400 flex-shrink-0" />
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 ring-1 ring-black/50 flex items-center justify-center">
+                      <Check className="w-2 h-2 text-white" />
+                    </div>
                   ) : (
-                    <span className={`text-[9px] ${status.textColor} flex-shrink-0 font-medium`}>{status.label}</span>
+                    <div className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ${status.dot} ring-1 ring-black/50`} />
                   )}
                 </div>
               </div>
+            );
+          })}
+        </div>
+        {expandedItem && (() => {
+          const status = getRequestStatus(expandedItem);
+          const timeAgo = expandedItem.createdAt ? (() => {
+            const diff = Math.floor((Date.now() - new Date(expandedItem.createdAt).getTime()) / 1000);
+            if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+            return `${Math.floor(diff / 86400)}d ago`;
+          })() : '';
+
+          return (
+            <div className="px-3 py-1.5 bg-dark-900/30">
+              <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                <span className="text-white text-[11px] truncate flex-1">
+                  {expandedItem.title}
+                  {expandedItem.year && <span className="text-gray-500 font-normal ml-1">({expandedItem.year})</span>}
+                </span>
+                <span className={`text-[9px] ${status.textColor} font-medium flex-shrink-0`}>{status.label}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-[10px] text-gray-500 mt-0.5">
+                {expandedItem.requestedBy?.avatar ? (
+                  <img src={`/proxy/image?url=${encodeURIComponent(expandedItem.requestedBy.avatar)}`} alt="" className="w-3 h-3 rounded-full" />
+                ) : (
+                  <div className="w-3 h-3 rounded-full bg-teal-600 flex items-center justify-center">
+                    <span className="text-[7px] text-white font-semibold">
+                      {(expandedItem.requestedBy?.username || '?').charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                <span className="truncate">{expandedItem.requestedBy?.username}</span>
+                <span className="text-gray-600">·</span>
+                <span>{timeAgo}</span>
+              </div>
             </div>
-          </div>
-        );
-      })}
-    </div>
-  );
+          );
+        })()}
+      </>
+    );
+  };
 
   const recentBookTypes = ['audiobook', 'book', 'track', 'podcast'];
 
   const renderSection = (section) => {
     const Icon = section.icon;
     return (
-      <div key={section.label} className={`bg-dark-800 rounded-lg overflow-hidden ${section.type === 'location' || section.type === 'request' ? 'w-full' : 'w-full sm:w-[260px]'} ${section.span}`}>
+      <div key={section.label} className={`bg-dark-800 rounded-lg overflow-hidden ${section.type === 'location' ? 'w-full' : 'w-full sm:w-[260px]'} ${section.span}`}>
         <div className={`flex items-center gap-2 px-3 py-1.5 border-l-2 ${section.accent} bg-dark-700/30`}>
           <Icon className={`w-3 h-3 ${section.iconColor}`} />
           <span className="text-[11px] font-medium tracking-wider uppercase text-gray-500">{section.label}</span>
