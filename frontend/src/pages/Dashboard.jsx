@@ -430,19 +430,19 @@ function Dashboard() {
 
     return (
       <>
-        <div className="flex flex-wrap justify-center items-end gap-1.5 px-2 py-1.5">
+        <div className="flex items-end gap-1.5 px-2 py-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {items.map((request, index) => {
             const isExpanded = expandedItems[`request-${index}`];
             const status = getRequestStatus(request);
             const total = items.length;
-            const baseSize = 5;
+            const baseSize = 4.5;
             const minSize = 2.5;
             const size = total > 1 ? baseSize - ((baseSize - minSize) * index / (total - 1)) : baseSize;
 
             return (
               <div
                 key={request.id}
-                className={`flex flex-col items-center cursor-pointer transition-colors rounded p-1 hover:bg-white/[0.03] ${isExpanded ? 'bg-white/[0.05]' : ''}`}
+                className={`flex-shrink-0 flex flex-col items-center cursor-pointer transition-colors rounded p-1 hover:bg-white/[0.03] ${isExpanded ? 'bg-white/[0.05]' : ''}`}
                 style={{ width: `${size}rem` }}
                 onClick={() => toggleExpanded('request', index)}
               >
@@ -519,7 +519,9 @@ function Dashboard() {
   const renderSection = (section) => {
     const Icon = section.icon;
     return (
-      <div key={section.label} className={`bg-dark-800 rounded-lg overflow-hidden ${section.type === 'location' ? 'w-full' : 'w-full sm:w-[260px]'} ${section.span}`}>
+      <div key={section.label} className={`bg-dark-800 rounded-lg overflow-hidden ${
+        section.type === 'location' || section.type === 'request' ? 'w-full lg:flex-1 lg:min-w-0' : 'w-full sm:w-[260px]'
+      } ${section.span}`}>
         <div className={`flex items-center gap-2 px-3 py-1.5 border-l-2 ${section.accent} bg-dark-700/30`}>
           <Icon className={`w-3 h-3 ${section.iconColor}`} />
           <span className="text-[11px] font-medium tracking-wider uppercase text-gray-500">{section.label}</span>
@@ -730,11 +732,13 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Requests — full-width horizontal bar */}
-      {sections.filter(s => s.type === 'request').map(renderSection)}
-
-      {/* Top Locations — full-width horizontal bar */}
-      {sections.filter(s => s.type === 'location').map(renderSection)}
+      {/* Requests + Locations — side by side */}
+      {(sections.some(s => s.type === 'request') || sections.some(s => s.type === 'location')) && (
+        <div className="flex flex-col lg:flex-row gap-2">
+          {sections.filter(s => s.type === 'request').map(renderSection)}
+          {sections.filter(s => s.type === 'location').map(renderSection)}
+        </div>
+      )}
 
     </div>
   );
