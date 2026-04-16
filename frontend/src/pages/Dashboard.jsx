@@ -617,6 +617,16 @@ function Dashboard() {
         </div>
       )}
 
+      {/* SVG filter defs used by streaming-card enter/exit animations */}
+      <svg aria-hidden="true" width="0" height="0" className="absolute pointer-events-none" style={{ position: 'absolute' }}>
+        <defs>
+          <filter id="pixel-dissolve" x="-20%" y="-20%" width="140%" height="140%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="7" stitchTiles="stitch" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="28" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </defs>
+      </svg>
+
       {/* Active Streams */}
       {(activity.length > 0 || exitingSessions.length > 0) && (
         <div>

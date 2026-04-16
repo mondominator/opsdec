@@ -91,49 +91,60 @@
   }
 }
 
-/* Streaming card enter: pop in with a subtle overshoot */
+/* Streaming card enter: materialize from noise/static */
 @keyframes card-enter {
   0% {
     opacity: 0;
-    transform: scale(0.85) translateY(12px);
-    filter: blur(4px);
+    transform: scale(0.9);
+    filter: url(#pixel-dissolve) blur(8px) contrast(2) brightness(1.4) saturate(1.6);
   }
-  60% {
-    filter: blur(0);
+  40% {
+    opacity: 0.6;
+    filter: url(#pixel-dissolve) blur(3px) contrast(1.4) brightness(1.15);
+  }
+  75% {
+    opacity: 0.95;
+    filter: blur(1px) contrast(1.05);
   }
   100% {
     opacity: 1;
-    transform: scale(1) translateY(0);
-    filter: blur(0);
+    transform: scale(1);
+    filter: none;
   }
 }
 
-/* Streaming card exit: fade + scale down + lift */
+/* Streaming card exit: dissolve into pixels/noise and fade */
 @keyframes card-exit {
   0% {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: scale(1);
+    filter: none;
+  }
+  40% {
+    opacity: 0.7;
+    filter: url(#pixel-dissolve) blur(2px) contrast(1.5) brightness(1.1);
   }
   100% {
     opacity: 0;
-    transform: scale(0.9) translateY(-10px);
-    filter: blur(3px);
+    transform: scale(0.94);
+    filter: url(#pixel-dissolve) blur(10px) contrast(2.5) brightness(0.7) saturate(1.8);
   }
 }
 
 .streaming-card {
-  animation: card-enter 450ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: card-enter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  will-change: opacity, transform, filter;
 }
 
 .streaming-card.streaming-active {
   animation:
-    card-enter 450ms cubic-bezier(0.34, 1.56, 0.64, 1) both,
-    pulse-glow 3s ease-in-out 450ms infinite;
+    card-enter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) both,
+    pulse-glow 3s ease-in-out 600ms infinite;
 }
 
 .streaming-card-exit,
 .streaming-card-exit.streaming-active {
-  animation: card-exit 400ms cubic-bezier(0.4, 0, 1, 1) both;
+  animation: card-exit 550ms cubic-bezier(0.4, 0, 1, 1) both;
   pointer-events: none;
 }
 
