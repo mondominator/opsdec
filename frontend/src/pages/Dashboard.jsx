@@ -369,11 +369,10 @@ function Dashboard() {
               <span className="flex-shrink-0 w-3 text-right text-gray-600 text-[10px] font-mono">{index + 1}</span>
 
               {/* City + region */}
-              <div className="flex-shrink-0 w-[100px]">
+              <div className="flex-shrink-0 w-[140px]">
                 <div className="text-white text-[11px] font-medium truncate" title={sub ? `${label}, ${sub}` : label}>
-                  {isLocal ? '🏠' : ''} {label}
+                  {isLocal ? '🏠 ' : ''}{label}{sub && <span className="text-gray-500">, {sub}</span>}
                 </div>
-                {sub && <div className="text-[9px] text-gray-500 truncate">{sub}</div>}
               </div>
 
               {/* Bar */}
