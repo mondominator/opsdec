@@ -87,6 +87,7 @@ function Dashboard() {
 
   const [stats, setStats] = useState(null);
   const [activity, setActivity] = useState([]);
+  const [exitingSessions, setExitingSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedItems, setExpandedItems] = useState({});
   const [recentlyAdded, setRecentlyAdded] = useState(null);
@@ -94,6 +95,7 @@ function Dashboard() {
   const wsRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
   const recentRefreshRef = useRef(null);
+  const prevActivityRef = useRef([]);
 
   const connectWebSocket = useCallback(async () => {
     try {
@@ -146,6 +148,30 @@ function Dashboard() {
       console.error('Failed to connect WebSocket:', error);
     }
   }, []);
+
+  // Track sessions that just disappeared so they can animate out before unmounting
+  useEffect(() => {
+    const currentIds = new Set(activity.map(s => s.id));
+    const vanished = prevActivityRef.current.filter(s => !currentIds.has(s.id));
+    prevActivityRef.current = activity;
+
+    // Drop any exiting entries that came back
+    setExitingSessions(prev => prev.filter(s => !currentIds.has(s.id)));
+
+    if (vanished.length === 0) return;
+
+    setExitingSessions(prev => {
+      const existingIds = new Set(prev.map(s => s.id));
+      const fresh = vanished.filter(s => !existingIds.has(s.id));
+      return [...prev, ...fresh];
+    });
+
+    const vanishedIds = new Set(vanished.map(s => s.id));
+    const timer = setTimeout(() => {
+      setExitingSessions(prev => prev.filter(s => !vanishedIds.has(s.id)));
+    }, 420);
+    return () => clearTimeout(timer);
+  }, [activity]);
 
   useEffect(() => {
     loadData();
@@ -592,7 +618,7 @@ function Dashboard() {
       )}
 
       {/* Active Streams */}
-      {activity.length > 0 && (
+      {(activity.length > 0 || exitingSessions.length > 0) && (
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-white">
@@ -600,10 +626,13 @@ function Dashboard() {
             </h3>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2">
-            {activity.map((session) => (
+            {[
+              ...activity.map(s => ({ session: s, exiting: false })),
+              ...exitingSessions.map(s => ({ session: s, exiting: true })),
+            ].map(({ session, exiting }) => (
               <div
                 key={session.id}
-                className={`card hover:border-primary-500 transition-colors ${session.state === 'playing' ? 'streaming-active' : ''}`}
+                className={`card streaming-card hover:border-primary-500 transition-colors ${session.state === 'playing' ? 'streaming-active' : ''} ${exiting ? 'streaming-card-exit' : ''}`}
               >
                 <div className="flex flex-col p-2 gap-1.5">
                   {/* Poster */}

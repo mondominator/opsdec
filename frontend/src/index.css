@@ -91,8 +91,61 @@
   }
 }
 
-.streaming-active {
-  animation: pulse-glow 3s ease-in-out infinite;
+/* Streaming card enter: pop in with a subtle overshoot */
+@keyframes card-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.85) translateY(12px);
+    filter: blur(4px);
+  }
+  60% {
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+/* Streaming card exit: fade + scale down + lift */
+@keyframes card-exit {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9) translateY(-10px);
+    filter: blur(3px);
+  }
+}
+
+.streaming-card {
+  animation: card-enter 450ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.streaming-card.streaming-active {
+  animation:
+    card-enter 450ms cubic-bezier(0.34, 1.56, 0.64, 1) both,
+    pulse-glow 3s ease-in-out 450ms infinite;
+}
+
+.streaming-card-exit,
+.streaming-card-exit.streaming-active {
+  animation: card-exit 400ms cubic-bezier(0.4, 0, 1, 1) both;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .streaming-card,
+  .streaming-card.streaming-active,
+  .streaming-card-exit {
+    animation: none;
+  }
+  .streaming-card.streaming-active {
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
 }
 
 /* Soft pulsing for health check dots */
