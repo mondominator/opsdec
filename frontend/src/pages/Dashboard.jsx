@@ -459,16 +459,11 @@ function Dashboard() {
           {items.map((request, index) => {
             const isExpanded = expandedItems[`request-${index}`];
             const status = getRequestStatus(request);
-            const total = items.length;
-            const baseSize = 4.5;
-            const minSize = 2.5;
-            const size = total > 1 ? baseSize - ((baseSize - minSize) * index / (total - 1)) : baseSize;
 
             return (
               <div
                 key={request.id}
-                className={`flex-shrink-0 flex flex-col items-center cursor-pointer transition-colors rounded p-1 hover:bg-white/[0.03] ${isExpanded ? 'bg-white/[0.05]' : ''}`}
-                style={{ width: `${size}rem` }}
+                className={`flex-shrink-0 flex flex-col items-center cursor-pointer transition-colors rounded p-1 hover:bg-white/[0.03] w-[4rem] ${isExpanded ? 'bg-white/[0.05]' : ''}`}
                 onClick={() => toggleExpanded('request', index)}
               >
                 <div className="relative w-full">
