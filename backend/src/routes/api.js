@@ -1,6 +1,6 @@
 import express from 'express';
 import db from '../database/init.js';
-import { embyService, plexService, audiobookshelfService, sapphoService, jellyfinService, seerrService, getServerHealthStatus } from '../services/monitor.js';
+import { embyService, plexService, audiobookshelfService, sapphoService, jellyfinService, seerrService, getServerHealthStatus, restartMonitoring } from '../services/monitor.js';
 import { getJobs, runJob, updateJob } from '../services/jobs.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { encrypt, decrypt } from '../utils/crypto.js';
@@ -1324,6 +1324,8 @@ router.post('/servers', (req, res) => {
     `).run(id, type, name, url, encryptedApiKey, enabled !== false ? 1 : 0, now, now);
 
     const server = db.prepare('SELECT * FROM servers WHERE id = ?').get(id);
+    // Reload services so the new server is monitored without a container restart
+    restartMonitoring();
     // Return with masked API key
     res.json({ success: true, data: { ...server, api_key: '***' } });
   } catch (error) {
@@ -1362,6 +1364,9 @@ router.put('/servers/:id', (req, res) => {
     );
 
     const server = db.prepare('SELECT * FROM servers WHERE id = ?').get(id);
+    // Reload services so updates to URL/key/enabled flag take effect immediately
+    // instead of the running services holding stale credentials in memory.
+    restartMonitoring();
     // Return with masked API key
     res.json({ success: true, data: { ...server, api_key: '***' } });
   } catch (error) {
@@ -1380,6 +1385,8 @@ router.delete('/servers/:id', (req, res) => {
     }
 
     db.prepare('DELETE FROM servers WHERE id = ?').run(id);
+    // Reload services so the deleted server's WebSockets/cron entries are torn down.
+    restartMonitoring();
     res.json({ success: true, message: 'Server deleted' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
