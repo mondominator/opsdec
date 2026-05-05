@@ -91,60 +91,45 @@
   }
 }
 
-/* Streaming card enter: materialize from noise/static */
+/*
+  Streaming card enter: pixels coalesce into the card.
+  Steps through px-dissolve-5 (fully masked) → px-dissolve-0 (fully opaque).
+  Filter URLs don't interpolate, so each keyframe snaps to a new mask state;
+  with 6 steps over ~1.4s the cadence reads as a stuttering pixel reveal.
+*/
 @keyframes card-enter {
-  0% {
-    opacity: 0;
-    transform: scale(0.9);
-    filter: url(#pixel-dissolve) blur(8px) contrast(2) brightness(1.4) saturate(1.6);
-  }
-  40% {
-    opacity: 0.6;
-    filter: url(#pixel-dissolve) blur(3px) contrast(1.4) brightness(1.15);
-  }
-  75% {
-    opacity: 0.95;
-    filter: blur(1px) contrast(1.05);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-    filter: none;
-  }
+  0%   { transform: scale(0.94); filter: url(#px-dissolve-5); }
+  20%  { transform: scale(0.96); filter: url(#px-dissolve-4); }
+  40%  { transform: scale(0.97); filter: url(#px-dissolve-3); }
+  60%  { transform: scale(0.98); filter: url(#px-dissolve-2); }
+  80%  { transform: scale(0.99); filter: url(#px-dissolve-1); }
+  100% { transform: scale(1);    filter: none; }
 }
 
-/* Streaming card exit: dissolve into pixels/noise and fade */
+/* Streaming card exit: pixels fall away, mirror of enter. */
 @keyframes card-exit {
-  0% {
-    opacity: 1;
-    transform: scale(1);
-    filter: none;
-  }
-  40% {
-    opacity: 0.7;
-    filter: url(#pixel-dissolve) blur(2px) contrast(1.5) brightness(1.1);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(0.94);
-    filter: url(#pixel-dissolve) blur(10px) contrast(2.5) brightness(0.7) saturate(1.8);
-  }
+  0%   { transform: scale(1);    filter: url(#px-dissolve-0); }
+  20%  { transform: scale(0.99); filter: url(#px-dissolve-1); }
+  40%  { transform: scale(0.98); filter: url(#px-dissolve-2); }
+  60%  { transform: scale(0.97); filter: url(#px-dissolve-3); }
+  80%  { transform: scale(0.96); filter: url(#px-dissolve-4); }
+  100% { transform: scale(0.94); filter: url(#px-dissolve-5); }
 }
 
 .streaming-card {
-  animation: card-enter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
-  will-change: opacity, transform, filter;
+  animation: card-enter 1400ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  will-change: transform, filter;
 }
 
 .streaming-card.streaming-active {
   animation:
-    card-enter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) both,
-    pulse-glow 3s ease-in-out 600ms infinite;
+    card-enter 1400ms steps(6, end) both,
+    pulse-glow 3s ease-in-out 1400ms infinite;
 }
 
 .streaming-card-exit,
 .streaming-card-exit.streaming-active {
-  animation: card-exit 550ms cubic-bezier(0.4, 0, 1, 1) both;
+  animation: card-exit 1200ms cubic-bezier(0.4, 0, 1, 1) both;
   pointer-events: none;
 }
 
