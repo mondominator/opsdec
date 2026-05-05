@@ -167,9 +167,11 @@ function Dashboard() {
     });
 
     const vanishedIds = new Set(vanished.map(s => s.id));
+    // Must match the .streaming-card-exit animation duration in index.css.
+    // Removing the element earlier truncates the dissolve mid-animation.
     const timer = setTimeout(() => {
       setExitingSessions(prev => prev.filter(s => !vanishedIds.has(s.id)));
-    }, 420);
+    }, 1200);
     return () => clearTimeout(timer);
   }, [activity]);
 
@@ -612,13 +614,34 @@ function Dashboard() {
         </div>
       )}
 
-      {/* SVG filter defs used by streaming-card enter/exit animations */}
+      {/*
+        Pixel-dissolve filter variants used by streaming-card enter/exit animations.
+        Each filter shares the same feTurbulence seed/baseFrequency so the noise
+        pattern is stable; only the alpha-threshold (intercept on feFuncA) shifts,
+        which masks out a progressively larger fraction of the source pixels.
+        The CSS @keyframes step through #px-dissolve-0 (fully opaque) →
+        #px-dissolve-5 (fully masked) for a true "pixels falling away" look
+        instead of the smooth warping that feDisplacementMap produced.
+      */}
       <svg aria-hidden="true" width="0" height="0" className="absolute pointer-events-none" style={{ position: 'absolute' }}>
         <defs>
-          <filter id="pixel-dissolve" x="-20%" y="-20%" width="140%" height="140%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="7" stitchTiles="stitch" result="noise" />
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale="28" xChannelSelector="R" yChannelSelector="G" />
-          </filter>
+          {[
+            { id: 'px-dissolve-0', intercept: 20 },   // all pixels survive
+            { id: 'px-dissolve-1', intercept: -2 },   // ~95% survive
+            { id: 'px-dissolve-2', intercept: -6 },   // ~75% survive
+            { id: 'px-dissolve-3', intercept: -10 },  // ~50% survive
+            { id: 'px-dissolve-4', intercept: -14 },  // ~25% survive
+            { id: 'px-dissolve-5', intercept: -20 },  // none survive
+          ].map(({ id, intercept }) => (
+            <filter key={id} id={id} x="-10%" y="-10%" width="120%" height="120%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.18" numOctaves="2" seed="7" stitchTiles="stitch" result="noise" />
+              <feColorMatrix in="noise" type="luminanceToAlpha" result="lumNoise" />
+              <feComponentTransfer in="lumNoise" result="mask">
+                <feFuncA type="linear" slope="20" intercept={intercept} />
+              </feComponentTransfer>
+              <feComposite in="SourceGraphic" in2="mask" operator="in" />
+            </filter>
+          ))}
         </defs>
       </svg>
 
